@@ -1,0 +1,58 @@
+include:
+  - project: 'simon-kucher-engine/platform/ci-templates'
+    file: '/.build-python-application.yml'
+    ref: 'v1.11.0'
+
+stages:
+  - secret_detection
+  - quality
+  - test
+  - build_and_push
+  - security
+  - release
+
+workflow:
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+variables:
+  SAST_EXCLUDED_PATHS: "data/*.png,data/*.html,data/*.css,data/*.js"
+  SECURE_LOG_LEVEL: "info"
+  JOB_TEMPLATE_COVERAGE_DISABLED: "true"
+
+quality:ruff:
+  rules:
+    - when: never
+
+test:coverage:
+  rules:
+    - when: never
+
+container_scanning:
+  stage: security
+  variables:
+    CS_REGISTRY_TYPE: "gitlab"
+    CI_APPLICATION_REPOSITORY: "$CI_REGISTRY_IMAGE"
+    CS_IMAGE: "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+docker-release:
+  extends: .docker-build-and-push
+  variables:
+    DOCKER_TAG: "$CI_COMMIT_TAG"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+release-job:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Creating release for tag $CI_COMMIT_TAG"
+  release:
+    tag_name: "$CI_COMMIT_TAG"
+    description: "Release from tag $CI_COMMIT_TAG."
+  rules:
+    - if: '$CI_COMMIT_TAG'
