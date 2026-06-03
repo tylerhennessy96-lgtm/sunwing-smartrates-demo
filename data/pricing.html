@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Packages — Sunwing RMS</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="chart.local.js"></script>
+  <script src="data.js"></script>
+  <script src="filters.js"></script>
+  <style>
+    /* ── Flight category pills (OWN / RSK / 3RD) ─────────────── */
+    .flight-cat {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      letter-spacing: .2px;
+    }
+    .flight-cat-own        { background: rgba(233,30,140,0.10); color: #c2185b; border-color: rgba(233,30,140,0.35); }
+    .flight-cat-risk       { background: rgba(245,166,35,0.14); color: #b45309; border-color: rgba(245,166,35,0.35); }
+    .flight-cat-thirdparty { background: #f3f4f6; color: var(--text-secondary); border-color: var(--border); }
+
+    /* ── Hotel classification pills (EXC / COM) ──────────────── */
+    .hotel-cls {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      letter-spacing: .2px;
+    }
+    .hotel-cls-exc { background: rgba(233,30,140,0.08); color: #b01867; border-color: rgba(233,30,140,0.28); }
+    .hotel-cls-com { background: #f3f4f6;                color: var(--text-secondary); border-color: var(--border); }
+
+    /* ── Duration pill (7N / 10N / 14N) ──────────────────────── */
+    .dur-pill {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Stacked cat/cls cell ────────────────────────────────── */
+    .cat-cls-stack {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: flex-start;
+    }
+
+    /* ── Star rating ─────────────────────────────────────────── */
+    .star-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .star-icon {
+      position: relative;
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      line-height: 0;
+    }
+    .star-icon svg { display: block; width: 12px; height: 12px; }
+    .star-icon .star-fg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 12px;
+      overflow: hidden;
+    }
+    .star-num { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+    /* ── Package row name cell (2-line layout) ───────────────── */
+    .pkg-name {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      line-height: 1.2;
+    }
+    .pkg-name .pkg-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 12.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pkg-name .pkg-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .pkg-name .pkg-meta .pkg-meta-sep { color: var(--border-mid); margin: 0 5px; }
+    .cost-change-icon {
+      color: var(--warn);
+      font-size: 11px;
+      vertical-align: middle;
+      cursor: help;
+    }
+
+    /* ── Legend bar ──────────────────────────────────────────── */
+    .legend-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .legend-bar .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-bar .legend-sep  { color: var(--border); }
+
+    /* ── View switching ──────────────────────────────────────── */
+    .view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+    /* ── Rec-price clickable hint ────────────────────────────── */
+    .rec-click {
+      color: var(--accent);
+      font-weight: 600;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background .12s;
+    }
+    .rec-click:hover { background: rgba(232, 0, 125, 0.10); }
+    .rec-click.accepted { color: var(--text-muted); font-weight: 500; text-decoration: line-through; cursor: default; }
+
+    /* ── Package Rules drawer (separate from adv-drawer) ─────── */
+    .pkg-rules-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 380px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      box-shadow: -8px 0 24px rgba(0,0,0,.18);
+      display: none;
+      flex-direction: column;
+      z-index: 70;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform .25s cubic-bezier(0.4,0,0.2,1);
+    }
+    .pkg-rules-drawer.open { display: flex; transform: translateX(0); }
+    .pkg-rules-drawer .prd-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .pkg-rules-drawer .prd-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .pkg-rules-drawer .prd-sub   { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+    .pkg-rules-drawer .prd-close {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 2px 4px;
+    }
+    .pkg-rules-drawer .prd-close:hover { color: var(--text-primary); }
+    .pkg-rules-drawer .prd-section {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pkg-rules-drawer .prd-section-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .prd-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .prd-row label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex: 1;
+    }
+    .prd-row input[type="number"] {
+      width: 96px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: 'Archivo', sans-serif;
+      outline: none;
+    }
+    .prd-row input[type="number"]:focus { border-color: var(--accent); }
+    .prd-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .prd-toggle input { accent-color: var(--accent); cursor: pointer; }
+    .prd-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      background: #fafbfc;
+    }
+    .prd-meta { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── Run Evaluation modal + toast ────────────────────────── */
+    .re-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(17, 20, 27, 0.55);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .re-backdrop.open { display: flex; }
+    .re-modal {
+      background: #fff;
+      border-radius: 10px;
+      width: 520px;
+      max-width: calc(100vw - 40px);
+      max-height: calc(100vh - 80px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      font-family: 'Archivo', sans-serif;
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+    .re-modal-head {
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .re-modal-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .re-modal-close {
+      background: none; border: none; font-size: 20px; line-height: 1;
+      color: var(--text-muted); cursor: pointer;
+      padding: 4px 8px; border-radius: 4px;
+    }
+    .re-modal-close:hover { color: var(--text-primary); background: #f3f4f6; }
+    .re-modal-body {
+      padding: 18px 22px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .re-modal-section { margin-bottom: 18px; }
+    .re-modal-section:last-child { margin-bottom: 0; }
+    .re-modal-section-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    .re-intro { font-size: 12px; color: var(--text-secondary); margin: 0 0 8px; }
+    .re-modal-cb {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      cursor: pointer;
+      padding: 5px 0;
+    }
+    .re-modal-cb input { margin-top: 2px; cursor: pointer; accent-color: var(--accent); }
+    .re-destlist, .re-gatewaylist, .re-durlist {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px 10px;
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .re-destlist label, .re-gatewaylist label, .re-durlist label {
+      font-size: 11.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+    .re-preview {
+      background: rgba(232, 0, 125, 0.06);
+      border: 1px solid rgba(232, 0, 125, 0.28);
+      border-radius: 6px;
+      padding: 11px 14px;
+      font-size: 12.5px;
+      color: #b01867;
+    }
+    .re-preview strong { color: var(--accent); font-weight: 700; }
+    .re-modal-foot {
+      padding: 14px 22px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: #fafbfc;
+    }
+    .re-btn {
+      padding: 8px 18px;
+      border-radius: 5px;
+      font-family: 'Archivo', sans-serif;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    .re-btn.ghost   { background: #fff; color: var(--text-primary); }
+    .re-btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .re-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .re-btn.primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
+
+    .re-toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      background: #16181d;
+      color: #e5e7eb;
+      border: 1px solid #2d313b;
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-family: 'Archivo', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s, transform .25s;
+      z-index: 220;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .re-toast.shown { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .re-toast .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(232, 0, 125, 0.25);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: reSpin 0.9s linear infinite;
+    }
+    .re-toast.success .spinner { display: none; }
+    .re-toast .check { display: none; color: var(--accent); font-weight: 700; }
+    .re-toast.success .check { display: inline; }
+    @keyframes reSpin { to { transform: rotate(360deg); } }
+
+    /* ── Action icons (reuse .pkg-action-icons from styles.css) ─ */
+    .pkg-action-icons button.locked { color: var(--accent); background: rgba(232, 0, 125, 0.10); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Top Nav ── -->
+  <nav class="topnav">
+    <a href="pricing.html" class="logo" style="text-decoration:none;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="engine_logo (2).png" style="height:28px;width:auto;display:block;" />
+        <div style="display:flex;flex-direction:column;line-height:1;gap:2px;">
+          <span style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
+          <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
+        </div>
+      </div>
+    </a>
+
+    <div class="nav-tabs">
+      <a href="pricing.html"    class="nav-tab active">Pricing</a>
+      <a href="parameters.html" class="nav-tab">Parameters</a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div style="position:relative;">
+      <button class="nav-menu-btn" id="menuBtn" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="nav-dropdown" id="navDropdown">
+        <a href="#">Settings</a>
+        <a href="#">Reports</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Filter Bar ── -->
+  <div class="filter-bar" id="filterBar">
+    <div class="ms-wrap" id="fBrand">
+      <button class="ms-trigger" onclick="toggleFilter('fBrand')">
+        <span>All Brands</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+    <div class="ms-wrap" id="fRegion">
+      <button class="ms-trigger" onclick="toggleFilter('fRegion')">
+        <span>All Regions</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+    <div class="ms-wrap" id="fDestination">
+      <button class="ms-trigger" onclick="toggleFilter('fDestination')">
+        <span>All Destinations</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+    <div class="ms-wrap" id="fDates">
+      <button class="date-pill" onclick="toggleFilter('fDates')">
+        <svg class="cal" width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2" y="3" width="10" height="9" rx="1"/>
+          <line x1="2" y1="6" x2="12" y2="6"/>
+          <line x1="5" y1="1.5" x2="5" y2="4"/>
+          <line x1="9" y1="1.5" x2="9" y2="4"/>
+        </svg>
+        <span class="date-range-text" id="fDatesLabel">Select weeks</span>
+      </button>
+      <div class="date-pill-popover"></div>
+    </div>
+    <div class="ms-wrap" id="fRM">
+      <button class="ms-trigger" onclick="toggleFilter('fRM')">
+        <span>All RMs</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+  </div>
+
+  <!-- ── Sub-tab Bar ── -->
+  <div class="subtab-bar">
+    <a href="flight.html"  class="subtab">Flight Only</a>
+    <a href="hotel.html"   class="subtab">Hotel Only</a>
+    <a href="pricing.html" class="subtab active">Packages</a>
+    <div class="subtab-spacer"></div>
+    <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
+      Run Evaluation
+    </button>
+    <button class="btn btn-ghost" onclick="publishChanges()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h10M7 2l5 5-5 5"/></svg>
+      Publish Changes
+    </button>
+  </div>
+
+  <!-- ── Sub-subtab Bar ── -->
+  <div class="subsubtab-bar" id="subsubtabBar" style="display:flex;align-items:center;">
+    <a class="subsubtab active" data-view="recs" onclick="switchView('recs')">New Recommendations</a>
+  </div>
+
+  <!-- ── Main: Views ── -->
+  <div class="main">
+
+    <!-- New Recommendations view (tree table) -->
+    <div class="view" id="viewRecs">
+      <div class="table-wrap">
+        <table class="data-table" id="packagesTable">
+          <thead id="packagesHead"></thead>
+          <tbody id="packagesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /.main -->
+
+</div><!-- /.app -->
+
+<!-- ── Per-Package Rules Drawer ── -->
+<div class="adv-backdrop" id="prdBackdrop" onclick="closePkgRules()"></div>
+<aside class="pkg-rules-drawer" id="pkgRulesDrawer" aria-hidden="true">
+  <div class="prd-header">
+    <div>
+      <div class="prd-title">Package Rules</div>
+      <div class="prd-sub" id="prdSub">—</div>
+    </div>
+    <button class="prd-close" type="button" aria-label="Close" onclick="closePkgRules()">
+      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+    </button>
+  </div>
+
+  <div class="prd-section">
+    <div class="prd-section-title">Price Bounds</div>
+    <div class="prd-row">
+      <label>Min price ($)</label>
+      <input type="number" id="prdMinPrice" placeholder="—" />
+    </div>
+    <div class="prd-row">
+      <label>Max price ($)</label>
+      <input type="number" id="prdMaxPrice" placeholder="—" />
+    </div>
+  </div>
+
+  <div class="prd-section">
+    <div class="prd-section-title">Margin Bounds</div>
+    <div class="prd-row">
+      <label>Min margin ($)</label>
+      <input type="number" id="prdMinMargin" placeholder="—" />
+    </div>
+    <div class="prd-row">
+      <label>Max margin ($)</label>
+      <input type="number" id="prdMaxMargin" placeholder="—" />
+    </div>
+  </div>
+
+  <div class="prd-section">
+    <div class="prd-section-title">Controls</div>
+    <label class="prd-toggle">
+      <input type="checkbox" id="prdLock" /> Lock price (no rec changes)
+    </label>
+    <label class="prd-toggle" style="margin-top:6px;">
+      <input type="checkbox" id="prdFlag" /> Flag changes &gt; $50 for review
+    </label>
+  </div>
+
+  <div class="prd-section">
+    <div class="prd-section-title">Last Modified</div>
+    <div class="prd-meta" id="prdMeta">—</div>
+  </div>
+
+  <div class="prd-footer">
+    <button class="re-btn ghost"   type="button" onclick="closePkgRules()">Cancel</button>
+    <button class="re-btn primary" type="button" onclick="savePkgRules()">Save</button>
+  </div>
+</aside>
+
+<!-- ── Notes Modal ── -->
+<div class="modal-backdrop" id="notesModalBackdrop">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Package notes</div>
+        <div class="modal-subtitle" id="notesModalSub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeNotesModal()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Note text</label>
+      <textarea class="note-textarea" id="notesText" rows="4" placeholder="Add a note for this package…" style="margin-bottom:12px;"></textarea>
+      <div style="display:flex;gap:12px;">
+        <div style="flex:1;">
+          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Expiry date</label>
+          <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;outline:none;" />
+        </div>
+        <div style="flex:1;">
+          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Created by</label>
+          <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:10px;" id="notesCreatedAt">Created: —</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="notesDeleteBtn" onclick="deleteNote()" style="margin-right:auto;display:none;color:var(--danger);border-color:rgba(224,82,82,0.3);">Delete</button>
+      <button class="btn btn-ghost" onclick="closeNotesModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNote()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Run Evaluation Modal + Toast ── -->
+<div class="re-backdrop" id="reBackdrop">
+  <div class="re-modal" role="dialog" aria-labelledby="reModalTitle">
+    <div class="re-modal-head">
+      <h3 id="reModalTitle">Run Evaluation — Packages</h3>
+      <button type="button" class="re-modal-close" onclick="closeRunEvalModal()" aria-label="Close">×</button>
+    </div>
+    <div class="re-modal-body">
+      <div class="re-modal-section">
+        <div class="re-modal-section-title">Scope</div>
+        <p class="re-intro">Select which packages to include in this evaluation:</p>
+        <label class="re-modal-cb">
+          <input type="checkbox" id="reAllDests" checked onchange="onReScopeChange()">
+          <span>All destinations</span>
+        </label>
+        <div id="reDestList" class="re-destlist" style="display:none;"></div>
+        <label class="re-modal-cb">
+          <input type="checkbox" id="reAllGateways" checked onchange="onReScopeChange()">
+          <span>All departure gateways</span>
+        </label>
+        <div id="reGatewayList" class="re-gatewaylist" style="display:none;"></div>
+        <label class="re-modal-cb">
+          <input type="checkbox" id="reAllDurations" checked onchange="onReScopeChange()">
+          <span>All durations</span>
+        </label>
+        <div id="reDurList" class="re-durlist" style="display:none;"></div>
+      </div>
+      <div class="re-modal-section">
+        <div class="re-modal-section-title">Options</div>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptRules"  checked> Apply package rules automatically</label>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptComp"   checked> Include competitor pricing adjustments</label>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptFlag"   checked> Flag price changes above $50 for review</label>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptNotify"> Notify RM on completion</label>
+      </div>
+      <div class="re-modal-section">
+        <div class="re-modal-section-title">Preview</div>
+        <div class="re-preview" id="rePreview">—</div>
+      </div>
+    </div>
+    <div class="re-modal-foot">
+      <button type="button" class="re-btn ghost"   onclick="closeRunEvalModal()">Cancel</button>
+      <button type="button" class="re-btn primary" onclick="confirmRunEvaluation()">Run Evaluation</button>
+    </div>
+  </div>
+</div>
+<div class="re-toast" id="reToast">
+  <span class="spinner"></span>
+  <span class="check">✓</span>
+  <span id="reToastText">Evaluation running…</span>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   State
+   ══════════════════════════════════════════════════════════════════ */
+const expandedDests    = new Set();  // destId
+const expandedWeeks    = new Set();  // destId::weekIdx
+const expandedGateways = new Set();  // destId::weekIdx::gateway
+const priceOverrides   = {};         // pkgId → price (user edits / accepted rec)
+const lockedPkgs       = new Set();  // pkgId (🔒 fixed)
+const acceptedRecs     = new Set();  // pkgId (rec was accepted)
+const pkgRules         = {};         // pkgId → { minPrice, maxPrice, minMargin, maxMargin, lock, flag, modifiedAt, modifiedBy }
+const notes            = {};         // pkgId → { text, expires, createdBy, createdAt }
+
+let activeView    = 'recs';
+let activeRuleKey = null;
+let activeNoteKey = null;
+
+/* ══════════════════════════════════════════════════════════════════
+   Helpers
+   ══════════════════════════════════════════════════════════════════ */
+function fmt$(n)  { return '$' + Math.round(n).toLocaleString(); }
+function fmtPct(f){ return Math.round(f * 100) + '%'; }
+function fmtPctN(n){ return (Math.round(n * 10) / 10) + '%'; }
+function avg(arr, key) {
+  if (!arr.length) return 0;
+  return arr.reduce((s, x) => s + (typeof key === 'function' ? key(x) : x[key]), 0) / arr.length;
+}
+function sum(arr, key) {
+  return arr.reduce((s, x) => s + (typeof key === 'function' ? key(x) : x[key]), 0);
+}
+function chevron(open) {
+  return `<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" style="transform:${open?'rotate(90deg)':'none'};transition:transform .15s;"><polyline points="4,2 8,6 4,10"/></svg>`;
+}
+function regionClass(region) {
+  const map = { 'Caribbean': 'region-caribbean', 'Mexico': 'region-mexico', 'Central America': 'region-centralamerica', 'Europe': 'region-europe', 'Sun & Sand': 'region-sunsand' };
+  return map[region] || 'region-caribbean';
+}
+function flightCatBadge(cat) {
+  const cls  = cat === 'Own Flight' ? 'own' : cat === 'Risk Block' ? 'risk' : 'thirdparty';
+  const abbr = cat === 'Own Flight' ? 'OWN' : cat === 'Risk Block' ? 'RSK' : '3RD';
+  return `<span class="flight-cat flight-cat-${cls}" title="${cat}">${abbr}</span>`;
+}
+function hotelClsBadge(cls) {
+  const key = cls === 'EXC' ? 'exc' : 'com';
+  const full = cls === 'EXC' ? 'Exclusive' : 'Commodity';
+  return `<span class="hotel-cls hotel-cls-${key}" title="${full}">${cls}</span>`;
+}
+function durPill(d) {
+  return `<span class="dur-pill">${d}N</span>`;
+}
+const _STAR_SVG = '<svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0.5 L7.55 4.05 L11.4 4.5 L8.5 7.15 L9.3 11 L6 9.05 L2.7 11 L3.5 7.15 L0.6 4.5 L4.45 4.05 Z"/></svg>';
+function starRating(stars) {
+  const rating = Math.max(0, Math.min(5, Number(stars) || 0));
+  const pct = (rating / 5) * 100;
+  return `<span class="star-rating" title="Rating ${rating.toFixed(1)} / 5">
+    <span class="star-icon">
+      <span style="color:#d1d5db;">${_STAR_SVG}</span>
+      <span class="star-fg" style="width:${pct}%;color:#e91e8c;">${_STAR_SVG}</span>
+    </span>
+    <span class="star-num">${rating.toFixed(1)}</span>
+  </span>`;
+}
+function paceBadge(pace) {
+  const map = {
+    'ahead':    { cls: 'pace-ahead',   label: 'Ahead' },
+    'on track': { cls: 'pace-ontrack', label: 'On Track' },
+    'behind':   { cls: 'pace-behind',  label: 'Behind' },
+  };
+  const b = map[pace] || map['on track'];
+  return `<span class="pace-badge ${b.cls}">${b.label}</span>`;
+}
+function getEffectivePrice(pkg) {
+  if (priceOverrides[pkg.id] != null) return priceOverrides[pkg.id];
+  return pkg.currentPrice;
+}
+function getEffectiveMargin(pkg) {
+  return getEffectivePrice(pkg) - pkg.totalCost;
+}
+function deltaColor(delta) {
+  if (delta > 0) return 'delta-pos';
+  if (delta < 0) return 'delta-neg';
+  return 'text-muted';
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Filter matching + tree walkers
+   ══════════════════════════════════════════════════════════════════ */
+function passesHeaderFilters(pkg) {
+  if (typeof Filters === 'undefined' || !Filters.getActiveFilters) return true;
+  const f = Filters.getActiveFilters();
+  const dest = DESTINATIONS.find(d => d.id === pkg.destId);
+  if (f.brand && f.brand.length && dest && !f.brand.includes(dest.brand)) return false;
+  if (f.region && f.region.length && !f.region.includes(pkg.region)) return false;
+  if (f.destination && f.destination.length && !f.destination.includes(pkg.destination)) return false;
+  if (f.rm && f.rm.length && dest && !f.rm.includes(dest.revenueManager)) return false;
+  return true;
+}
+
+// Return every leaf (single package) in PACKAGE_DATA that passes header filters.
+function allLeaves() {
+  const out = [];
+  PACKAGE_DATA.forEach(d => d.checkInWeeks.forEach(w => w.gateways.forEach(g =>
+    g.durations.forEach(p => { if (passesHeaderFilters(p)) out.push(p); })
+  )));
+  return out;
+}
+// Leaves below a subtree (dest / week / gateway).
+function subtreeLeaves(dest, week, gateway) {
+  const out = [];
+  const weeks = week ? [week] : dest.checkInWeeks;
+  weeks.forEach(w => {
+    const gws = gateway ? [gateway] : w.gateways;
+    gws.forEach(g => g.durations.forEach(p => { if (passesHeaderFilters(p)) out.push(p); }));
+  });
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Packages table (tree)
+   ══════════════════════════════════════════════════════════════════ */
+function renderPackagesHead() {
+  document.getElementById('packagesHead').innerHTML = `
+    <tr>
+      <th style="min-width:360px;">Destination / Week / Gateway / Package</th>
+      <th style="width:110px;">Check-in</th>
+      <th style="width:62px;text-align:center;">Dur.</th>
+      <th style="width:92px;">Cat / Cls</th>
+      <th style="width:74px;">★</th>
+      <th class="text-right" style="width:100px;">Sold / Alloc</th>
+      <th class="text-right" style="width:72px;">Pkg LF</th>
+      <th class="text-right" style="width:100px;">Curr Price</th>
+      <th class="text-right" style="width:100px;">Rec Price</th>
+      <th class="text-right" style="width:76px;">Δ $</th>
+      <th class="text-right" style="width:100px;">Curr Margin</th>
+      <th class="text-right" style="width:100px;">Rec Margin</th>
+      <th class="text-right" style="width:76px;">Margin Δ</th>
+      <th class="text-right" style="width:72px;">Margin %</th>
+      <th style="width:96px;">Pace</th>
+      <th style="width:110px;">Actions</th>
+    </tr>
+  `;
+}
+
+// Aggregate helpers
+function _aggPrices(leaves) {
+  if (!leaves.length) return null;
+  const sold   = sum(leaves, 'soldPackages');
+  const alloc  = sum(leaves, 'allocPackages');
+  const lf     = alloc > 0 ? sold / alloc : 0;
+  const cp     = avg(leaves, p => getEffectivePrice(p));
+  const rp     = avg(leaves, 'recPrice');
+  const cm     = avg(leaves, p => getEffectiveMargin(p));
+  const rm     = avg(leaves, 'recMargin');
+  const mPct   = cp > 0 ? cm / cp : 0;
+  return { sold, alloc, lf, cp, rp, dp: rp - cp, cm, rm, dm: rm - cm, mPct };
+}
+
+function renderPackagesTable() {
+  const tbody = document.getElementById('packagesBody');
+  const rows = [];
+
+  const visibleDests = PACKAGE_DATA.filter(d => subtreeLeaves(d).length > 0);
+  if (!visibleDests.length) {
+    tbody.innerHTML = `<tr><td colspan="16" style="padding:28px;text-align:center;color:var(--text-muted);">No packages match the current filters.</td></tr>`;
+    return;
+  }
+
+  visibleDests.forEach(dest => {
+    const destLeaves = subtreeLeaves(dest);
+    const destOpen   = expandedDests.has(dest.id);
+    const a = _aggPrices(destLeaves);
+
+    // ── Level 1: Destination ──
+    rows.push(`
+      <tr class="row-property" onclick="toggleDest('${dest.id}')">
+        <td>
+          <button class="expand-btn ${destOpen?'open':''}" onclick="event.stopPropagation();toggleDest('${dest.id}')">${chevron(destOpen)}</button>
+          ${dest.name}
+          <span class="region-badge ${regionClass(dest.region)}" style="margin-left:8px;">${dest.region}</span>
+          <span style="color:var(--text-muted);font-weight:400;margin-left:8px;font-size:11.5px;">${destLeaves.length} packages</span>
+        </td>
+        <td></td><td></td><td></td><td></td>
+        <td class="text-right num">${a.sold} / ${a.alloc}</td>
+        <td class="text-right num">${fmtPct(a.lf)}</td>
+        <td class="text-right num">${fmt$(a.cp)}</td>
+        <td class="text-right num" style="color:var(--accent);">${fmt$(a.rp)}</td>
+        <td class="text-right num ${deltaColor(a.dp)}">${a.dp>=0?'+':''}${fmt$(a.dp)}</td>
+        <td class="text-right num">${fmt$(a.cm)}</td>
+        <td></td>
+        <td></td>
+        <td class="text-right num">${fmtPct(a.mPct)}</td>
+        <td></td>
+        <td>
+          <div class="pkg-action-icons">
+            <button title="View destination snapshot" onclick="event.stopPropagation();">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="8" width="2.5" height="6"/><rect x="6.75" y="4" width="2.5" height="10"/><rect x="11.5" y="2" width="2.5" height="12"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `);
+
+    if (!destOpen) return;
+
+    // ── Level 2: Check-in weeks ──
+    dest.checkInWeeks.forEach(wk => {
+      const wkLeaves = subtreeLeaves(dest, wk);
+      if (!wkLeaves.length) return;
+      const wkKey  = `${dest.id}::${wk.idx}`;
+      const wkOpen = expandedWeeks.has(wkKey);
+      const w = _aggPrices(wkLeaves);
+
+      rows.push(`
+        <tr class="row-week clickable" onclick="toggleWeek('${wkKey}')">
+          <td>
+            <button class="expand-btn ${wkOpen?'open':''}" onclick="event.stopPropagation();toggleWeek('${wkKey}')">${chevron(wkOpen)}</button>
+            <span style="font-weight:500;">${wk.label}</span>
+            <span style="color:var(--text-muted);font-weight:400;margin-left:6px;font-size:11px;font-family:'JetBrains Mono',monospace;">${wk.date}</span>
+            <span style="color:var(--text-muted);font-weight:400;margin-left:8px;font-size:11px;">${wkLeaves.length} packages</span>
+          </td>
+          <td></td><td></td><td></td><td></td>
+          <td class="text-right num">${w.sold} / ${w.alloc}</td>
+          <td class="text-right num">${fmtPct(w.lf)}</td>
+          <td class="text-right num">${fmt$(w.cp)}</td>
+          <td class="text-right num" style="color:var(--accent);">${fmt$(w.rp)}</td>
+          <td class="text-right num ${deltaColor(w.dp)}">${w.dp>=0?'+':''}${fmt$(w.dp)}</td>
+          <td class="text-right num">${fmt$(w.cm)}</td>
+          <td></td><td></td><td></td><td></td><td></td>
+        </tr>
+      `);
+
+      if (!wkOpen) return;
+
+      // ── Level 3: Gateways for this week ──
+      wk.gateways.forEach(gw => {
+        const gwLeaves = gw.durations.filter(passesHeaderFilters);
+        if (!gwLeaves.length) return;
+        const gwKey  = `${dest.id}::${wk.idx}::${gw.gateway}`;
+        const gwOpen = expandedGateways.has(gwKey);
+        const g = _aggPrices(gwLeaves);
+
+        rows.push(`
+          <tr class="row-bedtype clickable" onclick="toggleGateway('${gwKey}')">
+            <td>
+              <button class="expand-btn ${gwOpen?'open':''}" onclick="event.stopPropagation();toggleGateway('${gwKey}')">${chevron(gwOpen)}</button>
+              ${gw.gatewayCity} · <span style="font-family:'JetBrains Mono',monospace;color:var(--text-secondary);font-size:11.5px;">${gw.gateway}</span>
+              <span style="color:var(--text-muted);font-weight:400;margin-left:8px;font-size:11px;">${gwLeaves.length} duration${gwLeaves.length === 1 ? '' : 's'}</span>
+            </td>
+            <td></td><td></td><td></td><td></td>
+            <td class="text-right num">${g.sold} / ${g.alloc}</td>
+            <td class="text-right num">${fmtPct(g.lf)}</td>
+            <td class="text-right num">${fmt$(g.cp)}</td>
+            <td class="text-right num" style="color:var(--accent);">${fmt$(g.rp)}</td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+        `);
+
+        if (!gwOpen) return;
+
+        // ── Level 4: Duration leaves ──
+        gwLeaves.forEach(p => {
+          const currP  = getEffectivePrice(p);
+          const currM  = getEffectiveMargin(p);
+          const deltaP = p.recPrice - currP;
+          const deltaM = p.recMargin - currM;
+          const marginPct = currP > 0 ? currM / currP : 0;
+          const lfLeaf = p.allocPackages > 0 ? p.soldPackages / p.allocPackages : 0;
+          const recAccepted = acceptedRecs.has(p.id);
+          const isLocked = lockedPkgs.has(p.id);
+          const hasNote  = !!notes[p.id];
+
+          rows.push(`
+            <tr class="row-unit">
+              <td>
+                <div class="pkg-name">
+                  <span class="pkg-title">
+                    ${durPill(p.duration)}
+                    <span style="margin-left:6px;">${p.packageName}</span>
+                  </span>
+                  <span class="pkg-meta">
+                    <span>${p.flightNum}</span><span class="pkg-meta-sep">·</span><span>${p.flightRoute}</span><span class="pkg-meta-sep">·</span><span>${p.hotel}</span><span class="pkg-meta-sep">·</span><span>${p.roomCategory}</span>
+                  </span>
+                </div>
+              </td>
+              <td>
+                <div style="line-height:1.25;">
+                  <div style="font-size:12px;">${p.checkInWeek}</div>
+                  <div style="font-size:10.5px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${p.checkInDate}</div>
+                </div>
+              </td>
+              <td style="text-align:center;">${durPill(p.duration)}</td>
+              <td></td>
+              <td>${starRating(p.hotelStars)}</td>
+              <td class="text-right num">${p.soldPackages} / ${p.allocPackages}</td>
+              <td class="text-right num">${fmtPct(lfLeaf)}</td>
+              <td class="text-right">
+                <input class="price-input" type="number" step="1" value="${Math.round(currP)}"
+                       onclick="event.stopPropagation()"
+                       onchange="updatePrice('${p.id}', this.value)"
+                       ${isLocked ? 'disabled' : ''} />
+              </td>
+              <td class="text-right">
+                <span class="rec-click ${recAccepted?'accepted':''}"
+                      onclick="event.stopPropagation();${recAccepted?'':`acceptRec('${p.id}')`}">
+                  ${fmt$(p.recPrice)}
+                </span>
+              </td>
+              <td class="text-right num ${deltaColor(deltaP)}">${deltaP>=0?'+':''}${fmt$(deltaP)}</td>
+              <td class="text-right num">${fmt$(currM)}</td>
+              <td class="text-right num" style="color:var(--accent);">${fmt$(p.recMargin)}</td>
+              <td class="text-right num ${deltaColor(deltaM)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
+              <td class="text-right num">${fmtPct(marginPct)}</td>
+              <td>${paceBadge(p.bookingPace)}</td>
+              <td>
+                <div class="pkg-action-icons">
+                  <button title="Notes" class="${hasNote?'locked':''}" onclick="event.stopPropagation();openNotesModal('${p.id}')">
+                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 2h7l3 3v9H3z"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/><line x1="5" y1="12" x2="9" y2="12"/></svg>
+                  </button>
+                  <button title="${isLocked?'Unlock price':'Lock price'}" class="${isLocked?'locked':''}" onclick="event.stopPropagation();toggleLock('${p.id}')">
+                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6">
+                      <rect x="3.5" y="7" width="9" height="6.5" rx="1"/>
+                      <path d="M5.5 7V4.5a2.5 2.5 0 015 0V7"/>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `);
+        });
+      });
+    });
+  });
+
+  tbody.innerHTML = rows.join('');
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Expand / collapse
+   ══════════════════════════════════════════════════════════════════ */
+function toggleDest(id) {
+  expandedDests.has(id) ? expandedDests.delete(id) : expandedDests.add(id);
+  renderPackagesTable();
+}
+function toggleWeek(key) {
+  expandedWeeks.has(key) ? expandedWeeks.delete(key) : expandedWeeks.add(key);
+  renderPackagesTable();
+}
+function toggleGateway(key) {
+  expandedGateways.has(key) ? expandedGateways.delete(key) : expandedGateways.add(key);
+  renderPackagesTable();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Inline price edit / accept rec / lock
+   ══════════════════════════════════════════════════════════════════ */
+function updatePrice(pkgId, value) {
+  const v = Number(value);
+  if (isNaN(v)) return;
+  priceOverrides[pkgId] = v;
+  acceptedRecs.delete(pkgId);
+  renderPackagesTable();
+}
+function acceptRec(pkgId) {
+  const p = allLeaves().find(x => x.id === pkgId);
+  if (!p) return;
+  priceOverrides[pkgId] = p.recPrice;
+  acceptedRecs.add(pkgId);
+  renderPackagesTable();
+}
+function toggleLock(pkgId) {
+  lockedPkgs.has(pkgId) ? lockedPkgs.delete(pkgId) : lockedPkgs.add(pkgId);
+  renderPackagesTable();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Per-package Rules Drawer
+   ══════════════════════════════════════════════════════════════════ */
+function openPkgRules(pkgId) {
+  activeRuleKey = pkgId;
+  const p = allLeaves().find(x => x.id === pkgId);
+  if (!p) return;
+  document.getElementById('prdSub').textContent = `${p.packageName} · ${p.gateway} → ${p.destId}`;
+  const existing = pkgRules[pkgId] || {};
+  document.getElementById('prdMinPrice').value  = existing.minPrice  ?? '';
+  document.getElementById('prdMaxPrice').value  = existing.maxPrice  ?? '';
+  document.getElementById('prdMinMargin').value = existing.minMargin ?? '';
+  document.getElementById('prdMaxMargin').value = existing.maxMargin ?? '';
+  document.getElementById('prdLock').checked    = lockedPkgs.has(pkgId);
+  document.getElementById('prdFlag').checked    = !!existing.flag;
+  document.getElementById('prdMeta').innerHTML = existing.modifiedAt
+    ? `Last modified ${existing.modifiedAt} by ${existing.modifiedBy}`
+    : 'No rules saved yet for this package.';
+  document.getElementById('pkgRulesDrawer').classList.add('open');
+  document.getElementById('prdBackdrop').classList.add('open');
+}
+function closePkgRules() {
+  document.getElementById('pkgRulesDrawer').classList.remove('open');
+  document.getElementById('prdBackdrop').classList.remove('open');
+  activeRuleKey = null;
+}
+function savePkgRules() {
+  if (!activeRuleKey) return;
+  const now = new Date();
+  const stamp = `${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const numOrNull = (v) => { const n = Number(v); return isNaN(n) || v === '' ? null : n; };
+  pkgRules[activeRuleKey] = {
+    minPrice:  numOrNull(document.getElementById('prdMinPrice').value),
+    maxPrice:  numOrNull(document.getElementById('prdMaxPrice').value),
+    minMargin: numOrNull(document.getElementById('prdMinMargin').value),
+    maxMargin: numOrNull(document.getElementById('prdMaxMargin').value),
+    flag:      document.getElementById('prdFlag').checked,
+    modifiedAt: stamp,
+    modifiedBy: 'Sarah Chen',
+  };
+  // Mirror lock toggle to lockedPkgs
+  if (document.getElementById('prdLock').checked) lockedPkgs.add(activeRuleKey);
+  else lockedPkgs.delete(activeRuleKey);
+  closePkgRules();
+  renderPackagesTable();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Notes modal
+   ══════════════════════════════════════════════════════════════════ */
+function openNotesModal(pkgId) {
+  activeNoteKey = pkgId;
+  const p = allLeaves().find(x => x.id === pkgId);
+  document.getElementById('notesModalSub').textContent = p ? `${p.packageName} · ${p.checkInWeek}` : pkgId;
+  const existing = notes[pkgId];
+  document.getElementById('notesText').value       = existing ? existing.text : '';
+  document.getElementById('notesExpiry').value     = existing ? existing.expires : '';
+  document.getElementById('notesCreatedBy').value  = existing ? existing.createdBy : 'Sarah Chen';
+  document.getElementById('notesCreatedAt').textContent = existing ? `Created: ${existing.createdAt}` : 'Created: —';
+  document.getElementById('notesDeleteBtn').style.display = existing ? 'inline-flex' : 'none';
+  document.getElementById('notesModalBackdrop').classList.add('open');
+}
+function closeNotesModal() {
+  document.getElementById('notesModalBackdrop').classList.remove('open');
+  activeNoteKey = null;
+}
+function saveNote() {
+  if (!activeNoteKey) return;
+  const text = document.getElementById('notesText').value.trim();
+  if (!text) { closeNotesModal(); return; }
+  const expires   = document.getElementById('notesExpiry').value;
+  const createdBy = document.getElementById('notesCreatedBy').value;
+  const existing  = notes[activeNoteKey];
+  const now       = new Date();
+  const createdAt = existing ? existing.createdAt
+    : `${now.toLocaleDateString('en-CA')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  notes[activeNoteKey] = { text, expires, createdBy, createdAt };
+  closeNotesModal();
+  renderPackagesTable();
+}
+function deleteNote() {
+  if (!activeNoteKey) return;
+  delete notes[activeNoteKey];
+  closeNotesModal();
+  renderPackagesTable();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   View switching (only one view now — kept for defensive compat)
+   ══════════════════════════════════════════════════════════════════ */
+function switchView(view) {
+  activeView = view;
+  document.querySelectorAll('.subsubtab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  document.getElementById('viewRecs').classList.toggle('hidden', view !== 'recs');
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Run Evaluation modal
+   ══════════════════════════════════════════════════════════════════ */
+const _RE_DURATIONS = [7, 10, 14];
+function runEvaluation() {
+  // Populate destinations / gateways from the nested tree
+  const destSet = new Set(PACKAGE_DATA.map(d => d.name));
+  document.getElementById('reDestList').innerHTML = Array.from(destSet).sort().map(d =>
+    `<label><input type="checkbox" class="re-dest-cb" value="${d}" checked onchange="onReScopeChange()"> ${d}</label>`
+  ).join('');
+  const gwSet = new Set();
+  allLeaves().forEach(p => gwSet.add(p.gateway));
+  document.getElementById('reGatewayList').innerHTML = Array.from(gwSet).sort().map(g =>
+    `<label><input type="checkbox" class="re-gw-cb" value="${g}" checked onchange="onReScopeChange()"> ${g}</label>`
+  ).join('');
+  // Populate durations
+  document.getElementById('reDurList').innerHTML = _RE_DURATIONS.map(d =>
+    `<label><input type="checkbox" class="re-dur-cb" value="${d}" checked onchange="onReScopeChange()"> ${d} nights</label>`
+  ).join('');
+  // Reset defaults
+  ['reAllDests','reAllGateways','reAllDurations','reOptRules','reOptComp','reOptFlag'].forEach(id => { document.getElementById(id).checked = true; });
+  document.getElementById('reOptNotify').checked = false;
+  ['reDestList','reGatewayList','reDurList'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  onReScopeChange();
+  document.getElementById('reBackdrop').classList.add('open');
+}
+function closeRunEvalModal() {
+  document.getElementById('reBackdrop').classList.remove('open');
+}
+function onReScopeChange() {
+  const allDests = document.getElementById('reAllDests').checked;
+  const allGws   = document.getElementById('reAllGateways').checked;
+  const allDurs  = document.getElementById('reAllDurations').checked;
+  document.getElementById('reDestList').style.display    = allDests ? 'none' : 'grid';
+  document.getElementById('reGatewayList').style.display = allGws   ? 'none' : 'grid';
+  document.getElementById('reDurList').style.display     = allDurs  ? 'none' : 'grid';
+
+  const selDests = allDests
+    ? new Set(PACKAGE_DATA.map(d => d.name))
+    : new Set(Array.from(document.querySelectorAll('.re-dest-cb:checked')).map(cb => cb.value));
+  const allGwSet = new Set();
+  allLeaves().forEach(p => allGwSet.add(p.gateway));
+  const selGws   = allGws
+    ? allGwSet
+    : new Set(Array.from(document.querySelectorAll('.re-gw-cb:checked')).map(cb => cb.value));
+  const selDurs  = allDurs
+    ? new Set(_RE_DURATIONS)
+    : new Set(Array.from(document.querySelectorAll('.re-dur-cb:checked')).map(cb => Number(cb.value)));
+
+  const nPkgs = allLeaves().filter(p =>
+    selDests.has(p.destination) && selGws.has(p.gateway) && selDurs.has(p.duration)
+  ).length;
+
+  document.getElementById('rePreview').innerHTML =
+    `This will evaluate <strong>${nPkgs}</strong> packages across <strong>${selDests.size}</strong> destinations × <strong>${selGws.size}</strong> gateways × <strong>${selDurs.size}</strong> durations`;
+}
+function confirmRunEvaluation() {
+  closeRunEvalModal();
+  const toast = document.getElementById('reToast');
+  const text  = document.getElementById('reToastText');
+  toast.classList.remove('success');
+  text.textContent = '⟳ Evaluation running…';
+  toast.classList.add('shown');
+  setTimeout(() => {
+    const nPkgs = allLeaves().length;
+    toast.classList.add('success');
+    text.textContent = `✓ Evaluation complete — ${nPkgs} recommendations updated`;
+    setTimeout(() => {
+      toast.classList.remove('shown');
+      toast.classList.remove('success');
+    }, 3000);
+  }, 2500);
+}
+
+function publishChanges() {
+  const n = Object.keys(priceOverrides).length;
+  const toast = document.getElementById('reToast');
+  const text  = document.getElementById('reToastText');
+  if (n === 0) {
+    toast.classList.add('success');
+    text.textContent = '✓ No pending changes to publish';
+  } else {
+    toast.classList.add('success');
+    text.textContent = `✓ Published ${n} price change${n===1?'':'s'}`;
+  }
+  toast.classList.add('shown');
+  setTimeout(() => { toast.classList.remove('shown'); toast.classList.remove('success'); }, 2500);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Nav / shell wiring
+   ══════════════════════════════════════════════════════════════════ */
+function toggleFilter(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const open = el.classList.contains('open');
+  document.querySelectorAll('.ms-wrap.open').forEach(w => w.classList.remove('open'));
+  if (!open) el.classList.add('open');
+}
+function toggleMenu() { document.getElementById('navDropdown').classList.toggle('open'); }
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.ms-wrap')) {
+    document.querySelectorAll('.ms-wrap.open').forEach(w => w.classList.remove('open'));
+  }
+  if (!e.target.closest('#menuBtn') && !e.target.closest('#navDropdown')) {
+    document.getElementById('navDropdown').classList.remove('open');
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   Init
+   ══════════════════════════════════════════════════════════════════ */
+Filters.populateStandard({
+  onAnyChange: () => {
+    renderPackagesTable();
+  }
+});
+renderPackagesHead();
+renderPackagesTable();
+</script>
+
+</body>
+</html>

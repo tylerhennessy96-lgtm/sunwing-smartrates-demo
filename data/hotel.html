@@ -1,0 +1,3865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hotel Only — Sunwing RMS</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="chart.local.js"></script>
+  <script src="data.js"></script>
+  <script src="filters.js"></script>
+  <style>
+    /* Inline star rating with partial fill */
+    .star-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      vertical-align: middle;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+    .star-icon {
+      position: relative;
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      line-height: 0;
+    }
+    .star-icon svg { display: block; width: 12px; height: 12px; }
+    .star-icon .star-fg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 12px;
+      overflow: hidden;
+    }
+    .star-num { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+    /* Legend / key bar above the table */
+    .legend-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .legend-bar .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-bar .legend-key {
+      display: inline-flex;
+      align-items: center;
+    }
+    .legend-bar .legend-sep { color: var(--border-mid); }
+
+    /* ── View mode toggle (List / Calendar) ─────────────────── */
+    .view-toggle {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      height: 28px;
+    }
+    .vt-btn {
+      background: var(--surface);
+      border: none;
+      padding: 0 12px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-family: 'Archivo', sans-serif;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .vt-btn + .vt-btn { border-left: 1px solid var(--border); }
+    .vt-btn.vt-active { background: var(--accent); color: #fff; }
+    .vt-btn:not(.vt-active):hover { background: #f5f6f8; color: var(--text-primary); }
+
+    /* ── Calendar view ───────────────────────────────────────── */
+    .cal-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .cal-pane.hidden { display: none; }
+    .cal-wrap {
+      flex: 1;
+      overflow: auto;
+      background: #fff;
+    }
+    table.cal-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: max-content;
+      min-width: 100%;
+      table-layout: fixed;
+    }
+    table.cal-table thead th {
+      position: sticky;
+      top: 0;
+      background: var(--nav-bg);
+      color: #fff;
+      font-weight: 600;
+      text-align: center;
+      padding: 8px 10px;
+      height: 48px;
+      box-sizing: border-box;
+      border-bottom: 1px solid var(--nav-border);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      z-index: 19;
+    }
+    table.cal-table thead th.cal-corner {
+      left: 0;
+      z-index: 21;
+      text-align: left;
+      padding-left: 16px;
+      font-size: 11.5px;
+      min-width: 220px;
+      width: 220px;
+    }
+    table.cal-table thead th.cal-wk-hd { min-width: 130px; width: 130px; }
+    table.cal-table thead th .cal-wk-lbl { font-size: 12px; font-weight: 600; }
+    table.cal-table thead th .cal-wk-sub { font-size: 10px; color: #9ca3af; margin-top: 2px; }
+
+    table.cal-table td.cal-name {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      min-width: 220px;
+      width: 220px;
+      background: #fff;
+      padding: 10px 10px 10px 16px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12.5px;
+    }
+    table.cal-table tr.cal-dest td.cal-name {
+      background: #fafbfc;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    table.cal-table tr.cal-hotel td.cal-name {
+      padding-left: 32px;
+      font-weight: 500;
+    }
+    table.cal-table tr.cal-hotel td.cal-name .cls-inline {
+      display: inline-flex; align-items: center; gap: 6px; margin-left: 6px;
+    }
+    table.cal-table tr.cal-cat td.cal-name {
+      padding-left: 56px;
+      color: var(--text-secondary);
+    }
+
+    table.cal-table td.cal-cell {
+      min-width: 130px;
+      width: 130px;
+      height: 68px;
+      text-align: center;
+      padding: 8px 6px;
+      box-sizing: border-box;
+      border-bottom: 1px solid rgba(255,255,255,0.18);
+      border-right: 1px solid rgba(255,255,255,0.18);
+      color: #fff;
+      vertical-align: middle;
+      position: relative;
+    }
+    table.cal-table td.cal-cell.cal-hi   { background: rgba(90, 158, 87, 0.75);  color: #1a1d23; }
+    table.cal-table td.cal-cell.cal-mh   { background: rgba(168, 213, 162, 0.75); color: #1a1d23; }
+    table.cal-table td.cal-cell.cal-mid  { background: #ffffff; color: #2c2c2c; border: 1px solid #e8e8ed; }
+    table.cal-table td.cal-cell.cal-ml   { background: rgba(242, 181, 181, 0.75); color: #1a1d23; }
+    table.cal-table td.cal-cell.cal-lo   { background: rgba(224, 92, 92, 0.75);   color: #1a1d23; }
+    table.cal-table tbody tr { transition: opacity 0.2s ease; }
+    table.cal-table tbody tr.row-dimmed  { opacity: 0.4; }
+    table.cal-table tbody tr.row-focused { opacity: 1; }
+    table.cal-table td.cal-cell.cal-hi .cal-sec .cal-rec,
+    table.cal-table td.cal-cell.cal-mh .cal-sec .cal-rec,
+    table.cal-table td.cal-cell.cal-mid .cal-sec .cal-rec,
+    table.cal-table td.cal-cell.cal-ml .cal-sec .cal-rec,
+    table.cal-table td.cal-cell.cal-lo .cal-sec .cal-rec { color: #e91e8c; }
+    table.cal-table td.cal-cell.cal-none {
+      background: #f3f4f6;
+      color: var(--text-muted);
+      border-color: var(--border);
+    }
+    table.cal-table td.cal-cell .cal-pri { font-size: 18px; font-weight: 700; line-height: 1.15; }
+    table.cal-table td.cal-cell .cal-sec { font-size: 11px; margin-top: 3px; opacity: 0.95; }
+    table.cal-table td.cal-cell .cal-sec .cal-rec { color: #a5f3fc; font-weight: 500; margin-left: 4px; }
+    table.cal-table td.cal-cell .cal-tri { font-size: 10px; margin-top: 2px; opacity: 0.9; }
+    table.cal-table td.cal-cell .cal-flags {
+      position: absolute;
+      top: 3px;
+      right: 5px;
+      font-size: 10px;
+      display: flex;
+      gap: 2px;
+      line-height: 1;
+    }
+    table.cal-table td.cal-cell.clickable { cursor: pointer; }
+    table.cal-table td.cal-cell.clickable:hover { filter: brightness(1.12); }
+    table.cal-table td.cal-cell.cal-none .cal-pri { color: var(--text-muted); font-weight: 500; }
+
+    /* ── Calendar click-to-detail side panel ────────────────── */
+    .cdp {
+      position: fixed;
+      top: 90px;
+      right: 0;
+      height: calc(100vh - 90px);
+      width: 360px;
+      background: #fff;
+      border-left: 2px solid #e91e8c;
+      box-shadow: -8px 0 24px rgba(0,0,0,0.12);
+      transform: translateX(100%);
+      transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 55;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      font-size: 12.5px;
+      color: var(--text-primary);
+    }
+    .cdp.open { transform: translateX(0); }
+    .cdp-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 2;
+    }
+    .cdp-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #666;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1;
+      flex-shrink: 0;
+      z-index: 4;
+    }
+    .cdp-close:hover { color: var(--text-primary); background: #f3f4f6; }
+    .cdp-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .cdp-sub   { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+    .cdp-meta  { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .cdp-section {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cdp-section:last-of-type { border-bottom: none; }
+    .cdp-section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    .cdp-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12.5px;
+    }
+    .cdp-row:last-child { margin-bottom: 0; }
+    .cdp-row .cdp-label { color: var(--text-secondary); }
+    .cdp-row .cdp-val   { font-weight: 500; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .cdp-row .cdp-val.teal { color: #e91e8c; }
+    .cdp-row .cdp-big    { font-size: 20px; font-weight: 700; line-height: 1; }
+
+    .cdp-occ-bar {
+      margin-bottom: 8px;
+    }
+    .cdp-occ-bar .cdp-occ-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+    }
+    .cdp-occ-bar .cdp-occ-track {
+      height: 6px;
+      background: #f3f4f6;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .cdp-occ-bar .cdp-occ-fill { height: 100%; border-radius: 3px; }
+    .cdp-occ-fill.cdp-hi  { background: #10b981; }
+    .cdp-occ-fill.cdp-mid { background: #f59e0b; }
+    .cdp-occ-fill.cdp-lo  { background: #ef4444; }
+
+    .cdp-sparkline {
+      width: 100%;
+      height: 40px;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .cdp-chip-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .cdp-chip-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      padding: 6px 10px;
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    .cdp-chip-row .cdp-chip-name { color: var(--text-primary); }
+
+    .cdp-alert {
+      display: flex;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      border-radius: 4px;
+      font-size: 11.5px;
+      color: #92400e;
+      margin-bottom: 6px;
+    }
+    .cdp-alert.cdp-alert-locked { background: #fce7f3; border-color: #fbcfe8; color: #9d174d; }
+
+    .cdp-actions {
+      padding: 14px 20px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #fff;
+      position: sticky;
+      bottom: 0;
+    }
+    .cdp-btn {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 6px;
+      font-family: 'Archivo', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .cdp-btn:hover { border-color: #e91e8c; color: #e91e8c; }
+    .cdp-btn.primary { background: #e91e8c; color: #fff; border-color: #e91e8c; }
+    .cdp-btn.primary:hover { background: #c2185b; border-color: #c2185b; color: #fff; }
+    .cdp-btn.primary.locked { background: #c4005e; border-color: #c4005e; }
+
+    .cdp-link {
+      display: inline-flex;
+      font-size: 11.5px;
+      color: #e91e8c;
+      text-decoration: none;
+      margin-top: 6px;
+      cursor: pointer;
+    }
+    .cdp-link:hover { text-decoration: underline; }
+
+    .cdp-confirmation {
+      font-size: 11.5px;
+      color: #047857;
+      background: #d1fae5;
+      border: 1px solid #6ee7b7;
+      border-radius: 4px;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      display: none;
+    }
+    .cdp-confirmation.shown { display: block; }
+
+    /* Compact, outlined region badge on the second line of dest+week rows */
+    tr.row-property .row-region {
+      margin-top: 3px;
+      margin-left: 22px;
+      line-height: 1;
+    }
+    tr.row-property .row-region .region-badge {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 6px;
+      background: transparent;
+      border-width: 1px;
+      border-style: solid;
+      letter-spacing: .02em;
+      opacity: 0.8;
+    }
+
+    /* ── Alerts cell helpers ───────────────────────────────── */
+    .alerts-cell { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .alert-fast, .alert-slow { font-size: 13px; line-height: 1; cursor: default; }
+
+    /* ── Run Evaluation modal ──────────────────────────────── */
+    .re-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 20, 27, 0.55);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .re-backdrop.open { display: flex; }
+    .re-modal {
+      background: #fff;
+      border-radius: 10px;
+      width: 520px;
+      max-width: calc(100vw - 40px);
+      max-height: calc(100vh - 80px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      font-family: 'Archivo', sans-serif;
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+    .re-modal-head {
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .re-modal-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .re-modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      line-height: 1;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .re-modal-close:hover { color: var(--text-primary); background: #f3f4f6; }
+    .re-modal-body {
+      padding: 18px 22px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .re-modal-section { margin-bottom: 18px; }
+    .re-modal-section:last-child { margin-bottom: 0; }
+    .re-modal-section-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    .re-modal-section .re-intro {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 0 0 8px;
+    }
+    .re-modal-cb {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      cursor: pointer;
+      padding: 5px 0;
+    }
+    .re-modal-cb input { margin-top: 2px; cursor: pointer; }
+    .re-destlist, .re-weeklist {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px 10px;
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .re-destlist label, .re-weeklist label {
+      font-size: 11.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+    .re-preview {
+      background: rgba(13, 148, 136, 0.08);
+      border: 1px solid rgba(13, 148, 136, 0.28);
+      border-radius: 6px;
+      padding: 11px 14px;
+      font-size: 12.5px;
+      color: #c2185b;
+    }
+    .re-preview strong { color: #e91e8c; font-weight: 700; }
+    .re-modal-foot {
+      padding: 14px 22px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: #fafbfc;
+    }
+    .re-btn {
+      padding: 8px 18px;
+      border-radius: 5px;
+      font-family: 'Archivo', sans-serif;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    .re-btn.ghost { background: #fff; color: var(--text-primary); }
+    .re-btn.ghost:hover { border-color: #e91e8c; color: #e91e8c; }
+    .re-btn.primary { background: #e91e8c; color: #fff; border-color: #e91e8c; }
+    .re-btn.primary:hover { background: #c2185b; border-color: #c2185b; }
+
+    /* Toast notification */
+    .re-toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      background: #16181d;
+      color: #e5e7eb;
+      border: 1px solid #2d313b;
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-family: 'Archivo', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s, transform .25s;
+      z-index: 220;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .re-toast.shown {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .re-toast .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(13, 148, 136, 0.25);
+      border-top-color: #e91e8c;
+      border-radius: 50%;
+      animation: reSpin 0.9s linear infinite;
+    }
+    .re-toast.success .spinner { display: none; }
+    .re-toast .check { display: none; color: #e91e8c; font-weight: 700; }
+    .re-toast.success .check { display: inline; }
+    @keyframes reSpin { to { transform: rotate(360deg); } }
+
+    /* ── Row-level Ask button + Copilot side panel ───────────── */
+    .ask-row-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px 9px;
+      border: 1px solid #e91e8c;
+      border-radius: 11px;
+      background: transparent;
+      color: #e91e8c;
+      font-family: 'Archivo', sans-serif;
+      font-size: 10.5px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: .02em;
+      line-height: 1.4;
+    }
+    .ask-row-btn:hover {
+      background: #e91e8c;
+      color: #fff;
+    }
+    .ask-row-btn .spk { font-size: 11px; }
+
+    .cprp {
+      position: fixed;
+      top: 90px;
+      right: 0;
+      height: calc(100vh - 90px);
+      width: 360px;
+      background: #1e2128;
+      color: #e5e7eb;
+      border-left: 1px solid #2d313b;
+      box-shadow: -8px 0 24px rgba(0,0,0,0.35);
+      transform: translateX(100%);
+      transition: transform .25s cubic-bezier(.4,0,.2,1);
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      font-family: 'Archivo', sans-serif;
+      font-size: 12.5px;
+      overflow-y: auto;
+    }
+    .cprp.open { transform: translateX(0); }
+    .cprp-head {
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid #2d313b;
+      background: #16181d;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+    }
+    .cprp-head .cprp-dest {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .cprp-head .cprp-wk {
+      font-size: 11.5px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .cprp-head .cprp-metrics {
+      font-size: 11px;
+      color: #d1d5db;
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+    .cprp-head .cprp-metrics .cprp-sep { color: #4b5563; margin: 0 6px; }
+    .cprp-head .cprp-label-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #2d313b;
+    }
+    .cprp-head .cprp-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e91e8c;
+      letter-spacing: .03em;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .cprp-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 30;
+      background: #2a2e38;
+      border: 1px solid #4b5563;
+      color: #ffffff;
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .cprp-close:hover { color: #fff; background: #e91e8c; border-color: #e91e8c; }
+
+    /* ── General Ask RM floating button + panel ─────────────── */
+    .gcp-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      background: #e91e8c;
+      color: #fff;
+      border: 1px solid #c2185b;
+      padding: 11px 20px 11px 18px;
+      border-radius: 24px;
+      font-family: 'Archivo', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+      letter-spacing: .02em;
+    }
+    .gcp-btn:hover { background: #c2185b; box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+    .gcp-btn .spk {
+      display: inline-block;
+      font-size: 15px;
+      animation: gcpSparkle 2.5s ease-in-out infinite;
+    }
+    @keyframes gcpSparkle {
+      0%, 100% { opacity: 0.85; transform: scale(1); }
+      50%      { opacity: 1;    transform: scale(1.15); }
+    }
+    .gcp {
+      position: fixed;
+      bottom: 80px;
+      right: 24px;
+      width: 420px;
+      height: 480px;
+      max-width: calc(100vw - 40px);
+      max-height: calc(100vh - 120px);
+      background: #1e2128;
+      color: #e5e7eb;
+      z-index: 999;
+      border-radius: 12px;
+      border: 1px solid #2d313b;
+      transform: translateY(20px) scale(0.96);
+      opacity: 0;
+      pointer-events: none;
+      transform-origin: bottom right;
+      transition: transform .2s cubic-bezier(.4,0,.2,1), opacity .2s, right .25s cubic-bezier(.4,0,.2,1);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,.42);
+      font-family: 'Archivo', sans-serif;
+      overflow: hidden;
+    }
+    .gcp.open {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .gcp.row-open { right: 396px; }
+    .gcp-head {
+      padding: 13px 18px;
+      border-bottom: 1px solid #2d313b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #16181d;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+    .gcp-head .gcp-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .gcp-head .gcp-title .spk { color: #e91e8c; font-size: 15px; }
+    .gcp-close {
+      background: #2a2e38;
+      border: 1px solid #4b5563;
+      color: #ffffff;
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      z-index: 30;
+    }
+    .gcp-close:hover { color: #fff; background: #e91e8c; border-color: #e91e8c; }
+    .gcp-chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .gcp-suggest {
+      padding: 8px 14px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      border-top: 1px solid #2d313b;
+      background: #16181d;
+    }
+    .gcp-input-wrap {
+      padding: 10px 14px 14px;
+      background: #16181d;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-top: 1px solid #2d313b;
+    }
+    .cprp-chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .cp-msg {
+      max-width: 90%;
+      padding: 10px 13px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .cp-msg.cp-asst {
+      background: #2a2e38;
+      color: #e5e7eb;
+      border: 1px solid #353a46;
+      align-self: flex-start;
+      border-top-left-radius: 2px;
+    }
+    .cp-msg.cp-asst::before {
+      content: '✦ ';
+      color: #e91e8c;
+      font-weight: 700;
+      margin-right: 4px;
+    }
+    .cp-msg.cp-user {
+      background: #e91e8c;
+      color: #fff;
+      align-self: flex-end;
+      border-top-right-radius: 2px;
+    }
+    .cp-typing {
+      display: inline-flex;
+      gap: 4px;
+      padding: 12px 14px;
+      background: #2a2e38;
+      border: 1px solid #353a46;
+      border-radius: 10px;
+      border-top-left-radius: 2px;
+      align-self: flex-start;
+      width: fit-content;
+    }
+    .cp-typing span {
+      width: 6px;
+      height: 6px;
+      background: #e91e8c;
+      border-radius: 50%;
+      animation: cpDot 1.2s infinite ease-in-out;
+    }
+    .cp-typing span:nth-child(2) { animation-delay: .18s; }
+    .cp-typing span:nth-child(3) { animation-delay: .36s; }
+    @keyframes cpDot {
+      0%, 60%, 100% { opacity: .35; transform: scale(0.85); }
+      30%           { opacity: 1;   transform: scale(1.1); }
+    }
+    .cprp-suggest {
+      padding: 8px 14px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      border-top: 1px solid #2d313b;
+      background: #16181d;
+    }
+    .cp-pill {
+      background: #2a2e38;
+      color: #d1d5db;
+      border: 1px solid #353a46;
+      border-radius: 12px;
+      padding: 4px 10px;
+      font-size: 10.5px;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .cp-pill:hover { background: #e91e8c; border-color: #e91e8c; color: #fff; }
+    .cprp-input-wrap {
+      padding: 10px 14px 14px;
+      background: #16181d;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-top: 1px solid #2d313b;
+    }
+    .cp-input {
+      flex: 1;
+      background: #0f1116;
+      border: 1px solid #353a46;
+      color: #fff;
+      padding: 8px 13px;
+      border-radius: 18px;
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+    }
+    .cp-input:focus { border-color: #e91e8c; }
+    .cp-send {
+      background: #e91e8c;
+      color: #fff;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .cp-send:hover { background: #c2185b; }
+
+    /* ── Chg $ / Chg % inline adjustment columns ─────────────── */
+    td.chg-cell { padding: 4px 8px; }
+    .chg-input-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .chg-input {
+      width: 64px;
+      padding: 3px 6px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      text-align: right;
+      outline: none;
+      background: #fff;
+      color: var(--text-primary);
+      -moz-appearance: textfield;
+    }
+    .chg-input::-webkit-outer-spin-button,
+    .chg-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .chg-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232, 0, 125, 0.10); }
+    .chg-input::placeholder { color: var(--text-muted); font-weight: 400; font-family: 'Archivo', sans-serif; font-size: 10.5px; }
+    td.chg-cell.has-chg { background: rgba(232, 0, 125, 0.08); }
+    td.chg-cell.has-chg .chg-input { border-color: rgba(232, 0, 125, 0.40); background: #fff; }
+    .chg-input-wrap.chg-pos .chg-input { color: #047857; font-weight: 600; }
+    .chg-input-wrap.chg-neg .chg-input { color: var(--danger); font-weight: 600; }
+    .chg-clear {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0 3px;
+      font-size: 13px;
+      line-height: 1;
+    }
+    .chg-clear:hover { color: var(--danger); }
+
+    /* Effective current ADR when there's a pending change */
+    .cur-pink { color: var(--accent); font-weight: 600; }
+
+    /* Pending badge (shown when an ADR has a pending change) */
+    .badge-pending {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      padding: 1px 4px;
+      border-radius: 9px;
+      background: rgba(245, 166, 35, 0.15);
+      color: #b45309;
+      border: 1px solid rgba(245, 166, 35, 0.45);
+      text-transform: uppercase;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .badge-auto {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      padding: 1px 4px;
+      border-radius: 9px;
+      background: rgba(13, 148, 136, 0.10);
+      color: #0d9488;
+      border: 1px solid rgba(13, 148, 136, 0.40);
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+
+    /* ── Row-height consistency + Flags cell clipping ─────────── */
+    table.data-table tbody tr.row-property,
+    table.data-table tbody tr.row-bedtype,
+    table.data-table tbody tr.row-unit {
+      height: 40px;
+    }
+    table.data-table td.flags-cell {
+      white-space: nowrap;
+      overflow: hidden;
+      max-width: 200px;
+    }
+    .flags-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* ── Pre-publish highlighting + Reject + Pending/Rejected badges ── */
+    tr.row-pending td {
+      background: rgba(233, 30, 140, 0.05) !important;
+    }
+    tr.row-pending.row-unit td {
+      background: rgba(233, 30, 140, 0.06) !important;
+    }
+    .badge-pending {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      padding: 1px 4px;
+      border-radius: 9px;
+      background: rgba(245, 166, 35, 0.15);
+      color: #b45309;
+      border: 1px solid rgba(245, 166, 35, 0.45);
+      text-transform: uppercase;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .badge-rejected {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      padding: 1px 4px;
+      border-radius: 9px;
+      background: #f3f4f6;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      text-transform: uppercase;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .rec-rejected {
+      text-decoration: line-through;
+      color: var(--text-muted);
+      opacity: .7;
+    }
+    .reject-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      margin-left: 4px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 10px;
+      line-height: 1;
+      padding: 0;
+      vertical-align: middle;
+      transition: border-color .12s, color .12s, background .12s;
+    }
+    .reject-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(224,82,82,0.08); }
+    .publish-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 5px;
+      margin-left: 6px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 10.5px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    /* Columns visibility popover */
+    .columns-popover {
+      position: fixed;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+      padding: 4px 0;
+      min-width: 220px;
+      max-height: 420px;
+      overflow-y: auto;
+      z-index: 1000;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+    .columns-popover[hidden] { display: none; }
+    .col-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .col-row:hover { background: #f5f6f8; }
+    .col-row.locked { cursor: not-allowed; color: var(--text-muted); }
+    .col-row.locked:hover { background: transparent; }
+    .col-row input[type="checkbox"] { margin: 0; cursor: inherit; }
+    .col-row .col-lock { margin-left: auto; font-size: 11px; opacity: 0.55; }
+    .col-popover-footer {
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      padding: 6px 14px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .col-popover-footer a {
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .col-popover-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="analytics-backdrop" id="analyticsBackdrop" onclick="closeExposure()"></div>
+
+
+<!-- ── Run Evaluation modal + toast ── -->
+<div class="re-backdrop" id="reBackdrop">
+  <div class="re-modal" role="dialog" aria-labelledby="reModalTitle">
+    <div class="re-modal-head">
+      <h3 id="reModalTitle">Run Evaluation</h3>
+      <button type="button" class="re-modal-close" onclick="closeRunEvalModal()" aria-label="Close">×</button>
+    </div>
+    <div class="re-modal-body">
+      <div class="re-modal-section">
+        <div class="re-modal-section-title">Scope</div>
+        <p class="re-intro">Select what to include in this evaluation:</p>
+        <label class="re-modal-cb">
+          <input type="checkbox" id="reAllDests" checked onchange="onReScopeChange()">
+          <span>All destinations</span>
+        </label>
+        <div id="reDestList" class="re-destlist" style="display:none;"></div>
+        <label class="re-modal-cb">
+          <input type="checkbox" id="reAllWeeks" checked onchange="onReScopeChange()">
+          <span>All check-in weeks</span>
+        </label>
+        <div id="reWeekList" class="re-weeklist" style="display:none;"></div>
+      </div>
+      <div class="re-modal-section">
+        <div class="re-modal-section-title">Options</div>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptRules" checked> Apply package rules automatically</label>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptComp" checked> Include competitor pricing adjustments</label>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptFlag" checked> Flag changes above $50 for review</label>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptNotify"> Notify RM on completion</label>
+      </div>
+      <div class="re-modal-section">
+        <div class="re-modal-section-title">Preview</div>
+        <div class="re-preview" id="rePreview">—</div>
+      </div>
+    </div>
+    <div class="re-modal-foot">
+      <button type="button" class="re-btn ghost" onclick="closeRunEvalModal()">Cancel</button>
+      <button type="button" class="re-btn primary" onclick="confirmRunEvaluation()">Run Evaluation</button>
+    </div>
+  </div>
+</div>
+<div class="re-toast" id="reToast">
+  <span class="spinner"></span>
+  <span class="check">✓</span>
+  <span id="reToastText">Evaluation running…</span>
+</div>
+
+<!-- ── Row-level RM Copilot side panel ── -->
+<aside class="cprp" id="rowCopilotPanel" aria-hidden="true">
+  <button id="rowCopilotCloseBtn" aria-label="Close copilot" style="position:absolute;top:12px;right:12px;z-index:30;background:#2a2e38;border:1px solid #4b5563;color:#ffffff;font-size:20px;font-weight:bold;cursor:pointer;padding:4px 8px;line-height:1;border-radius:50%;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;">×</button>
+  <div class="cprp-head" id="rowCopilotHead"></div>
+  <div class="cprp-chat" id="rowCopilotChat"></div>
+  <div class="cprp-suggest" id="rowCopilotSuggest"></div>
+  <div class="cprp-input-wrap">
+    <input type="text" class="cp-input" id="rowCopilotInput"
+           placeholder="Ask a question about this row..."
+           onkeydown="if(event.key==='Enter'){rowCopilotSend();}" />
+    <button type="button" class="cp-send" onclick="rowCopilotSend()" aria-label="Send">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h10M8 3l4 4-4 4"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- ── General Ask RM floating button + panel ── -->
+<button type="button" class="gcp-btn" id="gcpBtn" onclick="toggleGeneralCopilot()">
+  <span class="spk">✦</span> Ask RM
+</button>
+<aside class="gcp" id="gcpPanel" aria-hidden="true">
+  <div class="gcp-head">
+    <div class="gcp-title"><span class="spk">✦</span> RM Copilot</div>
+    <button id="gcpCloseBtn" aria-label="Close" style="background:#2a2e38;border:1px solid #4b5563;color:#ffffff;font-size:20px;font-weight:bold;cursor:pointer;padding:4px 8px;line-height:1;border-radius:50%;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;">×</button>
+  </div>
+  <div class="gcp-chat" id="gcpChat"></div>
+  <div class="gcp-suggest" id="gcpSuggest"></div>
+  <div class="gcp-input-wrap">
+    <input type="text" class="cp-input" id="gcpInput"
+           placeholder="Ask a question..."
+           onkeydown="if(event.key==='Enter'){generalCopilotSend();}" />
+    <button type="button" class="cp-send" onclick="generalCopilotSend()" aria-label="Send">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h10M8 3l4 4-4 4"/></svg>
+    </button>
+  </div>
+</aside>
+
+<div class="app">
+
+  <!-- ── Top Nav ── -->
+  <nav class="topnav">
+    <a href="pricing.html" class="logo" style="text-decoration:none;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="engine_logo (2).png" style="height:28px;width:auto;display:block;" />
+        <div style="display:flex;flex-direction:column;line-height:1;gap:2px;">
+          <span style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
+          <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
+        </div>
+      </div>
+    </a>
+
+    <div class="nav-tabs">
+      <a href="flight.html"     class="nav-tab active">Pricing</a>
+      <a href="parameters.html" class="nav-tab">Parameters</a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div style="position:relative;">
+      <button class="nav-menu-btn" id="menuBtn" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="nav-dropdown" id="navDropdown">
+        <a href="#">Settings</a>
+        <a href="#">Reports</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Filter Bar ── -->
+  <div class="filter-bar" id="filterBar">
+    <div class="ms-wrap" id="fBrand">
+      <button class="ms-trigger" onclick="toggleFilter('fBrand')">
+        <span>All Brands</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+    <div class="ms-wrap" id="fRegion">
+      <button class="ms-trigger" onclick="toggleFilter('fRegion')">
+        <span>All Regions</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+    <div class="ms-wrap" id="fDestination">
+      <button class="ms-trigger" onclick="toggleFilter('fDestination')">
+        <span>All Destinations</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+    <div class="ms-wrap" id="fDates">
+      <button class="date-pill" onclick="toggleFilter('fDates')">
+        <svg class="cal" width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2" y="3" width="10" height="9" rx="1"/>
+          <line x1="2" y1="6" x2="12" y2="6"/>
+          <line x1="5" y1="1.5" x2="5" y2="4"/>
+          <line x1="9" y1="1.5" x2="9" y2="4"/>
+        </svg>
+        <span class="date-range-text" id="fDatesLabel">15 Jan<span class="date-sep">–</span>28 Feb</span>
+      </button>
+      <div class="date-pill-popover"></div>
+    </div>
+    <div class="ms-wrap" id="fRM">
+      <button class="ms-trigger" onclick="toggleFilter('fRM')">
+        <span>All RMs</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+  </div>
+
+  <!-- ── Sub-tab Bar ── -->
+  <div class="subtab-bar">
+    <a href="flight.html"  class="subtab">Flight Only</a>
+    <a href="hotel.html"   class="subtab active">Hotel Only</a>
+    <a href="pricing.html" class="subtab">Packages</a>
+    <div class="subtab-spacer"></div>
+    <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
+      Run Evaluation
+    </button>
+    <button id="publishBtn" class="btn btn-ghost" onclick="publishChanges()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h10M7 2l5 5-5 5"/></svg>
+      Publish Changes
+    </button>
+  </div>
+
+  <!-- ── Metrics Bar (6 KPI cards) ── -->
+  <div class="metrics-bar" id="metricsBar">
+    <div class="metric-card metric-emphasis">
+      <div class="metric-card-label">Hotels behind plan</div>
+      <div class="metric-card-value metric-warn" id="mHotelsBehind">—</div>
+      <div class="metric-card-sub">Need hotel pricing action</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-card-label">Avg. forecast occ.</div>
+      <div class="metric-card-value" id="mAvgForecastOcc">—</div>
+      <div class="metric-card-sub">Across next 60 days</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-card-label">Avg. ADR change</div>
+      <div class="metric-card-value" id="mAvgADRChange">—</div>
+      <div class="metric-card-sub">Across selected hotels</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-card-label">High package demand hotels</div>
+      <div class="metric-card-value metric-pos" id="mHighDemand">—</div>
+      <div class="metric-card-sub">Beds need protection</div>
+    </div>
+    <div class="metric-card metric-emphasis">
+      <div class="metric-card-label">Supplier cost changes</div>
+      <div class="metric-card-value metric-warn" id="mCostChanges">—</div>
+      <div class="metric-card-sub">Contract or allotment updates</div>
+    </div>
+    <div class="metric-card metric-emphasis">
+      <div class="metric-card-label">Pending approval</div>
+      <div class="metric-card-value" id="mPendingApproval">—</div>
+      <div class="metric-card-sub">Waiting to publish</div>
+    </div>
+  </div>
+
+  <!-- ── Sub-subtab Bar ── -->
+  <div class="subsubtab-bar" id="subsubtabBar" style="display:flex;align-items:center;">
+    <a class="subsubtab active" data-view="recs"       onclick="switchView('recs')">New Recommendations</a>
+    <a class="subsubtab"        data-view="exceptions" onclick="switchView('exceptions')">Cost Change Exceptions</a>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding-right:16px;">
+      <div class="view-toggle" role="group" aria-label="View mode">
+        <button type="button" class="vt-btn vt-active" data-mode="list" onclick="setViewMode('list')">☰ List</button>
+        <button type="button" class="vt-btn" data-mode="calendar" onclick="setViewMode('calendar')">▦ Calendar</button>
+      </div>
+      <button class="adv-trigger-btn" id="advTriggerBtn" type="button" onclick="openAdvDrawer()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10M4 7h6M6 11h2"/></svg>
+        Advanced Filters
+        <span class="adv-trigger-badge" id="advTriggerBadge">0</span>
+      </button>
+      <button class="adv-trigger-btn" id="columnsBtn" type="button" onclick="toggleColumnsPopover(event)">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="2.5" height="10"/><rect x="5.75" y="2" width="2.5" height="10"/><rect x="9.5" y="2" width="2.5" height="10"/></svg>
+        Columns
+      </button>
+      <div class="columns-popover" id="columnsPopover" hidden></div>
+    </div>
+  </div>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <!-- New Recommendations view (tree table) -->
+    <div class="view" id="viewRecs">
+      <div class="row-count-bar" id="rowCountBar"></div>
+      <div class="list-pane" id="listPane" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+      <div class="table-wrap">
+        <table class="data-table" id="recsTable">
+          <thead id="recsTableHead"></thead>
+          <tbody id="recsTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Slide-up panel: booking curve + secondary chart -->
+      <div class="panels-container" id="panelsContainer">
+        <div class="exposure-wrap" id="exposureWrap" style="display:none;">
+          <div class="panel-collapse-handle" onclick="toggleExposure()">
+            <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,5 7,9 11,5"/></svg>
+          </div>
+          <div class="exposure-panel" id="exposurePanel">
+            <div class="panel-header-bar">
+              <span class="exposure-title">Hotel Analytics</span>
+              <span style="color:#3d4150;margin:0 10px;">|</span>
+              <span class="exposure-prop" id="exposurePropName">Select a row</span>
+              <button onclick="toggleExposure()" title="Close panel" style="background:none;border:none;cursor:pointer;color:#6b7280;display:flex;align-items:center;padding:4px 8px;border-radius:4px;margin-left:auto;" onmouseover="this.style.color='#e5e7eb'" onmouseout="this.style.color='#6b7280'">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+              </button>
+            </div>
+            <div class="exposure-inner">
+              <div class="exposure-charts">
+                <div class="chart-box">
+                  <div class="chart-label">
+                    Booking Curve <span style="font-size:10px;color:#6b7280;" id="chartLabel1Sub">Cumulative % sold · Days to check-in</span>
+                    <div class="chart-legend">
+                      <span class="legend-item"><span class="legend-line" style="background:#e91e8c;"></span>Actual</span>
+                      <span class="legend-item"><span class="legend-line" style="background:none;border-top:2px dashed #e5e7eb;height:0;"></span>Target</span>
+                      <span class="legend-item"><span class="legend-line" style="background:none;border-top:2px dotted #f59e0b;height:0;"></span>Forecast</span>
+                    </div>
+                  </div>
+                  <div style="position:relative;width:100%;height:220px;">
+                    <canvas id="hotelBookingCurveChart"></canvas>
+                  </div>
+                </div>
+                <div class="chart-box">
+                  <div class="chart-label">
+                    <span id="chartLabel2Title">Price History</span>
+                    <span style="font-size:10px;color:#6b7280;" id="chartLabel2Sub">ADR $ · Days to check-in</span>
+                    <div class="chart-legend" id="chart2Legend">
+                      <span class="legend-item"><span class="legend-line" style="background:#e91e8c;"></span>Our ADR</span>
+                      <span class="legend-item"><span class="legend-line" style="background:none;border-top:2px dashed #e5e7eb;height:0;"></span>Comp 1</span>
+                      <span class="legend-item"><span class="legend-line" style="background:none;border-top:2px dotted #9ca3af;height:0;"></span>Comp 2</span>
+                      <span class="legend-item"><span class="legend-line" style="background:rgba(91,184,133,0.25);border:1px solid rgba(91,184,133,0.5);"></span>Comp Corridor</span>
+                    </div>
+                  </div>
+                  <div style="position:relative;width:100%;height:220px;">
+                    <canvas id="hotelSecondaryChart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div><!-- /#listPane -->
+
+      <!-- Calendar pane (heatmap) -->
+      <div class="cal-pane hidden" id="calPane">
+        <div class="cal-wrap">
+          <table class="cal-table">
+            <thead id="calHead"></thead>
+            <tbody id="calBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cost Change Exceptions view (flat table) -->
+    <div class="view hidden" id="viewExceptions">
+      <div class="table-wrap">
+        <table class="data-table" id="exceptionsTable">
+          <thead>
+            <tr>
+              <th>Destination</th>
+              <th>Hotel</th>
+              <th>Room Category</th>
+              <th>Check-in Week</th>
+              <th style="text-align:right;">Old Cost</th>
+              <th style="text-align:right;">New Cost</th>
+              <th style="text-align:right;">Change $</th>
+              <th style="text-align:right;">Change %</th>
+              <th>Date Received</th>
+            </tr>
+          </thead>
+          <tbody id="exceptionsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /.main -->
+
+  <!-- ── Calendar click-to-detail side panel ── -->
+  <aside class="cdp" id="calDetailPanel" aria-hidden="true">
+    <button type="button" class="cdp-close panel-close-btn" id="cdpCloseBtn" aria-label="Close">×</button>
+    <div id="cdpContent"></div>
+  </aside>
+
+  <!-- ── Advanced Filters Drawer ── -->
+  <div class="adv-backdrop" id="advBackdrop" onclick="closeAdvDrawer()"></div>
+  <aside class="adv-drawer" id="advDrawer" aria-hidden="true">
+    <div class="adv-drawer-header">
+      <div style="display:flex;align-items:center;">
+        <span class="adv-drawer-title">Advanced Filters — Hotels</span>
+        <a href="#" class="adv-clear-link" onclick="event.preventDefault();clearAdvFilters()">Clear All</a>
+      </div>
+      <button class="adv-close" onclick="closeAdvDrawer()" type="button" aria-label="Close">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>
+    </div>
+
+    <div class="adv-section">
+      <div class="adv-section-title">Alerts</div>
+      <label class="adv-cb"><input type="checkbox" data-af="alertCostChange"> Hotels with cost change alerts ⚠️</label>
+      <label class="adv-cb"><input type="checkbox" data-af="alertLocked"> Hotels with locked prices 🔒</label>
+      <label class="adv-cb"><input type="checkbox" data-af="alertNotes"> Hotels with active notes 📝</label>
+      <label class="adv-cb"><input type="checkbox" data-af="alertBehind"> Hotels behind plan only</label>
+    </div>
+
+    <div class="adv-section">
+      <div class="adv-section-title">Classification</div>
+      <label class="adv-radio"><input type="radio" name="afClass" value="all" checked> All</label>
+      <label class="adv-radio"><input type="radio" name="afClass" value="exclusive"> Exclusive only</label>
+      <label class="adv-radio"><input type="radio" name="afClass" value="commodity"> Commodity only</label>
+    </div>
+
+    <div class="adv-section">
+      <div class="adv-section-title">Occupancy</div>
+      <div class="adv-range-row">
+        <div class="adv-range-label">Forecast Occ % <span class="adv-range-vals"><span class="dr-min-val">0</span>% — <span class="dr-max-val">100</span>%</span></div>
+        <div class="dr-wrap" data-af="forecastOcc">
+          <div class="dr-track"></div><div class="dr-fill"></div>
+          <input type="range" class="dr-min" min="0" max="100" value="0">
+          <input type="range" class="dr-max" min="0" max="100" value="100">
+        </div>
+      </div>
+      <div class="adv-range-row">
+        <div class="adv-range-label">Current Occ % <span class="adv-range-vals"><span class="dr-min-val">0</span>% — <span class="dr-max-val">100</span>%</span></div>
+        <div class="dr-wrap" data-af="currentOcc">
+          <div class="dr-track"></div><div class="dr-fill"></div>
+          <input type="range" class="dr-min" min="0" max="100" value="0">
+          <input type="range" class="dr-max" min="0" max="100" value="100">
+        </div>
+      </div>
+    </div>
+
+    <div class="adv-section">
+      <div class="adv-section-title">ADR &amp; Margin</div>
+      <div class="adv-range-row">
+        <div class="adv-range-label">Current ADR $ <span class="adv-range-vals">$<span class="dr-min-val">0</span> — $<span class="dr-max-val">500</span></span></div>
+        <div class="dr-wrap" data-af="adr">
+          <div class="dr-track"></div><div class="dr-fill"></div>
+          <input type="range" class="dr-min" min="0" max="500" value="0" step="5">
+          <input type="range" class="dr-max" min="0" max="500" value="500" step="5">
+        </div>
+      </div>
+      <div class="adv-range-row">
+        <div class="adv-range-label">Margin % <span class="adv-range-vals"><span class="dr-min-val">0</span>% — <span class="dr-max-val">60</span>%</span></div>
+        <div class="dr-wrap" data-af="marginPct">
+          <div class="dr-track"></div><div class="dr-fill"></div>
+          <input type="range" class="dr-min" min="0" max="60" value="0">
+          <input type="range" class="dr-max" min="0" max="60" value="60">
+        </div>
+      </div>
+      <label class="adv-cb" style="margin-top:8px;"><input type="checkbox" data-af="recDiffers"> Show only rows where Rec ADR differs from Current ADR</label>
+    </div>
+
+    <div class="adv-section">
+      <div class="adv-section-title">Sold &amp; Allocation</div>
+      <div class="adv-range-row">
+        <div class="adv-range-label">Sold % <span class="adv-range-vals"><span class="dr-min-val">0</span>% — <span class="dr-max-val">100</span>%</span></div>
+        <div class="dr-wrap" data-af="soldPct">
+          <div class="dr-track"></div><div class="dr-fill"></div>
+          <input type="range" class="dr-min" min="0" max="100" value="0">
+          <input type="range" class="dr-max" min="0" max="100" value="100">
+        </div>
+      </div>
+      <label class="adv-cb"><input type="checkbox" data-af="undersold"> Show only undersold weeks (Sold % &lt; 50%)</label>
+      <label class="adv-cb"><input type="checkbox" data-af="oversold"> Show only oversold weeks (Sold % &gt; 90%)</label>
+    </div>
+
+    <div class="adv-section">
+      <div class="adv-section-title">Star Rating</div>
+      <div class="adv-cb-grid">
+        <label class="adv-cb"><input type="checkbox" data-af-star="3"> ★★★</label>
+        <label class="adv-cb"><input type="checkbox" data-af-star="4"> ★★★★</label>
+        <label class="adv-cb"><input type="checkbox" data-af-star="5"> ★★★★★</label>
+      </div>
+    </div>
+
+    <div class="adv-section">
+      <div class="adv-section-title">Destination</div>
+      <div class="adv-cb-list" id="advDestList"></div>
+    </div>
+
+    <div class="adv-footer">
+      <button class="btn-apply" type="button" onclick="closeAdvDrawer()">Apply Filters</button>
+    </div>
+  </aside>
+
+  <!-- ── Notes Modal ── -->
+  <div class="modal-backdrop" id="notesModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Row notes</div>
+          <div class="modal-subtitle" id="notesModalSub">—</div>
+        </div>
+        <button class="modal-close" onclick="closeNotesModal()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Note text</label>
+        <textarea class="note-textarea" id="notesText" rows="4" placeholder="Add a note for this check-in week…" style="margin-bottom:12px;"></textarea>
+
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;">
+            <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Expiry date</label>
+            <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;outline:none;" />
+          </div>
+          <div style="flex:1;">
+            <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Created by</label>
+            <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:10px;" id="notesCreatedAt">Created: —</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="notesDeleteBtn" onclick="deleteNote()" style="margin-right:auto;display:none;color:var(--danger);border-color:rgba(224,82,82,0.3);">Delete</button>
+        <button class="btn btn-ghost" onclick="closeNotesModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveNote()">Save</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.app -->
+
+<script>
+// ── State ──────────────────────────────────────────────────
+// Tree: (Destination + Week) → Hotel → Room Category (leaf)
+const expandedWeeks  = new Set();  // `${dest.id}::${weekIdx}`
+const expandedHotels = new Set();  // `${dest.id}::${weekIdx}::${hotel.id}`
+const adrOverrides   = {};         // { weekId: newADR }
+const rejectedRecs   = new Set();  // weekId — recADR rejected
+const notes          = {};         // { weekId: { text, expires, createdBy, createdAt } }
+let   activeNoteKey  = null;
+// All top-level rows start collapsed by default.
+
+// ── Header filter state (Brand / Region / Destination / Dates / RM) ──
+let headerFilters = { brand: [], region: [], destination: [], rm: [], dates: null };
+
+function passesHeaderFilters(dest, wkMeta) {
+  const hf = headerFilters;
+  if (hf.brand.length       && !hf.brand.includes(dest.brand)) return false;
+  if (hf.region.length      && !hf.region.includes(dest.region)) return false;
+  if (hf.destination.length && !hf.destination.includes(dest.name)) return false;
+  if (hf.rm.length          && !hf.rm.includes(dest.revenueManager)) return false;
+  if (hf.dates && hf.dates.start) {
+    // Parse weekStart "MM/DD/YY" → Date
+    const parts = (wkMeta.weekStart || '').split('/').map(Number);
+    if (parts.length === 3) {
+      const wkDate = new Date(2000 + parts[2], parts[0] - 1, parts[1]);
+      wkDate.setHours(0, 0, 0, 0);
+      const lo = hf.dates.start.getTime();
+      const hi = (hf.dates.end || hf.dates.start).getTime();
+      const t = wkDate.getTime();
+      if (t < lo || t > hi) return false;
+    }
+  }
+  return true;
+}
+function headerFiltersActive() {
+  const hf = headerFilters;
+  return hf.brand.length > 0 || hf.region.length > 0 || hf.destination.length > 0
+      || hf.rm.length > 0 || (hf.dates && hf.dates.start);
+}
+
+// ── Advanced filter state ──────────────────────────────────
+const advFilters = {
+  alertCostChange: false,
+  alertLocked:     false,
+  alertNotes:      false,
+  alertBehind:     false,
+  classification:  'all',    // 'all' | 'exclusive' | 'commodity'
+  forecastOcc:     { min: 0,   max: 100 },
+  currentOcc:      { min: 0,   max: 100 },
+  adr:             { min: 0,   max: 500 },
+  marginPct:       { min: 0,   max: 60  },
+  soldPct:         { min: 0,   max: 100 },
+  recDiffers:      false,
+  undersold:       false,
+  oversold:        false,
+  stars:           new Set(),       // numbers
+  destinations:    new Set(),       // dest.id strings
+};
+const advRangeCtl = {};  // wrapId → controller from Filters.initDualRange
+
+// ── Formatting helpers ─────────────────────────────────────
+function fmt$(n) {
+  if (n == null || isNaN(n)) return '—';
+  const r = Math.round(n);
+  return (r < 0 ? '-$' : '$') + Math.abs(r).toLocaleString('en-CA');
+}
+function fmtSignedDollar(n) {
+  if (n == null || isNaN(n)) return '—';
+  const r = Math.round(n);
+  if (r === 0) return '$0';
+  return (r > 0 ? '+' : '') + fmt$(r);
+}
+function fmtPct(n) {
+  if (n == null || isNaN(n)) return '—';
+  return Math.round(n * 100) + '%';
+}
+function regionBadge(region) {
+  const cls = 'region-' + region.toLowerCase().replace(/[^a-z]/g, '');
+  return `<span class="region-badge ${cls}">${region}</span>`;
+}
+function classBadge(classification) {
+  const cls = classification.toLowerCase();
+  const abbr = classification === 'Exclusive' ? 'EXC' : (classification === 'Commodity' ? 'COM' : classification);
+  return `<span class="class-badge ${cls}" title="${classification}">${abbr}</span>`;
+}
+// Star path is the same; partial fill is achieved by clipping a teal copy
+// to a percentage width over a grey base.
+const _STAR_SVG = '<svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0.5 L7.55 4.05 L11.4 4.5 L8.5 7.15 L9.3 11 L6 9.05 L2.7 11 L3.5 7.15 L0.6 4.5 L4.45 4.05 Z"/></svg>';
+function starsMarkup(n) {
+  const rating = Math.max(0, Math.min(5, Number(n) || 0));
+  const pct = (rating / 5) * 100;
+  return `<span class="star-rating" title="Rating ${rating.toFixed(1)} / 5">
+    <span class="star-icon">
+      <span style="color:#d1d5db;">${_STAR_SVG}</span>
+      <span class="star-fg" style="width:${pct}%;color:#e91e8c;">${_STAR_SVG}</span>
+    </span>
+    <span class="star-num">${rating.toFixed(1)}</span>
+  </span>`;
+}
+function occPill(occ) {
+  const pct = Math.round(occ * 100);
+  let cls = 'occ-mid';
+  if (pct >= 75) cls = 'occ-high';
+  else if (pct < 50) cls = 'occ-low';
+  return `<span class="occ-pill ${cls}">${pct}%</span>`;
+}
+function soldPctText(pct) {
+  const v = Math.round(pct * 100);
+  let color;
+  if (v >= 75) color = '#047857';
+  else if (v >= 50) color = 'var(--warn)';
+  else color = 'var(--danger)';
+  return `<span style="color:${color};font-weight:500;">${v}%</span>`;
+}
+function deltaCell(delta) {
+  if (!delta) return `<span class="text-muted">$0</span>`;
+  const cls = delta > 0 ? 'delta-pos' : 'delta-neg';
+  const sign = delta > 0 ? '+' : '';
+  return `<span class="${cls}">${sign}${fmt$(delta)}</span>`;
+}
+function chevron(open) {
+  return `<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" style="transform:${open ? 'rotate(90deg)' : 'none'};transition:transform .15s;"><polyline points="4,2 8,6 4,10"/></svg>`;
+}
+function statusBadge(status) {
+  const key = status.toLowerCase();
+  return `<span class="status-badge status-${key}">${status}</span>`;
+}
+
+// ── Effective ADR (respects overrides) ─────────────────────
+function getEffectiveADR(week) {
+  return adrOverrides[week.id] != null ? adrOverrides[week.id] : week.currentADR;
+}
+
+// Re-aggregate a category after an inline override
+function aggregateCategoryLive(category) {
+  const weeks = category.checkInWeeks;
+  const avgCurrentADR = weeks.reduce((s, w) => s + getEffectiveADR(w), 0) / weeks.length;
+  const avgRecADR = weeks.reduce((s, w) => s + w.recADR, 0) / weeks.length;
+  return {
+    avgCurrentADR: Math.round(avgCurrentADR),
+    avgRecADR: Math.round(avgRecADR),
+    deltaADR: Math.round(avgRecADR - avgCurrentADR),
+  };
+}
+function aggregateHotelLive(hotel) {
+  const catsAgg = hotel.categories.map(aggregateCategoryLive);
+  const avgCurrentADR = catsAgg.reduce((s, c) => s + c.avgCurrentADR, 0) / catsAgg.length;
+  const avgRecADR = catsAgg.reduce((s, c) => s + c.avgRecADR, 0) / catsAgg.length;
+  return {
+    avgCurrentADR: Math.round(avgCurrentADR),
+    avgRecADR: Math.round(avgRecADR),
+    deltaADR: Math.round(avgRecADR - avgCurrentADR),
+  };
+}
+function aggregateDestinationLive(dest) {
+  const hotelsAgg = dest.hotels.map(aggregateHotelLive);
+  const avgCurrentADR = hotelsAgg.reduce((s, h) => s + h.avgCurrentADR, 0) / hotelsAgg.length;
+  const avgRecADR = hotelsAgg.reduce((s, h) => s + h.avgRecADR, 0) / hotelsAgg.length;
+  return {
+    avgCurrentADR: Math.round(avgCurrentADR),
+    avgRecADR: Math.round(avgRecADR),
+    deltaADR: Math.round(avgRecADR - avgCurrentADR),
+  };
+}
+
+// Margin % badge (green ≥25, amber 15-24, red <15)
+function marginPctBadge(pct) {
+  if (pct == null || isNaN(pct)) return '<span class="text-muted">—</span>';
+  const v = Math.round(pct * 100);
+  let cls = 'occ-mid';
+  if (v >= 25) cls = 'occ-high';
+  else if (v < 15) cls = 'occ-low';
+  return `<span class="occ-pill ${cls}">${v}%</span>`;
+}
+
+// Aggregate margin from a list of week records (uses effective ADR).
+// marginPct is the per-row average so each room category counts equally.
+function aggMargin(weeks) {
+  if (!weeks.length) return null;
+  let curSum = 0, recSum = 0, pctSum = 0, pctN = 0;
+  weeks.forEach(w => {
+    const eff = getEffectiveADR(w);
+    curSum += eff - w.supplierCost;
+    recSum += w.recADR - w.supplierCost;
+    if (eff) {
+      pctSum += (eff - w.supplierCost) / eff;
+      pctN++;
+    }
+  });
+  const n = weeks.length;
+  const avgCur = curSum / n;
+  const avgRec = recSum / n;
+  return {
+    currentMargin: Math.round(avgCur),
+    recMargin:     Math.round(avgRec),
+    marginDelta:   Math.round(avgRec - avgCur),
+    marginPct:     pctN ? pctSum / pctN : 0,
+  };
+}
+
+// ── Aggregation across categories at a single week index ──
+function aggCatsAtWeek(cats, weekIdx) {
+  if (!cats.length) return { alloc:0, sold:0, soldPct:0, forecastOcc:0, currentOcc:0, currentADR:0, recADR:0, deltaADR:0, hasCostChange:false };
+  let alloc = 0, sold = 0, fOcc = 0, cOcc = 0, curSum = 0, recSum = 0, ccFlag = false;
+  cats.forEach(c => {
+    const w = c.checkInWeeks[weekIdx];
+    alloc += w.allocation;
+    sold  += w.sold;
+    fOcc  += w.forecastOcc;
+    cOcc  += w.currentOcc;
+    curSum += getEffectiveADR(w);
+    recSum += w.recADR;
+    if (w.hasCostChange) ccFlag = true;
+  });
+  const n = cats.length;
+  return {
+    alloc, sold,
+    soldPct: alloc ? sold / alloc : 0,
+    forecastOcc: fOcc / n,
+    currentOcc:  cOcc / n,
+    currentADR:  Math.round(curSum / n),
+    recADR:      Math.round(recSum / n),
+    deltaADR:    Math.round((recSum - curSum) / n),
+    hasCostChange: ccFlag,
+  };
+}
+
+// ── Recommendations tree table render ──────────────────────
+let topSortDir = 'asc'; // 'asc' | 'desc' — applies to dest+week row ordering
+function toggleTopSort() {
+  topSortDir = (topSortDir === 'asc') ? 'desc' : 'asc';
+  renderRecsHead();
+  renderRecsTable();
+}
+// "Today" anchor for days-to-check-in calculations (matches CLAUDE.md current date)
+const _TODAY_FOR_DEMO = new Date(2026, 3, 15);
+function daysToCheckIn(weekStart) {
+  if (!weekStart) return 999;
+  const [mm, dd, yy] = weekStart.split('/').map(Number);
+  if (!mm) return 999;
+  const d = new Date(2000 + (yy || 26), (mm || 1) - 1, dd || 1);
+  return Math.round((d - _TODAY_FOR_DEMO) / 86400000);
+}
+function alertsCellHTML(a) {
+  const parts = [];
+  if (a.hasCostChange) {
+    parts.push('<span class="cost-change-flag" title="Cost change / alert">⚠️</span>');
+  }
+  const fastSeller = (a.soldPct > 0.80) || (a.forecastOcc != null && a.forecastOcc >= 0.85);
+  const slowSeller = (a.soldPct < 0.35) && (a.daysToCheckIn != null && a.daysToCheckIn < 60);
+  if (fastSeller) parts.push('<span class="alert-fast" title="High demand / fast seller — consider yield uplift">🔥</span>');
+  if (slowSeller) parts.push('<span class="alert-slow" title="Slow seller — consider promotional pricing">🐢</span>');
+  return parts.join('');
+}
+
+function renderRecsHead() {
+  const thead = document.getElementById('recsTableHead');
+  const arrow = topSortDir === 'asc' ? '↑' : '↓';
+  thead.innerHTML = `
+    <tr>
+      <th style="min-width:320px;">Destination / Week</th>
+      <th style="width:100px;cursor:pointer;user-select:none;" onclick="toggleTopSort()" title="Sort by check-in week">Check-in Wk <span class="sort-ind">${arrow}</span></th>
+      <th class="text-right" style="width:110px;">Sold / Alloc</th>
+      <th class="text-right" style="width:80px;cursor:pointer;user-select:none;" onclick="toggleTopSort()" title="Sort by forecast occ">Forecast<span class="th-sub">Occ % <span class="sort-ind">${arrow}</span></span></th>
+      <th class="text-right" style="width:80px;">Current<span class="th-sub">Occ %</span></th>
+      <th class="text-right" style="width:90px;">Supp Cost<span class="th-sub">/ night</span></th>
+      <th class="text-right" style="width:90px;">Current<span class="th-sub">ADR $</span></th>
+      <th class="text-right" style="width:80px;">Chg<span class="th-sub">$</span></th>
+      <th class="text-right" style="width:80px;">Chg<span class="th-sub">%</span></th>
+      <th class="text-right" style="width:95px;">Weekly Rate<span class="th-sub">$ / 7 nts</span></th>
+      <th class="text-right" style="width:90px;">Rec<span class="th-sub">ADR $</span></th>
+      <th class="text-right" style="width:80px;">Delta<span class="th-sub">$</span></th>
+      <th class="text-right" style="width:90px;">Current<span class="th-sub">Margin $</span></th>
+      <th class="text-right" style="width:90px;">Rec<span class="th-sub">Margin $</span></th>
+      <th class="text-right" style="width:80px;">Margin<span class="th-sub">Δ $</span></th>
+      <th class="text-right" style="width:80px;">Margin %</th>
+      <th style="width:100px;">Alerts</th>
+      <th style="width:110px;">Actions</th>
+    </tr>
+  `;
+}
+
+function renderRecsTable() {
+  const tbody = document.getElementById('recsTableBody');
+  const entries = [];
+  let visibleLeaves = 0, totalLeaves = 0;
+  const visibleDestSet = new Set();
+  const totalDestCount = HOTEL_DATA.length;
+
+  HOTEL_DATA.forEach(dest => {
+    // ── Level 1: one row per (destination + check-in week) ──
+    CHECK_IN_WEEKS.forEach((wkMeta, weekIdx) => {
+      // Header filter applies to whole dest+week rows
+      if (!passesHeaderFilters(dest, wkMeta)) return;
+
+      const weekKey = `${dest.id}::${weekIdx}`;
+      const weekOpen = expandedWeeks.has(weekKey);
+
+      // Determine which hotels & categories at this dest+week pass the advanced filters.
+      const visibleHotels = dest.hotels
+        .filter(h => passesHotelLevel(h, dest))
+        .map(h => {
+          const visibleCats = h.categories.filter(c => passesLeaf(c.checkInWeeks[weekIdx]));
+          return { hotel: h, cats: visibleCats };
+        })
+        .filter(x => x.cats.length > 0);
+
+      // Tally totals for the row count bar
+      dest.hotels.forEach(h => h.categories.forEach(() => { totalLeaves++; }));
+      visibleHotels.forEach(x => x.cats.forEach(() => { visibleLeaves++; }));
+
+      // Hide the dest+week row entirely when filters are active and nothing matches
+      if (!visibleHotels.length && advFiltersActive()) return;
+
+      visibleDestSet.add(dest.id);
+
+      // Aggregates use the visible (filtered) cats so summary numbers reflect the filter.
+      // When no filters active this matches the full set anyway.
+      const allCatsForAgg = visibleHotels.length
+        ? visibleHotels.flatMap(x => x.cats)
+        : dest.hotels.flatMap(h => h.categories);
+      const dwAgg = aggCatsAtWeek(allCatsForAgg, weekIdx);
+      const dwWeeks = allCatsForAgg.map(c => c.checkInWeeks[weekIdx]).filter(Boolean);
+      const dwMargin = aggMargin(dwWeeks);
+      // "MM/DD" extracted from weekStart (which is "MM/DD/YY")
+      const shortDate = (wkMeta.weekStart || '').slice(0, 5);
+
+      const entryRows = [];
+      const entry = { weekIdx, forecastOcc: dwAgg.forecastOcc, rows: entryRows };
+      entries.push(entry);
+
+      const dtc = daysToCheckIn(wkMeta.weekStart);
+      entryRows.push(`
+        <tr class="row-property" onclick="toggleWeek('${weekKey}')" style="cursor:pointer;">
+          <td>
+            <button class="expand-btn ${weekOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleWeek('${weekKey}')">${chevron(weekOpen)}</button>
+            <span style="font-weight:600;">${dest.name}</span>
+            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- Wk ${shortDate}</span>
+            <div class="row-region">${regionBadge(dest.region)}</div>
+          </td>
+          <td><span style="font-weight:500;">Wk ${shortDate}</span></td>
+          <td class="text-right num">${dwAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${dwAgg.alloc.toLocaleString()}</td>
+          <td class="text-right">${occPill(dwAgg.forecastOcc)}</td>
+          <td class="text-right num">${fmtPct(dwAgg.currentOcc)}</td>
+          <td class="text-muted">—</td>
+          <td class="text-right${Math.abs(_hotScopeAvg('dw', dest.id, weekIdx).avgChange) >= 0.5 ? ' cur-pink' : ''}">${fmt$(dwAgg.currentADR + _hotScopeAvg('dw', dest.id, weekIdx).avgChange)}</td>
+          ${_hotChgCells('dw', dest.id, weekIdx, '', '')}
+          <td class="text-right num">${fmt$((dwAgg.currentADR + _hotScopeAvg('dw', dest.id, weekIdx).avgChange) * 7)}</td>
+          <td class="text-right highlight-teal${dwAgg.deltaADR < 0 ? ' rec-down' : ''}">${fmt$(dwAgg.recADR)}</td>
+          <td class="text-right">${deltaCell(dwAgg.deltaADR)}</td>
+          <td class="text-right num">${dwMargin ? fmt$(dwMargin.currentMargin) : '<span class="text-muted">—</span>'}</td>
+          <td class="text-right num">${dwMargin ? fmt$(dwMargin.recMargin) : '<span class="text-muted">—</span>'}</td>
+          <td class="text-right">${dwMargin ? deltaCell(dwMargin.marginDelta) : '<span class="text-muted">—</span>'}</td>
+          <td class="text-right">${dwMargin ? marginPctBadge(dwMargin.marginPct) : '<span class="text-muted">—</span>'}</td>
+          <td class="flags-cell">${alertsCellHTML({ soldPct: dwAgg.soldPct, forecastOcc: dwAgg.forecastOcc, daysToCheckIn: dtc, hasCostChange: dwAgg.hasCostChange })}</td>
+          <td>
+            <span class="pkg-action-icons" style="display:inline-flex;align-items:center;gap:6px;">
+              <button title="Booking curve" onclick="event.stopPropagation();openDestWeekCurve('${dest.id}', ${weekIdx})">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2,11 5,7 8,9 12,3"/><line x1="2" y1="12" x2="12" y2="12"/></svg>
+              </button>
+              <button type="button" class="ask-row-btn" onclick="event.stopPropagation();openRowCopilot('${dest.id}', ${weekIdx})" title="Ask RM Copilot about this row">
+                <span class="spk">✦</span> Ask
+              </button>
+            </span>
+          </td>
+        </tr>
+      `);
+
+      if (!weekOpen) return;
+
+      // ── Level 2: Hotel rows (within this dest+week) — only filtered hotels ──
+      const hotelIterList = visibleHotels.length
+        ? visibleHotels
+        : dest.hotels.map(h => ({ hotel: h, cats: h.categories }));
+      hotelIterList.forEach(({ hotel, cats: visibleCatsForHotel }) => {
+        const hotelKey = `${dest.id}::${weekIdx}::${hotel.id}`;
+        const hotelOpen = expandedHotels.has(hotelKey);
+        const hAgg = aggCatsAtWeek(visibleCatsForHotel, weekIdx);
+        const hWeeks = visibleCatsForHotel.map(c => c.checkInWeeks[weekIdx]).filter(Boolean);
+        const hMargin = aggMargin(hWeeks);
+
+        entryRows.push(`
+          <tr class="row-bedtype clickable" onclick="toggleHotel('${hotelKey}')" style="cursor:pointer;">
+            <td>
+              <button class="expand-btn ${hotelOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleHotel('${hotelKey}')">${chevron(hotelOpen)}</button>
+              <span style="font-weight:500;">${hotel.name}</span>
+              ${classBadge(hotel.classification)}
+              ${starsMarkup(hotel.stars)}
+            </td>
+            <td class="text-muted">—</td>
+            <td class="text-right num">${hAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${hAgg.alloc.toLocaleString()}</td>
+            <td class="text-right">${occPill(hAgg.forecastOcc)}</td>
+            <td class="text-right num">${fmtPct(hAgg.currentOcc)}</td>
+            <td class="text-muted">—</td>
+            <td class="text-right${Math.abs(_hotScopeAvg('ht', dest.id, weekIdx, hotel.id).avgChange) >= 0.5 ? ' cur-pink' : ''}">${fmt$(hAgg.currentADR + _hotScopeAvg('ht', dest.id, weekIdx, hotel.id).avgChange)}</td>
+            ${_hotChgCells('ht', dest.id, weekIdx, hotel.id, '')}
+            <td class="text-right num">${fmt$((hAgg.currentADR + _hotScopeAvg('ht', dest.id, weekIdx, hotel.id).avgChange) * 7)}</td>
+            <td class="text-right highlight-teal${hAgg.deltaADR < 0 ? ' rec-down' : ''}">${fmt$(hAgg.recADR)}</td>
+            <td class="text-right">${deltaCell(hAgg.deltaADR)}</td>
+            <td class="text-right num">${hMargin ? fmt$(hMargin.currentMargin) : '<span class="text-muted">—</span>'}</td>
+            <td class="text-right num">${hMargin ? fmt$(hMargin.recMargin) : '<span class="text-muted">—</span>'}</td>
+            <td class="text-right">${hMargin ? deltaCell(hMargin.marginDelta) : '<span class="text-muted">—</span>'}</td>
+            <td class="text-right">${hMargin ? marginPctBadge(hMargin.marginPct) : '<span class="text-muted">—</span>'}</td>
+            <td class="flags-cell">${alertsCellHTML({ soldPct: hAgg.soldPct, forecastOcc: hAgg.forecastOcc, daysToCheckIn: dtc, hasCostChange: hAgg.hasCostChange })}</td>
+            <td>
+              <span class="pkg-action-icons" style="display:inline-flex;align-items:center;gap:6px;">
+                <button title="Booking curve" onclick="event.stopPropagation();openHotelWeekCurve('${dest.id}', ${weekIdx}, '${hotel.id}')">
+                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2,11 5,7 8,9 12,3"/><line x1="2" y1="12" x2="12" y2="12"/></svg>
+                </button>
+              </span>
+            </td>
+          </tr>
+        `);
+
+        if (!hotelOpen) return;
+
+        // ── Level 3 (leaf): Room Category for this dest+week+hotel ──
+        visibleCatsForHotel.forEach(cat => {
+          const week    = cat.checkInWeeks[weekIdx];
+          const eff     = getEffectiveADR(week);
+          const wDelta  = week.recADR - eff;
+          const wSoldPct = week.allocation ? week.sold / week.allocation : 0;
+          const hasNote = !!notes[week.id];
+          const curMargin = eff - week.supplierCost;
+          const recMargin = week.recADR - week.supplierCost;
+          const marginD   = recMargin - curMargin;
+          const marginPct = eff ? curMargin / eff : 0;
+
+          const isPending  = adrOverrides[week.id] != null && !rejectedRecs.has(week.id);
+          const isRejected = rejectedRecs.has(week.id);
+          const rowClass   = 'row-unit' + (isPending ? ' row-pending' : '');
+
+          entryRows.push(`
+            <tr class="${rowClass}">
+              <td>
+                <span>${cat.name}</span>
+                ${week.locked ? ' <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--accent);vertical-align:middle;"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg>' : ''}
+              </td>
+              <td class="text-muted">—</td>
+              <td class="text-right num">${week.sold}<span style="color:var(--text-muted);margin:0 5px;">/</span>${week.allocation}</td>
+              <td class="text-right">${occPill(week.forecastOcc)}</td>
+              <td class="text-right num">${fmtPct(week.currentOcc)}</td>
+              <td class="text-right num">${fmt$(week.supplierCost)}</td>
+              <td class="text-right${eff !== week.currentADR ? ' cur-pink' : ''}">${fmt$(eff)}</td>
+              ${_hotChgCells('lf', dest.id, weekIdx, hotel.id, week.id)}
+              <td class="text-right num">${fmt$(eff * 7)}</td>
+              <td class="text-right" style="white-space:nowrap;">
+                <span class="rec-margin-cell${isRejected ? ' rec-rejected' : ''}" onclick="event.stopPropagation();${isRejected ? '' : `acceptRec('${week.id}')`}" title="${isRejected ? 'Rejected' : 'Click to accept'}">${fmt$(week.recADR)}</span>
+                ${isRejected ? '' : `<button class="reject-btn" title="Reject recommendation" onclick="event.stopPropagation();rejectRec('${week.id}')">✕</button>`}
+              </td>
+              <td class="text-right">${deltaCell(wDelta)}</td>
+              <td class="text-right num">${fmt$(curMargin)}</td>
+              <td class="text-right num">${fmt$(recMargin)}</td>
+              <td class="text-right">${deltaCell(marginD)}</td>
+              <td class="text-right">${marginPctBadge(marginPct)}</td>
+              <td class="flags-cell">
+                <span class="flags-inline">
+                  ${alertsCellHTML({ soldPct: wSoldPct, forecastOcc: week.forecastOcc, daysToCheckIn: dtc, hasCostChange: week.hasCostChange })}
+                  ${week.autoChanged ? `<span class="badge-auto" title="${week.autoChangedRule || 'Auto-adjusted by rules engine'}">⚡ AUTO</span>` : ''}
+                  ${isPending  ? '<span class="badge-pending" title="Pending publish">PENDING</span>' : ''}
+                  ${isRejected ? '<span class="badge-rejected" title="Recommendation rejected">REJECTED</span>' : ''}
+                  <button class="notes-icon ${hasNote ? 'has-note' : ''}" title="${hasNote ? 'Edit note' : 'Add note'}" onclick="event.stopPropagation();openNotesModal('${week.id}')">
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2h8l2 2v8H2z"/><line x1="4" y1="5" x2="10" y2="5"/><line x1="4" y1="8" x2="10" y2="8"/><line x1="4" y1="11" x2="8" y2="11"/></svg>
+                  </button>
+                </span>
+              </td>
+              <td>
+                <span class="pkg-action-icons">
+                  <button title="Rules" onclick="event.stopPropagation()">
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="2"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2M2.5 2.5l1.4 1.4M10.1 10.1l1.4 1.4M2.5 11.5l1.4-1.4M10.1 3.9l1.4-1.4"/></svg>
+                  </button>
+                  <span class="lock-indicator" title="Price lock indicator" style="display:inline-flex;align-items:center;padding:0 6px;color:var(--text-muted);">
+                    <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg>
+                  </span>
+                </span>
+              </td>
+            </tr>
+          `);
+        });
+      });
+    });
+  });
+
+  // Sort top-level dest+week entries: primary week, secondary forecast occ
+  const mul = topSortDir === 'asc' ? 1 : -1;
+  entries.sort((a, b) => {
+    if (a.weekIdx !== b.weekIdx) return (a.weekIdx - b.weekIdx) * mul;
+    return (a.forecastOcc - b.forecastOcc) * mul;
+  });
+
+  const allRows = entries.flatMap(e => e.rows);
+  // Empty state when no destinations match the current filters
+  if (visibleDestSet.size === 0 && (advFiltersActive() || headerFiltersActive())) {
+    allRows.push('<tr><td colspan="18" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
+  }
+
+  tbody.innerHTML = allRows.join('');
+
+  // Row count bar above the table
+  const rcb = document.getElementById('rowCountBar');
+  if (rcb) {
+    const filterActive = advFiltersActive() || headerFiltersActive();
+    if (filterActive) {
+      rcb.innerHTML = `Showing <strong>${visibleDestSet.size}</strong> of <strong>${totalDestCount}</strong> destinations · <strong>${visibleLeaves}</strong> of <strong>${totalLeaves}</strong> rows`;
+    } else {
+      rcb.innerHTML = `Showing all <strong>${totalDestCount}</strong> destinations · <strong>${totalLeaves}</strong> rows`;
+    }
+  }
+
+  // Keep the calendar in sync when it is the active view.
+  if (typeof viewMode !== 'undefined' && viewMode === 'calendar') renderCalendar();
+}
+
+// ── Cost Change Exceptions flat table ──────────────────────
+function renderExceptionsTable() {
+  const tbody = document.getElementById('exceptionsTableBody');
+  tbody.innerHTML = COST_CHANGE_DATA.map(c => `
+    <tr class="row-flat">
+      <td>${c.destination}</td>
+      <td>${c.hotel}</td>
+      <td>${c.roomCategory}</td>
+      <td class="font-mono" style="font-size:11.5px;">${c.checkInWeek}</td>
+      <td class="text-right num">${fmt$(c.oldCost)}</td>
+      <td class="text-right num">${fmt$(c.newCost)}</td>
+      <td class="text-right ${c.changeAmt >= 0 ? 'delta-neg' : 'delta-pos'}">${c.changeAmt >= 0 ? '+' : ''}${fmt$(c.changeAmt)}</td>
+      <td class="text-right ${c.changeAmt >= 0 ? 'delta-neg' : 'delta-pos'}">${c.changePct >= 0 ? '+' : ''}${c.changePct}%</td>
+      <td class="font-mono" style="font-size:11.5px;">${c.dateReceived}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Metrics bar ────────────────────────────────────────────
+function computeMetrics() {
+  const allHotels = HOTEL_DATA.flatMap(d => d.hotels);
+  const allWeeks = allHotels.flatMap(h => h.categories.flatMap(c => c.checkInWeeks));
+
+  const hotelsBehind = allHotels.filter(h => h.currentOcc < h.forecastOcc - 0.08).length;
+  const avgForecastOcc = allWeeks.reduce((s, w) => s + w.forecastOcc, 0) / Math.max(1, allWeeks.length);
+  const avgADRChange = allWeeks.reduce((s, w) => s + w.deltaADR, 0) / Math.max(1, allWeeks.length);
+  const highDemand = allHotels.filter(h => h.forecastOcc >= 0.75).length;
+  const costChanges = COST_CHANGE_DATA.filter(c => c.status === 'Pending').length;
+  const pendingApproval = typeof PUBLISHED_HOTEL_CHANGES !== 'undefined' ? PUBLISHED_HOTEL_CHANGES.filter(p => p.status === 'Scheduled').length : 0;
+
+  return { hotelsBehind, avgForecastOcc, avgADRChange, highDemand, costChanges, pendingApproval };
+}
+
+function renderMetricsBar() {
+  const m = computeMetrics();
+  document.getElementById('mHotelsBehind').textContent    = m.hotelsBehind;
+  document.getElementById('mAvgForecastOcc').textContent  = Math.round(m.avgForecastOcc * 100) + '%';
+  document.getElementById('mAvgADRChange').textContent    = fmtSignedDollar(m.avgADRChange);
+  document.getElementById('mHighDemand').textContent      = m.highDemand;
+  document.getElementById('mCostChanges').textContent     = m.costChanges + ' active';
+  document.getElementById('mPendingApproval').textContent = m.pendingApproval;
+
+  const adrEl = document.getElementById('mAvgADRChange');
+  adrEl.classList.remove('metric-pos', 'metric-neg', 'metric-warn');
+  if (m.avgADRChange > 0) adrEl.classList.add('metric-pos');
+  else if (m.avgADRChange < 0) adrEl.classList.add('metric-neg');
+}
+
+// ── Analytics panel (booking curve + secondary) ───────────
+let hotelBookingChart = null;
+let hotelSecondaryChart = null;
+
+function showExposure() {
+  const wrap = document.getElementById('exposureWrap');
+  wrap.style.display = 'block';
+  wrap.classList.remove('panel-closed');
+  document.getElementById('analyticsBackdrop').classList.add('open');
+}
+function closeExposure() {
+  const wrap = document.getElementById('exposureWrap');
+  wrap.style.display = 'none';
+  wrap.classList.remove('panel-closed');
+  document.getElementById('analyticsBackdrop').classList.remove('open');
+}
+function toggleExposure() { closeExposure(); }
+
+// Top-level (Destination + Week) booking curve
+function openDestWeekCurve(destId, weekIdx) {
+  const dest = HOTEL_DATA.find(d => d.id === destId);
+  if (!dest) return;
+  const wkMeta = CHECK_IN_WEEKS[weekIdx];
+  const allCats = dest.hotels.flatMap(h => h.categories);
+  const wAgg = aggCatsAtWeek(allCats, weekIdx);
+  const occPct = Math.round(wAgg.forecastOcc * 100);
+
+  document.getElementById('exposurePropName').innerHTML =
+    `<span style="color:#fff;font-weight:500;">${dest.name} - ${wkMeta.weekLabel}</span>
+     <span style="color:#9ca3af;margin-left:8px;">Alloc ${wAgg.alloc.toLocaleString()}</span>
+     <span style="color:#9ca3af;margin-left:8px;">Sold ${wAgg.sold.toLocaleString()}</span>
+     <span style="color:#9ca3af;margin-left:8px;">Occ ${occPct}%</span>`;
+
+  document.getElementById('chartLabel1Sub').textContent = `Cumulative % sold · ${wkMeta.weekLabel}`;
+  document.getElementById('chartLabel2Title').textContent = 'Price History';
+  document.getElementById('chartLabel2Sub').textContent = `ADR $ · ${wkMeta.weekLabel}`;
+
+  const dtc = Math.max(0, daysToCheckIn(wkMeta.weekStart));
+  drawBookingSCurve(dtc, dest.id + '::' + weekIdx);
+  drawPriceWorm(dtc, wAgg.currentADR || 220, dest.id + '::' + weekIdx);
+
+  showExposure();
+}
+
+// Hotel-row (single hotel × week) booking curve
+function openHotelWeekCurve(destId, weekIdx, hotelId) {
+  const dest = HOTEL_DATA.find(d => d.id === destId);
+  if (!dest) return;
+  const hotel = dest.hotels.find(h => h.id === hotelId);
+  if (!hotel) return;
+  const wkMeta = CHECK_IN_WEEKS[weekIdx];
+  const hAgg = aggCatsAtWeek(hotel.categories, weekIdx);
+
+  document.getElementById('exposurePropName').innerHTML =
+    `<span style="color:#fff;font-weight:500;">${hotel.name}</span>
+     <span style="color:#9ca3af;margin-left:8px;">${dest.name}</span>
+     <span style="color:#9ca3af;margin-left:8px;">${wkMeta.weekLabel}</span>
+     <span style="color:#9ca3af;margin-left:8px;">Alloc ${hAgg.alloc.toLocaleString()}</span>
+     <span style="color:#9ca3af;margin-left:8px;">Sold ${hAgg.sold.toLocaleString()}</span>
+     <span style="color:#9ca3af;margin-left:8px;">Occ ${Math.round(hAgg.forecastOcc * 100)}%</span>`;
+
+  document.getElementById('chartLabel1Sub').textContent = `Cumulative % sold · ${hotel.name}`;
+  document.getElementById('chartLabel2Title').textContent = 'Price History';
+  document.getElementById('chartLabel2Sub').textContent = `ADR $ · ${hotel.name}`;
+
+  const dtc = Math.max(0, daysToCheckIn(wkMeta.weekStart));
+  drawBookingSCurve(dtc, hotel.id + '::' + weekIdx);
+  drawPriceWorm(dtc, hAgg.currentADR || 220, hotel.id + '::' + weekIdx);
+
+  showExposure();
+}
+
+// ── Booking S-curve chart (500 days → 0 days) ─────────────
+// Cumulative % sold as a function of days-to-check-in (d).
+// Piecewise interpolation of real-world S-curve knots.
+const BOOKING_SCURVE_KNOTS = [
+  [500, 0.00],
+  [365, 0.05],
+  [180, 0.20],
+  [90,  0.45],
+  [60,  0.60],
+  [30,  0.75],
+  [14,  0.88],
+  [7,   0.92],
+  [0,   0.95],
+];
+function bookingSCurveActual(d) {
+  if (d >= 500) return 0;
+  if (d <= 0) return 0.95;
+  for (let i = 0; i < BOOKING_SCURVE_KNOTS.length - 1; i++) {
+    const [d1, s1] = BOOKING_SCURVE_KNOTS[i];
+    const [d2, s2] = BOOKING_SCURVE_KNOTS[i + 1];
+    if (d <= d1 && d >= d2) {
+      const t = (d1 - d) / (d1 - d2);
+      return s1 + (s2 - s1) * t;
+    }
+  }
+  return 0.95;
+}
+// Smoother "ideal" target curve — sigmoid
+function bookingSCurveTarget(d) {
+  const p = (500 - d) / 500;
+  return 0.95 / (1 + Math.exp(-7 * (p - 0.72)));
+}
+// Generate a dense x-axis (days-to-check-in) from 500 down to 0
+function bookingXAxis() {
+  const xs = [];
+  // Wide spacing far out, tight near departure
+  for (let d = 500; d > 90; d -= 20) xs.push(d);
+  for (let d = 90; d > 14; d -= 5) xs.push(d);
+  for (let d = 14; d >= 0; d--) xs.push(d);
+  return xs;
+}
+
+function drawBookingSCurve(todayDtc) {
+  if (hotelBookingChart) hotelBookingChart.destroy();
+  const xs = bookingXAxis();
+  // Ensure the "today" marker exists in xs so line datasets anchor correctly
+  if (!xs.includes(todayDtc)) xs.push(todayDtc);
+  xs.sort((a, b) => b - a); // descending (500 → 0)
+
+  // Actual: S-curve up to today (set null past today)
+  const actual = xs.map(d => (d >= todayDtc ? Math.round(bookingSCurveActual(d) * 1000) / 10 : null));
+  // Target: full ideal curve
+  const target = xs.map(d => Math.round(bookingSCurveTarget(d) * 1000) / 10);
+  // Forecast: projection from today to departure (null before today)
+  const forecast = xs.map(d => (d <= todayDtc ? Math.round(bookingSCurveActual(d) * 1000) / 10 : null));
+  // Today marker: two-point vertical from 0% to 100%
+  const todayLine = xs.map(d => (d === todayDtc ? 100 : null));
+
+  const xLabelMarkers = new Set([500, 365, 180, 90, 60, 30, 14, 7, 0]);
+
+  hotelBookingChart = new Chart(document.getElementById('hotelBookingCurveChart'), {
+    type: 'line',
+    data: {
+      labels: xs,
+      datasets: [
+        { label: 'Actual',   data: actual,   borderColor: '#e91e8c', backgroundColor: 'rgba(233,30,140,0.12)', borderWidth: 2.2, borderDash: [],     tension: 0.35, pointRadius: 0, fill: true, spanGaps: false },
+        { label: 'Target',   data: target,   borderColor: '#e5e7eb', borderWidth: 1.6, borderDash: [6, 3], pointRadius: 0, tension: 0.35, fill: false },
+        { label: 'Forecast', data: forecast, borderColor: '#f59e0b', borderWidth: 2,   borderDash: [2, 3], pointRadius: 0, tension: 0.35, fill: false, spanGaps: false },
+        { label: 'Today',    data: todayLine, borderColor: '#ffffff', borderWidth: 1.5, pointRadius: 0, showLine: true, spanGaps: true, borderDash: [3, 3] },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { left: 0, right: 0 } },
+      plugins: { legend: { display: false }, tooltip: { mode: 'nearest', intersect: false } },
+      scales: {
+        x: {
+          type: 'linear',
+          reverse: true,
+          min: 0,
+          max: 500,
+          bounds: 'ticks',
+          afterFit: function(axis) { axis.paddingRight = 0; },
+          grid: { display: false },
+          title: { display: true, text: 'Days to Check-in', color: '#9ca3af', font: { size: 10 } },
+          ticks: {
+            font: { size: 10 },
+            color: '#9ca3af',
+            autoSkip: true,
+            maxTicksLimit: 18,
+            maxRotation: 0,
+            callback: function(value) { return xLabelMarkers.has(value) ? value : ''; },
+          },
+        },
+        y: {
+          min: 0,
+          max: 100,
+          grid: { color: '#2a2d35' },
+          ticks: { font: { size: 10 }, color: '#9ca3af', callback: v => v + '%' },
+          title: { display: true, text: '% Sold', color: '#9ca3af', font: { size: 10 } },
+        },
+      },
+    },
+  });
+}
+
+// ── Price worm chart (500 days → 0 days) ──────────────────
+// Deterministic synthetic price histories seeded from the key.
+function drawPriceWorm(todayDtc, baseADR, seedKey) {
+  if (hotelSecondaryChart) hotelSecondaryChart.destroy();
+  const xs = bookingXAxis();
+  if (!xs.includes(todayDtc)) xs.push(todayDtc);
+  xs.sort((a, b) => b - a);
+
+  // Seeded pseudo-random per series for stability
+  function _hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 16777619) >>> 0; } return h; }
+  const seed = _hash(seedKey || 'x');
+  function wobble(offset, freq, amp, d) {
+    return Math.sin((d / freq) + (seed % 100) * 0.01 + offset) * amp
+         + Math.cos((d / (freq * 1.7)) + offset * 0.8) * amp * 0.35;
+  }
+
+  // Our ADR: high early, dip mid-window, firm up near check-in
+  const ours = xs.map(d => {
+    const p = (500 - d) / 500;
+    const dip = -18 * Math.sin(Math.PI * p * 0.9);
+    const lateLift = p > 0.85 ? (p - 0.85) * 160 : 0;
+    return Math.round(baseADR + 14 + dip + lateLift + wobble(0.3, 55, 4, d));
+  });
+  // Competitor 1: ~5% below our base early, undercuts mid, follows late
+  const comp1 = xs.map(d => {
+    const p = (500 - d) / 500;
+    const dip = -22 * Math.sin(Math.PI * p * 1.05);
+    const lateLift = p > 0.88 ? (p - 0.88) * 170 : 0;
+    return Math.round(baseADR * 0.95 + 8 + dip + lateLift + wobble(1.7, 42, 5, d));
+  });
+  // Competitor 2: slightly above, smoother
+  const comp2 = xs.map(d => {
+    const p = (500 - d) / 500;
+    const dip = -12 * Math.sin(Math.PI * p * 0.8);
+    const lateLift = p > 0.82 ? (p - 0.82) * 150 : 0;
+    return Math.round(baseADR * 1.04 + 6 + dip + lateLift + wobble(2.9, 63, 4, d));
+  });
+
+  // Corridor: floor = min comp, ceiling = max comp
+  const compFloor   = xs.map((_, i) => Math.min(comp1[i], comp2[i]));
+  const compCeiling = xs.map((_, i) => Math.max(comp1[i], comp2[i]));
+
+  const todayPrice = xs.map(d => (d === todayDtc ? Math.max(...compCeiling, ...ours) + 10 : null));
+
+  const xLabelMarkers = new Set([500, 365, 180, 90, 60, 30, 14, 7, 0]);
+
+  hotelSecondaryChart = new Chart(document.getElementById('hotelSecondaryChart'), {
+    type: 'line',
+    data: {
+      labels: xs,
+      datasets: [
+        // Corridor ceiling (green tint, upper bound), fill to next dataset (floor)
+        { label: 'Comp Ceiling', data: compCeiling, borderColor: 'rgba(91,184,133,0.55)', backgroundColor: 'rgba(91,184,133,0.18)', borderWidth: 1, pointRadius: 0, fill: '+1', tension: 0.35 },
+        // Corridor floor (red tint)
+        { label: 'Comp Floor',   data: compFloor,   borderColor: 'rgba(217,95,95,0.55)',  backgroundColor: 'rgba(217,95,95,0.12)',  borderWidth: 1, pointRadius: 0, fill: false, tension: 0.35 },
+        { label: 'Our ADR',      data: ours,        borderColor: '#e91e8c', borderWidth: 2.4, borderDash: [],     pointRadius: 0, tension: 0.35, fill: false },
+        { label: 'Comp 1',       data: comp1,       borderColor: '#e5e7eb', borderWidth: 1.5, borderDash: [6, 3], pointRadius: 0, tension: 0.35, fill: false },
+        { label: 'Comp 2',       data: comp2,       borderColor: '#9ca3af', borderWidth: 1.5, borderDash: [2, 3], pointRadius: 0, tension: 0.35, fill: false },
+        { label: 'Today',        data: todayPrice,  borderColor: '#ffffff', borderWidth: 1.5, pointRadius: 0, borderDash: [3, 3], spanGaps: true },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { left: 0, right: 0 } },
+      plugins: { legend: { display: false }, tooltip: { mode: 'nearest', intersect: false } },
+      scales: {
+        x: {
+          type: 'linear',
+          reverse: true,
+          min: 0,
+          max: 500,
+          bounds: 'ticks',
+          afterFit: function(axis) { axis.paddingRight = 0; },
+          grid: { display: false },
+          title: { display: true, text: 'Days to Check-in', color: '#9ca3af', font: { size: 10 } },
+          ticks: {
+            font: { size: 10 },
+            color: '#9ca3af',
+            autoSkip: true,
+            maxTicksLimit: 18,
+            maxRotation: 0,
+            callback: function(value) { return xLabelMarkers.has(value) ? value : ''; },
+          },
+        },
+        y: {
+          grid: { color: '#2a2d35' },
+          ticks: { font: { size: 10 }, color: '#9ca3af', callback: v => '$' + v },
+          title: { display: true, text: 'ADR $', color: '#9ca3af', font: { size: 10 } },
+        },
+      },
+    },
+  });
+}
+
+// ── Expand / collapse ──────────────────────────────────────
+function toggleWeek(key)   { expandedWeeks.has(key)  ? expandedWeeks.delete(key)  : expandedWeeks.add(key);  renderRecsTable(); }
+function toggleHotel(key)  { expandedHotels.has(key) ? expandedHotels.delete(key) : expandedHotels.add(key); renderRecsTable(); }
+
+// ── Chg $ / Chg % columns — scope-aware propagation ────────
+// Scopes: 'dw' dest+week | 'ht' hotel | 'lf' room category leaf
+function _hotScopeLeaves(scope, destId, weekIdx, hotelId, weekId) {
+  const out = [];
+  const dest = HOTEL_DATA.find(d => d.id === destId);
+  if (!dest) return out;
+  const hotels = (scope === 'ht' || scope === 'lf')
+    ? dest.hotels.filter(h => h.id === hotelId)
+    : dest.hotels;
+  hotels.forEach(h => {
+    h.categories.forEach(cat => {
+      const week = cat.checkInWeeks[weekIdx];
+      if (!week) return;
+      if (scope === 'lf' && week.id !== weekId) return;
+      out.push({ weekId: week.id, currentADR: week.currentADR });
+    });
+  });
+  return out;
+}
+function _hotScopeAvg(scope, destId, weekIdx, hotelId, weekId) {
+  const leaves = _hotScopeLeaves(scope, destId, weekIdx, hotelId, weekId);
+  if (!leaves.length) return { avgChange: 0, avgCurrentADR: 0 };
+  let sumChange = 0, sumCurrent = 0;
+  leaves.forEach(lf => {
+    const ov = adrOverrides[lf.weekId];
+    const change = (ov != null) ? (ov - lf.currentADR) : 0;
+    sumChange  += change;
+    sumCurrent += lf.currentADR;
+  });
+  return { avgChange: sumChange / leaves.length, avgCurrentADR: sumCurrent / leaves.length };
+}
+function _hotApplyChange(leaves, amt$) {
+  leaves.forEach(lf => {
+    if (!amt$ || Math.abs(amt$) < 0.5) {
+      delete adrOverrides[lf.weekId];
+    } else {
+      adrOverrides[lf.weekId] = Math.max(0, Math.round(lf.currentADR + amt$));
+    }
+  });
+  renderRecsTable();
+  renderMetricsBar();
+}
+function _hotApplyChangePct(leaves, pct) {
+  leaves.forEach(lf => {
+    const amt = Math.round(lf.currentADR * pct / 100);
+    if (!amt || Math.abs(amt) < 0.5 || !pct) {
+      delete adrOverrides[lf.weekId];
+    } else {
+      adrOverrides[lf.weekId] = Math.max(0, Math.round(lf.currentADR + amt));
+    }
+  });
+  renderRecsTable();
+  renderMetricsBar();
+}
+function onChgDollar(scope, destId, weekIdx, hotelId, weekId, raw) {
+  const amt = raw === '' ? 0 : Number(raw);
+  _hotApplyChange(_hotScopeLeaves(scope, destId, Number(weekIdx), hotelId, weekId), isNaN(amt) ? 0 : amt);
+}
+function onChgPct(scope, destId, weekIdx, hotelId, weekId, raw) {
+  const pct = raw === '' ? 0 : Number(raw);
+  _hotApplyChangePct(_hotScopeLeaves(scope, destId, Number(weekIdx), hotelId, weekId), isNaN(pct) ? 0 : pct);
+}
+function clearChg(scope, destId, weekIdx, hotelId, weekId) {
+  _hotApplyChange(_hotScopeLeaves(scope, destId, Number(weekIdx), hotelId, weekId), 0);
+}
+
+// Render the two Chg cells for a given scope row.
+function _hotChgCells(scope, destId, weekIdx, hotelId, weekId) {
+  const { avgChange, avgCurrentADR } = _hotScopeAvg(scope, destId, weekIdx, hotelId, weekId);
+  const hasChg = Math.abs(avgChange) >= 0.5;
+  const chgRounded = Math.round(avgChange);
+  const pctRounded = avgCurrentADR > 0 ? Math.round(avgChange / avgCurrentADR * 1000) / 10 : 0;
+  const posNeg = avgChange > 0 ? 'chg-pos' : avgChange < 0 ? 'chg-neg' : '';
+  const cellCls = hasChg ? ' has-chg' : '';
+  const dollarVal = hasChg ? chgRounded : '';
+  const pctVal    = hasChg ? pctRounded : '';
+  const args = `'${scope}','${destId}','${weekIdx}','${hotelId || ''}','${weekId || ''}'`;
+  const clearBtn = hasChg
+    ? `<button class="chg-clear" title="Clear change" onclick="event.stopPropagation();clearChg(${args})">×</button>`
+    : '';
+  return `
+    <td class="text-right chg-cell${cellCls}">
+      <div class="chg-input-wrap ${posNeg}">
+        <input type="number" class="chg-input" value="${dollarVal}" step="1" placeholder="±$"
+               onclick="event.stopPropagation()"
+               onchange="onChgDollar(${args}, this.value)">
+        ${clearBtn}
+      </div>
+    </td>
+    <td class="text-right chg-cell${cellCls}">
+      <div class="chg-input-wrap ${posNeg}">
+        <input type="number" class="chg-input" value="${pctVal}" step="0.5" placeholder="±%"
+               onclick="event.stopPropagation()"
+               onchange="onChgPct(${args}, this.value)">
+      </div>
+    </td>
+  `;
+}
+
+// ── Inline edit / accept / reject / lock ───────────────────
+function getPendingCount() {
+  return Object.keys(adrOverrides).filter(k => !rejectedRecs.has(k)).length;
+}
+function updatePublishBadge() {
+  const n = getPendingCount();
+  const btn = document.getElementById('publishBtn');
+  if (!btn) return;
+  const existing = btn.querySelector('.publish-count');
+  if (n === 0) { if (existing) existing.remove(); }
+  else if (existing) { existing.textContent = n; }
+  else { btn.insertAdjacentHTML('beforeend', ` <span class="publish-count">${n}</span>`); }
+}
+function updateADR(weekId, value) {
+  const v = Number(value);
+  if (isNaN(v)) return;
+  adrOverrides[weekId] = v;
+  rejectedRecs.delete(weekId);
+  renderRecsTable();
+  renderMetricsBar();
+  updatePublishBadge();
+}
+function acceptRec(weekId) {
+  const hit = getCheckInWeekById(weekId);
+  if (!hit) return;
+  adrOverrides[weekId] = hit.week.recADR;
+  rejectedRecs.delete(weekId);
+  renderRecsTable();
+  renderMetricsBar();
+  updatePublishBadge();
+}
+function rejectRec(weekId) {
+  rejectedRecs.add(weekId);
+  delete adrOverrides[weekId];
+  renderRecsTable();
+  renderMetricsBar();
+  updatePublishBadge();
+}
+// Simple lock flip — retained for any caller that still references toggleLock.
+// No modal: just toggles the week's `locked` flag.
+function toggleLock(weekId) {
+  const hit = getCheckInWeekById(weekId);
+  if (!hit) return;
+  hit.week.locked = !hit.week.locked;
+  renderRecsTable();
+}
+
+// ── Notes modal ────────────────────────────────────────────
+function openNotesModal(weekId) {
+  activeNoteKey = weekId;
+  const hit = getCheckInWeekById(weekId);
+  const sub = hit ? `${hit.destination.name} · ${hit.hotel.name} · ${hit.category.name} · ${hit.week.weekLabel}` : weekId;
+  document.getElementById('notesModalSub').textContent = sub;
+
+  const existing = notes[weekId];
+  document.getElementById('notesText').value = existing ? existing.text : '';
+  document.getElementById('notesExpiry').value = existing ? existing.expires : '';
+  document.getElementById('notesCreatedBy').value = existing ? existing.createdBy : 'Sarah Chen';
+  document.getElementById('notesCreatedAt').textContent = existing
+    ? `Created: ${existing.createdAt}`
+    : 'Created: —';
+  document.getElementById('notesDeleteBtn').style.display = existing ? 'inline-flex' : 'none';
+
+  document.getElementById('notesModalBackdrop').classList.add('open');
+}
+function closeNotesModal() {
+  document.getElementById('notesModalBackdrop').classList.remove('open');
+  activeNoteKey = null;
+}
+function saveNote() {
+  if (!activeNoteKey) return;
+  const text = document.getElementById('notesText').value.trim();
+  if (!text) { closeNotesModal(); return; }
+  const expires = document.getElementById('notesExpiry').value;
+  const createdBy = document.getElementById('notesCreatedBy').value;
+  const existing = notes[activeNoteKey];
+  const now = new Date();
+  const createdAt = existing ? existing.createdAt
+    : `${now.toLocaleDateString('en-CA')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  notes[activeNoteKey] = { text, expires, createdBy, createdAt };
+  closeNotesModal();
+  renderRecsTable();
+}
+function deleteNote() {
+  if (!activeNoteKey) return;
+  delete notes[activeNoteKey];
+  closeNotesModal();
+  renderRecsTable();
+}
+
+// ── Sub-subtab view switching ──────────────────────────────
+function switchView(view) {
+  document.querySelectorAll('.subsubtab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.subsubtab[data-view="${view}"]`).classList.add('active');
+
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  const map = { recs: 'viewRecs', exceptions: 'viewExceptions' };
+  document.getElementById(map[view]).classList.remove('hidden');
+}
+
+// ── Filter / menu stubs ────────────────────────────────────
+function toggleFilter(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const open = el.classList.contains('open');
+  document.querySelectorAll('.ms-wrap.open').forEach(w => w.classList.remove('open'));
+  if (!open) el.classList.add('open');
+}
+function toggleMenu() {
+  document.getElementById('navDropdown').classList.toggle('open');
+}
+// ── Run Evaluation modal ───────────────────────────────────
+function runEvaluation() {
+  // Populate dest + week lists once per open
+  const dl = document.getElementById('reDestList');
+  dl.innerHTML = HOTEL_DATA.map(d =>
+    `<label><input type="checkbox" class="re-dest-cb" value="${d.id}" checked onchange="onReScopeChange()"> ${d.name}</label>`
+  ).join('');
+  const wl = document.getElementById('reWeekList');
+  wl.innerHTML = CHECK_IN_WEEKS.map((w, i) =>
+    `<label><input type="checkbox" class="re-week-cb" value="${i}" checked onchange="onReScopeChange()"> ${w.weekLabel}</label>`
+  ).join('');
+  // Reset toggles to default
+  document.getElementById('reAllDests').checked = true;
+  document.getElementById('reAllWeeks').checked = true;
+  dl.style.display = 'none';
+  wl.style.display = 'none';
+  document.getElementById('reOptRules').checked = true;
+  document.getElementById('reOptComp').checked = true;
+  document.getElementById('reOptFlag').checked = true;
+  document.getElementById('reOptNotify').checked = false;
+
+  onReScopeChange();
+  document.getElementById('reBackdrop').classList.add('open');
+}
+function closeRunEvalModal() {
+  document.getElementById('reBackdrop').classList.remove('open');
+}
+function onReScopeChange() {
+  const allDests = document.getElementById('reAllDests').checked;
+  const allWeeks = document.getElementById('reAllWeeks').checked;
+  document.getElementById('reDestList').style.display = allDests ? 'none' : 'grid';
+  document.getElementById('reWeekList').style.display = allWeeks ? 'none' : 'grid';
+
+  const nDests = allDests
+    ? HOTEL_DATA.length
+    : document.querySelectorAll('.re-dest-cb:checked').length;
+  const nWeeks = allWeeks
+    ? CHECK_IN_WEEKS.length
+    : document.querySelectorAll('.re-week-cb:checked').length;
+  const nDecisions = nDests * nWeeks;
+  document.getElementById('rePreview').innerHTML =
+    `This will evaluate <strong>${nDests}</strong> destinations × <strong>${nWeeks}</strong> weeks = <strong>${nDecisions.toLocaleString()}</strong> pricing decisions`;
+}
+function confirmRunEvaluation() {
+  closeRunEvalModal();
+  const toast = document.getElementById('reToast');
+  const text = document.getElementById('reToastText');
+  toast.classList.remove('success');
+  text.textContent = 'Evaluation running…';
+  toast.classList.add('shown');
+  setTimeout(() => {
+    const allDests = document.getElementById('reAllDests').checked;
+    const allWeeks = document.getElementById('reAllWeeks').checked;
+    const nDests = allDests ? HOTEL_DATA.length : document.querySelectorAll('.re-dest-cb:checked').length;
+    const nWeeks = allWeeks ? CHECK_IN_WEEKS.length : document.querySelectorAll('.re-week-cb:checked').length;
+    const nDecisions = nDests * nWeeks;
+    toast.classList.add('success');
+    text.textContent = `Evaluation complete — ${nDecisions.toLocaleString()} recommendations updated`;
+    setTimeout(() => {
+      toast.classList.remove('shown');
+      toast.classList.remove('success');
+    }, 3000);
+  }, 1500);
+}
+function publishChanges() {}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.ms-wrap')) {
+    document.querySelectorAll('.ms-wrap.open').forEach(w => w.classList.remove('open'));
+  }
+  if (!e.target.closest('#menuBtn') && !e.target.closest('#navDropdown')) {
+    document.getElementById('navDropdown').classList.remove('open');
+  }
+  // Close notes modal when clicking backdrop
+  if (e.target.id === 'notesModalBackdrop') closeNotesModal();
+
+  // Close calendar detail panel when clicking outside both the panel and any
+  // calendar cell (cells handle their own open/update via stopPropagation).
+  if (calPanelOpen && !e.target.closest('#calDetailPanel') && !e.target.closest('.cal-cell')) {
+    closeCalPanel();
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && calPanelOpen) closeCalPanel();
+});
+
+// ── Advanced filter predicates ─────────────────────────────
+function advFiltersActive() {
+  const af = advFilters;
+  if (af.alertCostChange || af.alertLocked || af.alertNotes || af.alertBehind) return true;
+  if (af.classification !== 'all') return true;
+  if (af.recDiffers || af.undersold || af.oversold) return true;
+  if (af.stars.size > 0) return true;
+  if (af.destinations.size > 0) return true;
+  if (af.forecastOcc.min !== 0 || af.forecastOcc.max !== 100) return true;
+  if (af.currentOcc.min  !== 0 || af.currentOcc.max  !== 100) return true;
+  if (af.adr.min !== 0 || af.adr.max !== 500) return true;
+  if (af.marginPct.min !== 0 || af.marginPct.max !== 60) return true;
+  if (af.soldPct.min !== 0 || af.soldPct.max !== 100) return true;
+  return false;
+}
+function countActiveFilters() {
+  const af = advFilters;
+  let n = 0;
+  if (af.alertCostChange) n++;
+  if (af.alertLocked) n++;
+  if (af.alertNotes) n++;
+  if (af.alertBehind) n++;
+  if (af.classification !== 'all') n++;
+  if (af.recDiffers) n++;
+  if (af.undersold) n++;
+  if (af.oversold) n++;
+  if (af.stars.size > 0) n++;
+  if (af.destinations.size > 0) n++;
+  if (af.forecastOcc.min !== 0 || af.forecastOcc.max !== 100) n++;
+  if (af.currentOcc.min !== 0 || af.currentOcc.max !== 100) n++;
+  if (af.adr.min !== 0 || af.adr.max !== 500) n++;
+  if (af.marginPct.min !== 0 || af.marginPct.max !== 60) n++;
+  if (af.soldPct.min !== 0 || af.soldPct.max !== 100) n++;
+  return n;
+}
+function passesHotelLevel(hotel, dest) {
+  const af = advFilters;
+  if (af.classification === 'exclusive' && hotel.classification !== 'Exclusive') return false;
+  if (af.classification === 'commodity' && hotel.classification !== 'Commodity') return false;
+  if (af.stars.size > 0 && !af.stars.has(hotel.stars)) return false;
+  if (af.destinations.size > 0 && !af.destinations.has(dest.id)) return false;
+  if (af.alertCostChange && !hotel.categories.some(c => c.checkInWeeks.some(w => w.hasCostChange))) return false;
+  if (af.alertLocked     && !hotel.categories.some(c => c.checkInWeeks.some(w => w.locked))) return false;
+  if (af.alertNotes      && !hotel.categories.some(c => c.checkInWeeks.some(w => !!notes[w.id]))) return false;
+  if (af.alertBehind     && !(hotel.currentOcc < hotel.forecastOcc - 0.08)) return false;
+  return true;
+}
+function passesLeaf(week) {
+  if (!week) return false;
+  const af = advFilters;
+  const eff = getEffectiveADR(week);
+  const occF = week.forecastOcc * 100;
+  const occC = week.currentOcc * 100;
+  const soldPct = week.allocation ? (week.sold / week.allocation) * 100 : 0;
+  const margin = eff - week.supplierCost;
+  const marginPct = eff ? (margin / eff) * 100 : 0;
+  if (occF < af.forecastOcc.min || occF > af.forecastOcc.max) return false;
+  if (occC < af.currentOcc.min  || occC > af.currentOcc.max)  return false;
+  if (eff  < af.adr.min        || eff  > af.adr.max)         return false;
+  if (marginPct < af.marginPct.min || marginPct > af.marginPct.max) return false;
+  if (soldPct   < af.soldPct.min   || soldPct   > af.soldPct.max)   return false;
+  if (af.recDiffers && week.recADR === eff) return false;
+  if (af.undersold && soldPct >= 50) return false;
+  if (af.oversold  && soldPct <= 90) return false;
+  return true;
+}
+
+// ── Drawer open/close/clear ───────────────────────────────
+function openAdvDrawer() {
+  document.getElementById('advDrawer').classList.add('open');
+  document.getElementById('advBackdrop').classList.add('open');
+  document.getElementById('advDrawer').setAttribute('aria-hidden', 'false');
+}
+function closeAdvDrawer() {
+  document.getElementById('advDrawer').classList.remove('open');
+  document.getElementById('advBackdrop').classList.remove('open');
+  document.getElementById('advDrawer').setAttribute('aria-hidden', 'true');
+}
+function clearAdvFilters() {
+  // Reset state
+  advFilters.alertCostChange = false;
+  advFilters.alertLocked     = false;
+  advFilters.alertNotes      = false;
+  advFilters.alertBehind     = false;
+  advFilters.classification  = 'all';
+  advFilters.recDiffers      = false;
+  advFilters.undersold       = false;
+  advFilters.oversold        = false;
+  advFilters.stars.clear();
+  advFilters.destinations.clear();
+  Object.keys(advRangeCtl).forEach(k => advRangeCtl[k].reset());
+
+  // Reset DOM controls
+  document.querySelectorAll('#advDrawer input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+  const allRadio = document.querySelector('#advDrawer input[name="afClass"][value="all"]');
+  if (allRadio) allRadio.checked = true;
+
+  syncAdvBadge();
+  renderRecsTable();
+}
+function syncAdvBadge() {
+  const btn = document.getElementById('advTriggerBtn');
+  const badge = document.getElementById('advTriggerBadge');
+  const n = countActiveFilters();
+  badge.textContent = n;
+  if (n > 0) btn.classList.add('has-active');
+  else       btn.classList.remove('has-active');
+}
+
+function buildAdvDrawer() {
+  // Wire alert / boolean / radio checkboxes
+  document.querySelectorAll('#advDrawer input[type="checkbox"][data-af]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      advFilters[cb.dataset.af] = cb.checked;
+      syncAdvBadge();
+      renderRecsTable();
+    });
+  });
+  document.querySelectorAll('#advDrawer input[name="afClass"]').forEach(r => {
+    r.addEventListener('change', () => {
+      if (r.checked) {
+        advFilters.classification = r.value;
+        syncAdvBadge();
+        renderRecsTable();
+      }
+    });
+  });
+  // Star checkboxes
+  document.querySelectorAll('#advDrawer input[type="checkbox"][data-af-star]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const v = +cb.dataset.afStar;
+      if (cb.checked) advFilters.stars.add(v); else advFilters.stars.delete(v);
+      syncAdvBadge();
+      renderRecsTable();
+    });
+  });
+  // Destinations list
+  const destList = document.getElementById('advDestList');
+  destList.innerHTML = HOTEL_DATA.map(d =>
+    `<label class="adv-cb"><input type="checkbox" data-af-dest="${d.id}"> ${d.name}</label>`
+  ).join('');
+  destList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const v = cb.dataset.afDest;
+      if (cb.checked) advFilters.destinations.add(v); else advFilters.destinations.delete(v);
+      syncAdvBadge();
+      renderRecsTable();
+    });
+  });
+  // Range sliders
+  const ranges = [
+    { key: 'forecastOcc', fmt: v => v },
+    { key: 'currentOcc',  fmt: v => v },
+    { key: 'adr',         fmt: v => v },
+    { key: 'marginPct',   fmt: v => v },
+    { key: 'soldPct',     fmt: v => v },
+  ];
+  ranges.forEach(r => {
+    const wrap = document.querySelector(`#advDrawer .dr-wrap[data-af="${r.key}"]`);
+    if (!wrap) return;
+    advRangeCtl[r.key] = Filters.initDualRange(wrap, {
+      format: r.fmt,
+      onChange: (vals) => {
+        advFilters[r.key] = { min: vals.min, max: vals.max };
+        syncAdvBadge();
+        renderRecsTable();
+      },
+    });
+  });
+}
+
+// ── Calendar view ─────────────────────────────────────────
+let viewMode = 'list'; // 'list' | 'calendar'
+const calExpandedDests  = new Set(); // dest.id
+const calExpandedHotels = new Set(); // `${dest.id}::${hotel.id}`
+
+function setViewMode(mode) {
+  viewMode = mode;
+  document.querySelectorAll('.vt-btn').forEach(b => {
+    b.classList.toggle('vt-active', b.dataset.mode === mode);
+  });
+  document.getElementById('listPane').classList.toggle('hidden', mode !== 'list');
+  document.getElementById('calPane').classList.toggle('hidden', mode !== 'calendar');
+  if (mode === 'calendar') renderCalendar();
+}
+function toggleCalDest(id) {
+  if (calExpandedDests.has(id)) calExpandedDests.delete(id);
+  else calExpandedDests.add(id);
+  renderCalendar();
+}
+function toggleCalHotel(key) {
+  if (calExpandedHotels.has(key)) calExpandedHotels.delete(key);
+  else calExpandedHotels.add(key);
+  renderCalendar();
+}
+
+function calOccClassBase(pct) {
+  if (pct >= 75) return 'cal-hi';
+  if (pct >= 60) return 'cal-mh';
+  if (pct >= 45) return 'cal-mid';
+  if (pct >= 30) return 'cal-ml';
+  return 'cal-lo';
+}
+function calOccClass(occ) {
+  if (occ == null || isNaN(occ) || occ === 0) return 'cal-none';
+  return calOccClassBase(occ * 100);
+}
+
+function renderCalendarHead() {
+  const thead = document.getElementById('calHead');
+  const weekCells = CHECK_IN_WEEKS.map(wk => {
+    const mmdd = (wk.weekStart || '').slice(0, 5);
+    return `<th class="cal-wk-hd">
+      <div class="cal-wk-lbl">${wk.weekLabel}</div>
+      <div class="cal-wk-sub">${mmdd}</div>
+    </th>`;
+  }).join('');
+  const arrow = topSortDir === 'asc' ? '↑' : '↓';
+  thead.innerHTML = `<tr><th class="cal-corner" style="cursor:pointer;" onclick="toggleTopSort()" title="Sort destinations by forecast occ">Destination / Hotel / Room <span class="sort-ind">${arrow}</span></th>${weekCells}</tr>`;
+}
+
+function _calFocusHelpers() {
+  const anyExpanded = calExpandedDests.size > 0 || calExpandedHotels.size > 0;
+  const destsWithHotelExpansions = new Set();
+  calExpandedHotels.forEach(k => destsWithHotelExpansions.add(k.split('::')[0]));
+  const isDestFocused = (destId) => {
+    if (!anyExpanded) return true;
+    return calExpandedDests.has(destId);
+  };
+  const isHotelFocused = (destId, hotelId) => {
+    if (!anyExpanded) return true;
+    if (!calExpandedDests.has(destId)) return false;
+    if (!destsWithHotelExpansions.has(destId)) return true;
+    return calExpandedHotels.has(`${destId}::${hotelId}`);
+  };
+  return { anyExpanded, isDestFocused, isHotelFocused };
+}
+function _calCls(focused, anyExpanded) {
+  if (!anyExpanded) return '';
+  return focused ? ' row-focused' : ' row-dimmed';
+}
+
+function renderCalendar() {
+  renderCalendarHead();
+  const tbody = document.getElementById('calBody');
+  const rows = [];
+  const { anyExpanded, isDestFocused, isHotelFocused } = _calFocusHelpers();
+
+  const mul = topSortDir === 'asc' ? 1 : -1;
+  const sortedDests = HOTEL_DATA.slice().sort((a, b) => {
+    return ((a.forecastOcc || 0) - (b.forecastOcc || 0)) * mul;
+  });
+
+  sortedDests.forEach(dest => {
+    // Apply header filter (dest-level)
+    if (headerFiltersActive()) {
+      // Use a representative week to skip non-matching dests by brand/region/dest/rm
+      if (!passesHeaderFilters(dest, CHECK_IN_WEEKS[0])) return;
+    }
+    const destOpen = calExpandedDests.has(dest.id);
+
+    const destCells = CHECK_IN_WEEKS.map((wk, weekIdx) => {
+      // Dates-range filter applies per week column
+      const wkActive = !headerFiltersActive() || passesHeaderFilters(dest, wk);
+      if (!wkActive) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
+      const allCats = dest.hotels.flatMap(h => h.categories);
+      const agg = aggCatsAtWeek(allCats, weekIdx);
+      const cls = calOccClass(agg.currentOcc);
+      return `<td class="cal-cell ${cls} clickable" onclick="event.stopPropagation();openCalPanel('dest','${dest.id}','','',${weekIdx})">
+        <div class="cal-pri">${fmtPct(agg.currentOcc)}</div>
+        <div class="cal-sec">${fmt$(agg.currentADR)}</div>
+      </td>`;
+    }).join('');
+
+    const destCls = _calCls(isDestFocused(dest.id), anyExpanded);
+    rows.push(`<tr class="cal-dest${destCls}">
+      <td class="cal-name" onclick="toggleCalDest('${dest.id}')" style="cursor:pointer;">
+        <button class="expand-btn ${destOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleCalDest('${dest.id}')">${chevron(destOpen)}</button>
+        ${dest.name}
+        <button type="button" class="ask-row-btn" style="margin-left:8px;" onclick="event.stopPropagation();openRowCopilot('${dest.id}', 0)" title="Ask RM Copilot">
+          <span class="spk">✦</span> Ask
+        </button>
+      </td>
+      ${destCells}
+    </tr>`);
+
+    if (!destOpen) return;
+
+    dest.hotels.forEach(hotel => {
+      const hotelKey = `${dest.id}::${hotel.id}`;
+      const hotelOpen = calExpandedHotels.has(hotelKey);
+
+      const hotelCells = CHECK_IN_WEEKS.map((wk, weekIdx) => {
+        const wkActive = !headerFiltersActive() || passesHeaderFilters(dest, wk);
+        if (!wkActive) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
+        const agg = aggCatsAtWeek(hotel.categories, weekIdx);
+        const cls = calOccClass(agg.currentOcc);
+        return `<td class="cal-cell ${cls} clickable" onclick="event.stopPropagation();openCalPanel('hotel','${dest.id}','${hotel.id}','',${weekIdx})">
+          <div class="cal-pri">${fmtPct(agg.currentOcc)}</div>
+          <div class="cal-sec">${fmt$(agg.currentADR)}<span class="cal-rec">${fmt$(agg.recADR)}</span></div>
+        </td>`;
+      }).join('');
+
+      const hotelCls = _calCls(isHotelFocused(dest.id, hotel.id), anyExpanded);
+      rows.push(`<tr class="cal-hotel${hotelCls}">
+        <td class="cal-name" onclick="toggleCalHotel('${hotelKey}')" style="cursor:pointer;">
+          <button class="expand-btn ${hotelOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleCalHotel('${hotelKey}')">${chevron(hotelOpen)}</button>
+          ${hotel.name}
+          <span class="cls-inline">${classBadge(hotel.classification)}${starsMarkup(hotel.stars)}</span>
+        </td>
+        ${hotelCells}
+      </tr>`);
+
+      if (!hotelOpen) return;
+
+      hotel.categories.forEach(cat => {
+        const catCells = cat.checkInWeeks.map((week, weekIdx) => {
+          const wkMeta = CHECK_IN_WEEKS[weekIdx];
+          const wkActive = !headerFiltersActive() || passesHeaderFilters(dest, wkMeta);
+          if (!wkActive) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
+          const eff = getEffectiveADR(week);
+          const delta = week.recADR - eff;
+          const cls = calOccClass(week.currentOcc);
+          let flags = '';
+          if (notes[week.id]) flags += '📝';
+          const deltaStr = delta ? ((delta > 0 ? '+' : '') + fmt$(delta)) : '';
+          return `<td class="cal-cell ${cls} clickable" onclick="event.stopPropagation();openCalPanel('cat','${dest.id}','${hotel.id}','${cat.id}',${weekIdx})">
+            ${flags ? `<div class="cal-flags">${flags}</div>` : ''}
+            <div class="cal-pri">${fmtPct(week.currentOcc)}</div>
+            <div class="cal-sec">${fmt$(eff)}<span class="cal-rec">${fmt$(week.recADR)}</span></div>
+            ${deltaStr ? `<div class="cal-tri">${deltaStr}</div>` : ''}
+          </td>`;
+        }).join('');
+
+        const catCls = _calCls(isHotelFocused(dest.id, hotel.id), anyExpanded);
+        rows.push(`<tr class="cal-cat${catCls}">
+          <td class="cal-name">${cat.name}</td>
+          ${catCells}
+        </tr>`);
+      });
+    });
+  });
+
+  tbody.innerHTML = rows.join('');
+}
+
+// ── Calendar click-to-detail panel ────────────────────────
+let calPanelOpen = false;
+let calPanelCtx  = null; // { type, destId, hotelId, catId, weekIdx }
+
+function openCalPanel(type, destId, hotelId, catId, weekIdx) {
+  calPanelOpen = true;
+  calPanelCtx = { type, destId, hotelId, catId, weekIdx };
+  renderCalPanel();
+  document.getElementById('calDetailPanel').classList.add('open');
+  document.getElementById('calDetailPanel').setAttribute('aria-hidden', 'false');
+}
+function closeCalPanel() {
+  calPanelOpen = false;
+  calPanelCtx = null;
+  document.getElementById('calDetailPanel').classList.remove('open');
+  document.getElementById('calDetailPanel').setAttribute('aria-hidden', 'true');
+}
+
+function occBar(label, occ) {
+  const pct = Math.max(0, Math.min(100, Math.round((occ || 0) * 100)));
+  let cls = 'cdp-mid';
+  if (pct >= 75) cls = 'cdp-hi';
+  else if (pct < 50) cls = 'cdp-lo';
+  return `<div class="cdp-occ-bar">
+    <div class="cdp-occ-label"><span>${label}</span><span>${pct}%</span></div>
+    <div class="cdp-occ-track"><div class="cdp-occ-fill ${cls}" style="width:${pct}%;"></div></div>
+  </div>`;
+}
+
+function sparklineData(week) {
+  // Synthesized 7-day recent bookings ending at today's rate-of-sale pace.
+  const id = (week && week.id) || 'x';
+  const seed = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const base = Math.max(1, Math.round((week && week.sold ? week.sold : 20) / 8));
+  const data = [];
+  for (let i = 0; i < 7; i++) {
+    const noise = Math.sin((seed + i * 3) * 0.55) * 1.8 + Math.cos((seed + i * 2) * 0.31);
+    data.push(Math.max(0, Math.round(base + noise)));
+  }
+  return data;
+}
+function drawSparkline(canvasId, data) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width || 320;
+  const h = rect.height || 40;
+  canvas.width = w * 2;
+  canvas.height = h * 2;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.scale(2, 2);
+  ctx.clearRect(0, 0, w, h);
+  const pad = 4;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  ctx.strokeStyle = '#e91e8c';
+  ctx.lineWidth = 1.75;
+  ctx.beginPath();
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - pad * 2);
+    const y = (h - pad) - ((v - min) / range) * (h - pad * 2);
+    return [x, y];
+  });
+  pts.forEach(([x, y], i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+  ctx.stroke();
+  // Fill under line
+  ctx.lineTo(pts[pts.length - 1][0], h - pad);
+  ctx.lineTo(pts[0][0], h - pad);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(233,30,140,0.10)';
+  ctx.fill();
+  // Dots
+  ctx.fillStyle = '#e91e8c';
+  pts.forEach(([x, y]) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function renderCalPanel() {
+  if (!calPanelCtx) return;
+  const { type, destId, hotelId, catId, weekIdx } = calPanelCtx;
+  const dest = HOTEL_DATA.find(d => d.id === destId);
+  if (!dest) return;
+  const wkMeta = CHECK_IN_WEEKS[weekIdx] || {};
+  const weekLabel = `${wkMeta.weekLabel || ''} — ${wkMeta.weekStart || ''}`;
+
+  const content = document.getElementById('cdpContent');
+
+  if (type === 'cat') {
+    const hotel = dest.hotels.find(h => h.id === hotelId);
+    const cat   = hotel ? hotel.categories.find(c => c.id === catId) : null;
+    const week  = cat ? cat.checkInWeeks[weekIdx] : null;
+    if (!hotel || !cat || !week) { content.innerHTML = ''; return; }
+    const eff = getEffectiveADR(week);
+    const delta = week.recADR - eff;
+    const curMargin = eff - week.supplierCost;
+    const recMargin = week.recADR - week.supplierCost;
+    const marginPct = eff ? (curMargin / eff) : 0;
+    const marginD = recMargin - curMargin;
+    const targetOcc = 0.78; // demo target
+    const ros = Math.max(0, Math.round((week.sold / 10) * 10) / 10);
+    const rosTarget = Math.max(1, Math.round(((week.allocation * targetOcc - week.sold) / 7) * 10) / 10);
+    const rosAhead  = ros >= rosTarget;
+
+    const alerts = [];
+    if (week.hasCostChange) alerts.push('<div class="cdp-alert">⚠️ Supplier cost changed recently on this week.</div>');
+    if (week.locked)        alerts.push('<div class="cdp-alert cdp-alert-locked">🔒 Price locked · Sarah Chen</div>');
+
+    const sold = `${week.sold} / ${week.allocation} rooms`;
+    const soldPct = week.allocation ? week.sold / week.allocation : 0;
+
+    content.innerHTML = `
+      <div class="cdp-header">
+        <div class="cdp-title">${hotel.name}</div>
+        <div class="cdp-sub">${cat.name} · ${weekLabel}</div>
+        <div class="cdp-meta">
+          ${classBadge(hotel.classification)}
+          ${starsMarkup(hotel.stars)}
+        </div>
+      </div>
+      <div class="cdp-confirmation" id="cdpConfirm">Recommendation accepted.</div>
+
+      <div class="cdp-section">
+        <div class="cdp-section-title">Performance</div>
+        ${occBar('Current occ',  week.currentOcc)}
+        ${occBar('Forecast occ', week.forecastOcc)}
+        ${occBar('Target occ',   targetOcc)}
+        <div class="cdp-row"><span class="cdp-label">Sold / Allocation</span><span class="cdp-val">${sold}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Sold %</span><span class="cdp-val">${soldPctText(soldPct)}</span></div>
+      </div>
+
+      <div class="cdp-section">
+        <div class="cdp-section-title">Pricing</div>
+        <div class="cdp-row"><span class="cdp-label">Supplier cost / night</span><span class="cdp-val">${fmt$(week.supplierCost)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Current ADR</span><span class="cdp-val cdp-big">${fmt$(eff)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Recommended ADR</span><span class="cdp-val cdp-big teal">${fmt$(week.recADR)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Delta</span><span class="cdp-val">${deltaCell(delta)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Current margin</span><span class="cdp-val">${fmt$(curMargin)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Rec margin</span><span class="cdp-val teal">${fmt$(recMargin)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Margin Δ</span><span class="cdp-val">${deltaCell(marginD)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Margin %</span><span class="cdp-val">${marginPctBadge(marginPct)}</span></div>
+      </div>
+
+      <div class="cdp-section">
+        <div class="cdp-section-title">Booking Trend</div>
+        <canvas class="cdp-sparkline" id="cdpSpark"></canvas>
+        <div class="cdp-row"><span class="cdp-label">Rate of sale</span><span class="cdp-val">${ros.toFixed(1)} rooms/day</span></div>
+        <div class="cdp-row"><span class="cdp-label">Pace vs target</span><span class="cdp-val" style="color:${rosAhead ? '#047857' : 'var(--danger)'};">${rosAhead ? '▲ Ahead' : '▼ Behind'}</span></div>
+      </div>
+
+      ${alerts.length ? `<div class="cdp-section"><div class="cdp-section-title">Alerts</div>${alerts.join('')}</div>` : ''}
+
+      <div class="cdp-actions">
+        <button type="button" class="cdp-btn primary" onclick="cdpAcceptRec('${week.id}')">Accept Recommendation</button>
+        <button type="button" class="cdp-btn ${week.locked ? 'primary locked' : ''}" onclick="cdpToggleLock('${week.id}')">${week.locked ? 'Unlock Price' : 'Lock Price'}</button>
+        <button type="button" class="cdp-btn" onclick="openNotesModal('${week.id}')">Add / Edit Note</button>
+      </div>
+    `;
+    requestAnimationFrame(() => drawSparkline('cdpSpark', sparklineData(week)));
+    return;
+  }
+
+  if (type === 'hotel') {
+    const hotel = dest.hotels.find(h => h.id === hotelId);
+    if (!hotel) { content.innerHTML = ''; return; }
+    const hAgg = aggCatsAtWeek(hotel.categories, weekIdx);
+    const hMargin = aggMargin(hotel.categories.map(c => c.checkInWeeks[weekIdx]).filter(Boolean));
+
+    const catChips = hotel.categories.map(c => {
+      const w = c.checkInWeeks[weekIdx];
+      const pct = Math.round((w.currentOcc || 0) * 100);
+      return `<div class="cdp-chip-row">
+        <span class="cdp-chip-name">${c.name}</span>
+        <span>${occPill(w.currentOcc)}</span>
+      </div>`;
+    }).join('');
+
+    content.innerHTML = `
+      <div class="cdp-header">
+        <div class="cdp-title">${hotel.name}</div>
+        <div class="cdp-sub">${dest.name} · ${weekLabel}</div>
+        <div class="cdp-meta">${classBadge(hotel.classification)} ${starsMarkup(hotel.stars)}</div>
+      </div>
+
+      <div class="cdp-section">
+        <div class="cdp-section-title">Performance (hotel avg)</div>
+        ${occBar('Avg current occ',  hAgg.currentOcc)}
+        ${occBar('Avg forecast occ', hAgg.forecastOcc)}
+        <div class="cdp-row"><span class="cdp-label">Sold / Allocation</span><span class="cdp-val">${hAgg.sold} / ${hAgg.alloc}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Sold %</span><span class="cdp-val">${soldPctText(hAgg.soldPct)}</span></div>
+      </div>
+
+      <div class="cdp-section">
+        <div class="cdp-section-title">Pricing (hotel avg)</div>
+        <div class="cdp-row"><span class="cdp-label">Avg current ADR</span><span class="cdp-val cdp-big">${fmt$(hAgg.currentADR)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Avg rec ADR</span><span class="cdp-val cdp-big teal">${fmt$(hAgg.recADR)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Delta</span><span class="cdp-val">${deltaCell(hAgg.deltaADR)}</span></div>
+        ${hMargin ? `<div class="cdp-row"><span class="cdp-label">Avg margin %</span><span class="cdp-val">${marginPctBadge(hMargin.marginPct)}</span></div>` : ''}
+      </div>
+
+      <div class="cdp-section">
+        <div class="cdp-section-title">Room Categories</div>
+        <div class="cdp-chip-list">${catChips}</div>
+        <a class="cdp-link" href="#" onclick="event.preventDefault();cdpExpandHotel('${dest.id}','${hotel.id}')">View all room types in list →</a>
+      </div>
+    `;
+    return;
+  }
+
+  // type === 'dest'
+  const allCats = dest.hotels.flatMap(h => h.categories);
+  const dAgg = aggCatsAtWeek(allCats, weekIdx);
+  const hotelChips = dest.hotels.map(h => {
+    const a = aggCatsAtWeek(h.categories, weekIdx);
+    return `<div class="cdp-chip-row">
+      <span class="cdp-chip-name">${h.name}</span>
+      <span>${occPill(a.currentOcc)}</span>
+    </div>`;
+  }).join('');
+  content.innerHTML = `
+    <div class="cdp-header">
+      <div class="cdp-title">${dest.name}</div>
+      <div class="cdp-sub">${weekLabel}</div>
+      <div class="cdp-meta">${regionBadge(dest.region)}</div>
+    </div>
+
+    <div class="cdp-section">
+      <div class="cdp-section-title">Performance (destination avg)</div>
+      ${occBar('Avg current occ',  dAgg.currentOcc)}
+      ${occBar('Avg forecast occ', dAgg.forecastOcc)}
+      <div class="cdp-row"><span class="cdp-label">Sold / Allocation</span><span class="cdp-val">${dAgg.sold} / ${dAgg.alloc}</span></div>
+    </div>
+
+    <div class="cdp-section">
+      <div class="cdp-section-title">Pricing (destination avg)</div>
+      <div class="cdp-row"><span class="cdp-label">Avg current ADR</span><span class="cdp-val cdp-big">${fmt$(dAgg.currentADR)}</span></div>
+      <div class="cdp-row"><span class="cdp-label">Avg rec ADR</span><span class="cdp-val cdp-big teal">${fmt$(dAgg.recADR)}</span></div>
+      <div class="cdp-row"><span class="cdp-label">Delta</span><span class="cdp-val">${deltaCell(dAgg.deltaADR)}</span></div>
+    </div>
+
+    <div class="cdp-section">
+      <div class="cdp-section-title">Hotels</div>
+      <div class="cdp-chip-list">${hotelChips}</div>
+      <a class="cdp-link" href="#" onclick="event.preventDefault();cdpExpandDest('${dest.id}')">View all hotels in list →</a>
+    </div>
+  `;
+}
+
+function cdpAcceptRec(weekId) {
+  acceptRec(weekId);
+  const c = document.getElementById('cdpConfirm');
+  if (c) {
+    c.classList.add('shown');
+    setTimeout(() => c.classList.remove('shown'), 1800);
+  }
+  renderCalPanel();
+}
+function cdpToggleLock(weekId) {
+  toggleLock(weekId);
+  renderCalPanel();
+}
+function cdpExpandHotel(destId, hotelId) {
+  calExpandedDests.add(destId);
+  calExpandedHotels.add(`${destId}::${hotelId}`);
+  renderCalendar();
+  closeCalPanel();
+}
+function cdpExpandDest(destId) {
+  calExpandedDests.add(destId);
+  renderCalendar();
+  closeCalPanel();
+}
+
+// ── Init ───────────────────────────────────────────────────
+Filters.populateStandard({
+  onAnyChange: (active) => {
+    headerFilters = active;
+    renderRecsTable();
+  },
+});
+buildAdvDrawer();
+syncAdvBadge();
+renderMetricsBar();
+renderRecsHead();
+renderRecsTable();
+renderExceptionsTable();
+updatePublishBadge();
+
+// ── Row-level RM Copilot ───────────────────────────────────
+let _rowCopilotCtx = null;
+let _rowCopilotCtxData = null;
+
+function _hotelRowContext(destId, weekIdx) {
+  const dest = HOTEL_DATA.find(d => d.id === destId);
+  if (!dest) return null;
+  const wkMeta = CHECK_IN_WEEKS[weekIdx];
+  if (!wkMeta) return null;
+
+  const allCats = dest.hotels.flatMap(h => h.categories);
+  const dwAgg = aggCatsAtWeek(allCats, weekIdx);
+  const dwWeeks = allCats.map(c => c.checkInWeeks[weekIdx]).filter(Boolean);
+  const dwMargin = aggMargin(dwWeeks);
+
+  const costChangeCount = dwWeeks.filter(w => w.hasCostChange).length;
+  const undersoldCount  = dwWeeks.filter(w => w.allocation && (w.sold / w.allocation) < 0.5).length;
+
+  const wkLbl    = 'Wk ' + (wkMeta.weekStart || '').slice(0, 5);
+  const occPct   = Math.round((dwAgg.forecastOcc || 0) * 100);
+  const curOccPct = Math.round((dwAgg.currentOcc || 0) * 100);
+  const marginPct = dwMargin && dwMargin.marginPct != null ? Math.round(dwMargin.marginPct * 100) : null;
+
+  return {
+    kind: 'hotel',
+    dest, weekIdx, wkMeta, wkLbl,
+    dwAgg, dwWeeks, dwMargin,
+    costChangeCount, undersoldCount,
+    occPct, curOccPct, marginPct,
+  };
+}
+
+function openRowCopilot(destId, weekIdx) {
+  const ctx = _hotelRowContext(destId, weekIdx);
+  if (!ctx) return;
+  _rowCopilotCtx = { destId, weekIdx };
+  _rowCopilotCtxData = ctx;
+
+  const chat = document.getElementById('rowCopilotChat');
+  chat.innerHTML = '';
+
+  const head = document.getElementById('rowCopilotHead');
+  head.innerHTML = `
+    <div class="cprp-dest">${ctx.dest.name}</div>
+    <div class="cprp-wk">${ctx.wkLbl}</div>
+    <div class="cprp-metrics">
+      Occ: ${ctx.occPct}%
+      <span class="cprp-sep">·</span>Avg ADR: ${fmt$(ctx.dwAgg.currentADR)}
+      <span class="cprp-sep">·</span>Margin: ${ctx.marginPct != null ? ctx.marginPct + '%' : '—'}
+    </div>
+    <div class="cprp-label-bar">
+      <span class="cprp-label">✦ RM Copilot</span>
+    </div>
+  `;
+
+  renderRowCopilotSuggest();
+
+  const panel = document.getElementById('rowCopilotPanel');
+  panel.style.display = '';
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  document.getElementById('gcpPanel').classList.add('row-open');
+
+  rowCopilotShowTyping();
+  setTimeout(() => {
+    rowCopilotHideTyping();
+    rowCopilotPush('asst', _hotelContextMessage(ctx));
+  }, 400);
+}
+
+function closeRowCopilot() {
+  const panel = document.getElementById('rowCopilotPanel');
+  panel.classList.remove('open');
+  panel.style.display = 'none';
+  panel.setAttribute('aria-hidden', 'true');
+  _rowCopilotCtx = null;
+  _rowCopilotCtxData = null;
+  document.getElementById('gcpPanel').classList.remove('row-open');
+}
+
+// Wire both copilot close buttons via addEventListener after the DOM
+// exists (scripts run at end of body so elements are available here).
+document.getElementById('rowCopilotCloseBtn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  closeRowCopilot();
+});
+document.getElementById('gcpCloseBtn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  closeGeneralCopilot();
+});
+document.getElementById('cdpCloseBtn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  closeCalPanel();
+});
+
+// Global Escape: close any open copilot panel.
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  const rp = document.getElementById('rowCopilotPanel');
+  if (rp && rp.classList.contains('open')) closeRowCopilot();
+  const gp = document.getElementById('gcpPanel');
+  if (gp && gp.classList.contains('open')) closeGeneralCopilot();
+});
+
+function _hotelContextMessage(ctx) {
+  const deltaStr = ctx.dwAgg.deltaADR > 0 ? `+$${ctx.dwAgg.deltaADR}` : ctx.dwAgg.deltaADR < 0 ? `-$${Math.abs(ctx.dwAgg.deltaADR)}` : '$0';
+  const marginStr = ctx.marginPct != null ? `${ctx.marginPct}%` : '—';
+  return `Here's the current position for ${ctx.dest.name} check-in ${ctx.wkLbl}:\n`
+    + `- Avg Occupancy: ${ctx.occPct}% forecast vs ${ctx.curOccPct}% current\n`
+    + `- Avg ADR: ${fmt$(ctx.dwAgg.currentADR)} | Rec ADR: ${fmt$(ctx.dwAgg.recADR)} | Delta: ${deltaStr}\n`
+    + `- Avg Margin: ${marginStr}\n`
+    + `- ${ctx.costChangeCount} hotels with cost change alerts\n`
+    + `- ${ctx.undersoldCount} room categories undersold (<50%)\n`
+    + `What would you like to explore?`;
+}
+
+function renderRowCopilotSuggest() {
+  const ctx = _rowCopilotCtxData;
+  if (!ctx) return;
+  const qs = [];
+  if (ctx.occPct < 60)             qs.push('Why is occupancy low?');
+  if (ctx.costChangeCount > 0)     qs.push("What's the cost change impact?");
+  if (ctx.dwAgg.deltaADR > 0)      qs.push('Why is ADR being pushed up?');
+  qs.push('Which room types need attention?');
+  qs.push('Show margin breakdown');
+  const uniq = Array.from(new Set(qs)).slice(0, 4);
+  const el = document.getElementById('rowCopilotSuggest');
+  el.innerHTML = uniq.map(q =>
+    `<button type="button" class="cp-pill" onclick="rowCopilotAskSuggest('${q.replace(/'/g, "\\'")}')">${q}</button>`
+  ).join('');
+}
+
+function rowCopilotPush(role, text) {
+  const chat = document.getElementById('rowCopilotChat');
+  const div = document.createElement('div');
+  div.className = 'cp-msg ' + (role === 'asst' ? 'cp-asst' : 'cp-user');
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+function rowCopilotShowTyping() {
+  const chat = document.getElementById('rowCopilotChat');
+  const div = document.createElement('div');
+  div.className = 'cp-typing';
+  div.id = 'rowCpTyping';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+function rowCopilotHideTyping() {
+  const t = document.getElementById('rowCpTyping');
+  if (t) t.remove();
+}
+function rowCopilotSend() {
+  const input = document.getElementById('rowCopilotInput');
+  const q = (input.value || '').trim();
+  if (!q) return;
+  input.value = '';
+  rowCopilotPush('user', q);
+  rowCopilotShowTyping();
+  setTimeout(() => {
+    rowCopilotHideTyping();
+    rowCopilotPush('asst', _hotelAnswer(q));
+  }, 900);
+}
+function rowCopilotAskSuggest(q) {
+  const input = document.getElementById('rowCopilotInput');
+  input.value = q;
+  rowCopilotSend();
+}
+
+function _hotelAnswer(q) {
+  const ctx = _rowCopilotCtxData;
+  if (!ctx) return "Open a row to scope the copilot to that destination and week.";
+  const ql = q.toLowerCase();
+
+  // why low / occupancy low
+  if ((/why/.test(ql) && /(low|behind)/.test(ql)) || /occupancy low|low occ/.test(ql)) {
+    const perHotel = ctx.dest.hotels.map(h => {
+      const w = h.categories.flatMap(c => c.checkInWeeks[ctx.weekIdx] ? [c.checkInWeeks[ctx.weekIdx]] : []);
+      const alloc = w.reduce((s, x) => s + x.allocation, 0);
+      const sold  = w.reduce((s, x) => s + x.sold, 0);
+      const occ   = alloc ? sold / alloc : 0;
+      const unsold = Math.max(0, alloc - sold);
+      return { hotel: h, occ, unsold };
+    }).sort((a, b) => a.occ - b.occ).slice(0, 2);
+    const lines = perHotel.map(x => `• ${x.hotel.name}: ${Math.round(x.occ * 100)}% occ (${x.unsold} rooms unsold)`).join('\n');
+    return `Occupancy for ${ctx.dest.name} ${ctx.wkLbl} is ${ctx.curOccPct}% against a forecast of ${ctx.occPct}%. The lowest performing hotels are:\n${lines}\nConsider a targeted ADR reduction or package promotion.`;
+  }
+
+  // cost change
+  if (/cost change/.test(ql)) {
+    const changed = ctx.dwWeeks.filter(w => w.hasCostChange);
+    const n = changed.length;
+    if (n === 0) return `No active cost changes for ${ctx.dest.name} ${ctx.wkLbl}.`;
+    const first = changed[0];
+    const hotelName = (ctx.dest.hotels.find(h =>
+      h.categories.some(c => c.checkInWeeks[ctx.weekIdx] && c.checkInWeeks[ctx.weekIdx].id === first.id)
+    ) || { name: 'a hotel' }).name;
+    const oldCost = first.prevSupplierCost != null ? first.prevSupplierCost : Math.max(0, first.supplierCost - 12);
+    const newCost = first.supplierCost;
+    const inc = newCost - oldCost;
+    const oldMargin = (first.currentADR || 0) - oldCost;
+    const newMargin = (first.currentADR || 0) - newCost;
+    return `There ${n === 1 ? 'is' : 'are'} ${n} active cost change${n === 1 ? '' : 's'} for ${ctx.dest.name} ${ctx.wkLbl}.\n${hotelName}: supplier cost increased from $${oldCost} to $${newCost} (+$${inc}/night).\nThis reduces current margin from $${oldMargin} to $${newMargin}. The rec ADR has been adjusted upward to protect margin.`;
+  }
+
+  // margin breakdown
+  if (/margin breakdown|margin/.test(ql)) {
+    const avgCost = ctx.dwWeeks.length ? Math.round(ctx.dwWeeks.reduce((s, w) => s + w.supplierCost, 0) / ctx.dwWeeks.length) : 0;
+    const curADR  = ctx.dwAgg.currentADR;
+    const recADR  = ctx.dwAgg.recADR;
+    const curMargin = curADR - avgCost;
+    const recMargin = recADR - avgCost;
+    const curMpct   = curADR ? Math.round((curMargin / curADR) * 100) : 0;
+    const recMpct   = recADR ? Math.round((recMargin / recADR) * 100) : 0;
+    // Per-room-type margins
+    const byType = {};
+    ctx.dest.hotels.forEach(h => h.categories.forEach(c => {
+      const w = c.checkInWeeks[ctx.weekIdx];
+      if (!w) return;
+      const m = (w.currentADR - w.supplierCost) / (w.currentADR || 1);
+      if (!byType[c.name]) byType[c.name] = [];
+      byType[c.name].push(m);
+    }));
+    const typeAvg = Object.keys(byType).map(k => ({ name: k, m: byType[k].reduce((s, x) => s + x, 0) / byType[k].length }));
+    typeAvg.sort((a, b) => b.m - a.m);
+    const hi = typeAvg[0], lo = typeAvg[typeAvg.length - 1];
+    return `Margin breakdown for ${ctx.dest.name} ${ctx.wkLbl}:\n• Avg supplier cost: $${avgCost}/night\n• Avg current ADR: $${curADR}\n• Avg current margin: $${curMargin} (${curMpct}%)\n• Avg rec margin: $${recMargin} (${recMpct}%)\nHighest margin: ${hi ? hi.name : '—'} at ${hi ? Math.round(hi.m * 100) : 0}%\nLowest margin: ${lo ? lo.name : '—'} at ${lo ? Math.round(lo.m * 100) : 0}%`;
+  }
+
+  // room types
+  if (/(room type|which room|room categor)/.test(ql)) {
+    const list = [];
+    ctx.dest.hotels.forEach(h => h.categories.forEach(c => {
+      const w = c.checkInWeeks[ctx.weekIdx];
+      if (!w) return;
+      const soldPct = w.allocation ? w.sold / w.allocation : 0;
+      const delta = w.recADR - w.currentADR;
+      if (soldPct < 0.5 || delta < 0) {
+        list.push({
+          hotel: h.name, name: c.name, occ: soldPct, rec: w.recADR,
+        });
+      }
+    }));
+    list.sort((a, b) => a.occ - b.occ);
+    if (list.length === 0) return `All room categories for ${ctx.dest.name} ${ctx.wkLbl} are tracking at or above 50% sold.`;
+    const lines = list.slice(0, 5).map(x => `• ${x.hotel} — ${x.name}: ${Math.round(x.occ * 100)}% occ · rec ADR $${x.rec}`).join('\n');
+    return `Room categories needing attention for ${ctx.dest.name} ${ctx.wkLbl}:\n${lines}`;
+  }
+
+  // Fallback
+  return `I can help you analyse ${ctx.dest.name} ${ctx.wkLbl} in more detail. Try asking about occupancy, pricing, competitors or booking pace, or use one of the suggested questions above.`;
+}
+
+// ── General RM Copilot (floating bottom-right widget) ─────
+const _gcpSuggestions = [
+  'Which hotels are behind plan?',
+  'Where is occupancy lowest?',
+  'Any active cost change alerts?',
+  'Best performing destination this week?',
+];
+let _gcpHistory = [];
+
+function toggleGeneralCopilot() {
+  const panel = document.getElementById('gcpPanel');
+  if (panel.classList.contains('open')) closeGeneralCopilot();
+  else                                  openGeneralCopilot();
+}
+function openGeneralCopilot() {
+  const panel = document.getElementById('gcpPanel');
+  panel.style.display = '';
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  if (document.getElementById('rowCopilotPanel').classList.contains('open')) {
+    panel.classList.add('row-open');
+  } else {
+    panel.classList.remove('row-open');
+  }
+  if (_gcpHistory.length === 0) {
+    gcpPush('asst', "Hi! I can help you with hotel pricing, occupancy trends and alerts across all destinations. Ask me anything or select a specific destination row for more detailed analysis.");
+  }
+  renderGcpSuggest();
+  setTimeout(() => { const i = document.getElementById('gcpInput'); if (i) i.focus(); }, 220);
+}
+function closeGeneralCopilot() {
+  const panel = document.getElementById('gcpPanel');
+  panel.classList.remove('open');
+  panel.style.display = 'none';
+  panel.setAttribute('aria-hidden', 'true');
+}
+function renderGcpSuggest() {
+  const el = document.getElementById('gcpSuggest');
+  el.innerHTML = _gcpSuggestions.map(q =>
+    `<button type="button" class="cp-pill" onclick="gcpAskSuggest('${q.replace(/'/g, "\\'")}')">${q}</button>`
+  ).join('');
+}
+function gcpPush(role, text) {
+  _gcpHistory.push({ role, text });
+  const chat = document.getElementById('gcpChat');
+  const div = document.createElement('div');
+  div.className = 'cp-msg ' + (role === 'asst' ? 'cp-asst' : 'cp-user');
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+function gcpShowTyping() {
+  const chat = document.getElementById('gcpChat');
+  const div = document.createElement('div');
+  div.className = 'cp-typing';
+  div.id = 'gcpTyping';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+function gcpHideTyping() {
+  const t = document.getElementById('gcpTyping');
+  if (t) t.remove();
+}
+function generalCopilotSend() {
+  const input = document.getElementById('gcpInput');
+  const q = (input.value || '').trim();
+  if (!q) return;
+  input.value = '';
+  gcpPush('user', q);
+  gcpShowTyping();
+  setTimeout(() => {
+    gcpHideTyping();
+    gcpPush('asst', _generalHotelAnswer(q));
+  }, 900);
+}
+function gcpAskSuggest(q) {
+  document.getElementById('gcpInput').value = q;
+  generalCopilotSend();
+}
+
+function _generalHotelAnswer(q) {
+  const ql = q.toLowerCase();
+
+  // Behind plan
+  if (/(behind plan|behind target|behind|at risk|underperform)/.test(ql)) {
+    const behind = [];
+    HOTEL_DATA.forEach(dest => {
+      dest.hotels.forEach(h => {
+        if (h.forecastOcc < 0.60) {
+          behind.push({ hotel: h, dest, occ: h.forecastOcc });
+        }
+      });
+    });
+    behind.sort((a, b) => a.occ - b.occ);
+    if (behind.length === 0) return "No hotels flagged as behind plan — forecast occupancy is tracking at or above threshold everywhere.";
+    const lines = behind.slice(0, 5).map(x => `• ${x.hotel.name} (${x.dest.name}): ${Math.round(x.occ * 100)}% forecast occ`).join('\n');
+    return `${behind.length} hotels are behind occupancy plan. Lowest:\n${lines}`;
+  }
+
+  // Lowest occupancy
+  if (/(lowest|low occ|low occupancy|weak occupancy|where is occupancy)/.test(ql)) {
+    const worst = HOTEL_DATA.slice().sort((a, b) => a.forecastOcc - b.forecastOcc).slice(0, 5);
+    const lines = worst.map(d => `• ${d.name}: ${Math.round(d.forecastOcc * 100)}% avg forecast occ`).join('\n');
+    return `Destinations with the lowest occupancy right now:\n${lines}`;
+  }
+
+  // Cost change alerts
+  if (/(cost change|supplier cost|cost alert)/.test(ql)) {
+    const rows = (typeof COST_CHANGE_DATA !== 'undefined') ? COST_CHANGE_DATA : [];
+    if (rows.length === 0) return "No active supplier cost changes right now.";
+    const pending = rows.filter(r => r.status === 'Pending').length;
+    const hotelNames = [...new Set(rows.map(r => r.hotel))].slice(0, 5);
+    return `${rows.length} active supplier cost changes (${pending} pending). Affected hotels: ${hotelNames.join(', ')}${hotelNames.length >= 5 ? '…' : ''}. Review the Cost Change Exceptions tab for details.`;
+  }
+
+  // Best performing
+  if (/(best|top performing|strongest|best performing)/.test(ql)) {
+    const top = HOTEL_DATA.slice().sort((a, b) => b.forecastOcc - a.forecastOcc).slice(0, 3);
+    const lines = top.map(d => `• ${d.name}: ${Math.round(d.forecastOcc * 100)}% avg forecast occ · ADR ${fmt$(d.avgCurrentADR)}`).join('\n');
+    return `Top-performing destinations by forecast occupancy:\n${lines}`;
+  }
+
+  // Fallback
+  return "I can help with hotel pricing, occupancy trends and alerts across all destinations. Try asking about hotels behind plan, lowest occupancy, cost changes or top performers — or click ✦ Ask on a specific row for scoped analysis.";
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Column visibility popover (list view / recsTable)
+   ══════════════════════════════════════════════════════════════════ */
+(function() {
+  const COLUMN_DEFS = [
+    { id: 'checkInWk',     label: 'Check-in Wk',       col: 2,  locked: true },
+    { id: 'soldAlloc',     label: 'Sold / Alloc',      col: 3,  locked: true },
+    { id: 'forecastOcc',   label: 'Forecast Occ %',    col: 4 },
+    { id: 'currentOcc',    label: 'Current Occ %',     col: 5 },
+    { id: 'suppCost',      label: 'Supp Cost / night', col: 6 },
+    { id: 'currentADR',    label: 'Current ADR $',     col: 7,  locked: true },
+    { id: 'chgDollar',     label: 'Chg $',             col: 8 },
+    { id: 'chgPct',        label: 'Chg %',             col: 9 },
+    { id: 'recADR',        label: 'Rec ADR $',         col: 11, locked: true },
+    { id: 'deltaDollar',   label: 'Delta $',           col: 12 },
+    { id: 'currentMargin', label: 'Current Margin $',  col: 13 },
+    { id: 'recMargin',     label: 'Rec Margin $',      col: 14 },
+    { id: 'marginDelta',   label: 'Margin Δ $',        col: 15 },
+    { id: 'marginPct',     label: 'Margin %',          col: 16 },
+    { id: 'flags',         label: 'Flags',             col: 17 },
+  ];
+  const columnVisibility = Object.fromEntries(COLUMN_DEFS.map(d => [d.id, true]));
+  let built = false;
+
+  function applyColumnVisibility() {
+    let style = document.getElementById('colVisStyle');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'colVisStyle';
+      document.head.appendChild(style);
+    }
+    style.textContent = COLUMN_DEFS
+      .filter(d => !columnVisibility[d.id])
+      .map(d => `#recsTable thead > tr > th:nth-child(${d.col}), #recsTable tbody > tr > td:nth-child(${d.col}) { display: none !important; }`)
+      .join('\n');
+  }
+
+  function build() {
+    const pop = document.getElementById('columnsPopover');
+    const rowsHTML = COLUMN_DEFS.map(d => `
+      <label class="col-row${d.locked ? ' locked' : ''}">
+        <input type="checkbox" data-col-id="${d.id}" ${columnVisibility[d.id] ? 'checked' : ''} ${d.locked ? 'disabled' : ''}>
+        <span>${d.label}</span>
+        ${d.locked ? '<span class="col-lock" title="Always visible">🔒</span>' : ''}
+      </label>
+    `).join('');
+    pop.innerHTML = rowsHTML + '<div class="col-popover-footer"><a data-col-reset>Show all</a></div>';
+    pop.addEventListener('change', e => {
+      if (e.target.matches('input[data-col-id]')) {
+        columnVisibility[e.target.dataset.colId] = e.target.checked;
+        applyColumnVisibility();
+      }
+    });
+    pop.querySelector('[data-col-reset]').addEventListener('click', () => {
+      COLUMN_DEFS.forEach(d => { columnVisibility[d.id] = true; });
+      pop.querySelectorAll('input[data-col-id]').forEach(cb => { cb.checked = true; });
+      applyColumnVisibility();
+    });
+    built = true;
+  }
+
+  function position() {
+    const btn = document.getElementById('columnsBtn');
+    const pop = document.getElementById('columnsPopover');
+    const r = btn.getBoundingClientRect();
+    pop.style.top = `${r.bottom + 4}px`;
+    pop.style.right = `${window.innerWidth - r.right}px`;
+  }
+
+  window.toggleColumnsPopover = function(e) {
+    if (e) e.stopPropagation();
+    const pop = document.getElementById('columnsPopover');
+    if (!pop.hidden) { pop.hidden = true; return; }
+    if (!built) build();
+    position();
+    pop.hidden = false;
+  };
+
+  document.addEventListener('click', e => {
+    const pop = document.getElementById('columnsPopover');
+    if (!pop || pop.hidden) return;
+    if (e.target.closest('#columnsPopover') || e.target.closest('#columnsBtn')) return;
+    pop.hidden = true;
+  });
+})();
+</script>
+
+</body>
+</html>
