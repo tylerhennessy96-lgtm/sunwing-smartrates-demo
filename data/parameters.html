@@ -619,10 +619,14 @@ function renderContentPanel() {
   const cfg = SECTIONS[activeSection];
   const panel = document.getElementById('paramContent');
   if (!panel) return;
+  // Parameters are configuration, not values from the pricing CSVs. Flag each
+  // section as sample config so it's clear it isn't backed by a data source.
+  const sampleConfigNote = `<div class="sample-config-note" style="margin:4px 0 14px;font-size:11.5px;color:var(--text-muted,#9ca3af);font-style:italic;">Sample configuration — not yet connected to a data source.</div>`;
   if (!cfg || cfg.stub) {
     panel.innerHTML = `
       <h2 class="section-title">${cfg ? cfg.title : 'Section'}</h2>
       <div class="section-subtitle">${cfg ? cfg.subtitle : ''}</div>
+      ${sampleConfigNote}
       <div class="stub-panel">Configuration UI for this section isn't wired up in this demo yet.</div>
     `;
     return;
@@ -630,6 +634,7 @@ function renderContentPanel() {
   panel.innerHTML = `
     <h2 class="section-title">${cfg.title}</h2>
     <div class="section-subtitle">${cfg.subtitle}</div>
+    ${sampleConfigNote}
     <div class="params-table-wrap">
       <table class="params-table">
         <thead id="sectionHead"></thead>

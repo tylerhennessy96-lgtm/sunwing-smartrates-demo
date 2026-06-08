@@ -1,5 +1,22 @@
 // ── Sunwing Revenue Management — Seed Data ──────────────────
 // All prices in CAD ($). All data fictional and for demo use only.
+//
+// ── DATA GAP AUDIT (2026-06) ────────────────────────────────────────────────
+// Goal: the UI must show ONLY data from the two pricing CSVs. At runtime,
+// data-loader.js loads the CSVs and overwrites HOTEL_DATA / FLIGHT_DATA /
+// CHECK_IN_WEEKS / BRANDS / DESTINATIONS / REVENUE_MANAGERS in place, so those
+// render from real data. The remaining arrays below have NO CSV backing.
+//
+// This file is intentionally kept so we can see what was there. Arrays whose
+// (non-config) UI feature is now blanked are BYPASSED — emptied at runtime and
+// preserved under an `_ORIG_*` name. Bypassed: COMPETITOR_FLIGHT_DATA,
+// FLIGHT_PUBLISHED_DATA, COST_CHANGE_DATA, PUBLISHED_HOTEL_CHANGES, PACKAGE_DATA.
+//
+// Configuration arrays for the Parameters page (AUTOPILOT_RULES, FLIGHT_ALERTS,
+// HOTEL_ALERTS, LOS_RULES, PRICE_CONTROLS, MARGIN_CONTROLS, PACKAGE_RULES,
+// PARAMETERS_DATA, …) are left INTACT — that page is config, not pricing data,
+// and is flagged in-UI as "Sample configuration — not yet connected to a data
+// source". All gaps are enumerated by DataLoader.reportDataGaps() in the console.
 
 const BRANDS     = ['Sunwing', 'WestJet Vacations'];
 const REGIONS    = ['All', 'Caribbean', 'Mexico', 'Central America', 'Europe', 'Sun & Sand'];
@@ -469,7 +486,12 @@ function getFlightDateById(dateId) {
 }
 
 // ── Competitor Flight Data seed ────────────────────────────
-const COMPETITOR_FLIGHT_DATA = [
+// GAP AUDIT (2026-06): no CSV backing. The flight competitor table now reads
+// the per-row comp columns from the CSV (comp1_fare / comp2_fare / etc.), so
+// this hardcoded seed is BYPASSED (emptied). The original is preserved below as
+// _ORIG_COMPETITOR_FLIGHT_DATA for reference. See DataLoader.reportDataGaps().
+const COMPETITOR_FLIGHT_DATA = [];
+const _ORIG_COMPETITOR_FLIGHT_DATA = [
   { id: 'CF-001', destination: 'Cancun',      flightDate: 'May 11, 2026', ourFlight: 'WS2401', ourFare: 489, comp1Name: 'Air Canada',  comp1Fare: 465, comp2Name: 'Swoop',        comp2Fare: 455, lastUpdated: '05/04/26 09:15' },
   { id: 'CF-002', destination: 'Cancun',      flightDate: 'May 18, 2026', ourFlight: 'WS2403', ourFare: 529, comp1Name: 'Air Canada',  comp1Fare: 545, comp2Name: 'Flair',        comp2Fare: 489, lastUpdated: '05/04/26 09:15' },
   { id: 'CF-003', destination: 'Cancun',      flightDate: 'May 18, 2026', ourFlight: 'AC9821', ourFare: 445, comp1Name: 'Air Canada',  comp1Fare: 439, comp2Name: 'Porter',       comp2Fare: 425, lastUpdated: '05/04/26 09:15' },
@@ -488,7 +510,11 @@ COMPETITOR_FLIGHT_DATA.forEach(c => {
 });
 
 // ── Flight Published Changes seed ──────────────────────────
-const FLIGHT_PUBLISHED_DATA = [
+// GAP AUDIT (2026-06): no CSV backing (no publish/audit-log columns). The
+// "Pending Approval" KPI now counts auto_changed rows from the CSV instead.
+// BYPASSED (emptied); original preserved as _ORIG_FLIGHT_PUBLISHED_DATA.
+const FLIGHT_PUBLISHED_DATA = [];
+const _ORIG_FLIGHT_PUBLISHED_DATA = [
   { id: 'FP-001', destination: 'Cancun',      flightNum: 'WS2401', route: 'YYZ → CUN', departureDate: 'Apr 27, 2026', oldFare: 459, newFare: 489, publishedBy: 'Sarah Chen',   publishedDate: '04/20/26', status: 'Live'      },
   { id: 'FP-002', destination: 'Cancun',      flightNum: 'WS2403', route: 'YVR → CUN', departureDate: 'May 04, 2026', oldFare: 529, newFare: 509, publishedBy: 'Sarah Chen',   publishedDate: '04/21/26', status: 'Live'      },
   { id: 'FP-003', destination: 'Cancun',      flightNum: 'AC9821', route: 'YYZ → CUN', departureDate: 'May 11, 2026', oldFare: 389, newFare: 425, publishedBy: 'Sarah Chen',   publishedDate: '04/22/26', status: 'Scheduled' },
@@ -761,7 +787,12 @@ function getCheckInWeekById(weekId) {
 }
 
 // ── Cost Change Exceptions seed ────────────────────────────
-const COST_CHANGE_DATA = [
+// GAP AUDIT (2026-06): no CSV backing for cost-change DETAIL (the CSV carries
+// only a has_cost_change boolean). The Cost Change Exceptions table now lists
+// the flagged CSV rows with the old/new-cost columns blank. BYPASSED (emptied);
+// original preserved as _ORIG_COST_CHANGE_DATA.
+const COST_CHANGE_DATA = [];
+const _ORIG_COST_CHANGE_DATA = [
   { id: 'CC-001', destination: 'Cancun',      hotel: 'Riu Cancun',           roomCategory: 'Ocean View', checkInWeek: 'Wk May 11', oldCost: 165, newCost: 182, dateReceived: '05/01/26', status: 'Pending'  },
   { id: 'CC-002', destination: 'Cancun',      hotel: 'Dreams Natura',        roomCategory: 'Suite',      checkInWeek: 'Wk May 18', oldCost: 235, newCost: 215, dateReceived: '05/03/26', status: 'Reviewed' },
   { id: 'CC-003', destination: 'Punta Cana',  hotel: 'Hard Rock Punta Cana', roomCategory: 'Deluxe',     checkInWeek: 'Wk May 25', oldCost: 198, newCost: 212, dateReceived: '05/04/26', status: 'Pending'  },
@@ -777,7 +808,11 @@ COST_CHANGE_DATA.forEach(c => {
 });
 
 // ── Published Hotel Changes seed ───────────────────────────
-const PUBLISHED_HOTEL_CHANGES = [
+// GAP AUDIT (2026-06): no CSV backing (no publish/audit-log columns). The
+// "Pending Approval" KPI now counts auto_changed rows from the CSV instead.
+// BYPASSED (emptied); original preserved as _ORIG_PUBLISHED_HOTEL_CHANGES.
+const PUBLISHED_HOTEL_CHANGES = [];
+const _ORIG_PUBLISHED_HOTEL_CHANGES = [
   { id: 'PC-001', destination: 'Cancun',      hotel: 'Riu Cancun',           roomCategory: 'Standard',   checkInWeek: 'Wk Apr 27', oldADR: 198, newADR: 215, publishedBy: 'Sarah Chen',  publishedDate: '04/20/26', status: 'Live'      },
   { id: 'PC-002', destination: 'Cancun',      hotel: 'Dreams Natura',        roomCategory: 'Suite',      checkInWeek: 'Wk May 04', oldADR: 395, newADR: 375, publishedBy: 'Sarah Chen',  publishedDate: '04/21/26', status: 'Live'      },
   { id: 'PC-003', destination: 'Punta Cana',  hotel: 'Hard Rock Punta Cana', roomCategory: 'Ocean View', checkInWeek: 'Wk May 11', oldADR: 285, newADR: 305, publishedBy: 'Sarah Chen',  publishedDate: '04/22/26', status: 'Scheduled' },
@@ -921,7 +956,11 @@ const COMMITMENT_TYPES = [
 // ── Vacation Packages seed data ─────────────────────────────
 // Nested tree: Destination → Check-in Week (8 rolling) → Departure
 // Gateway → Duration leaf (7N / 10N / 14N).
-const PACKAGE_DATA = (() => {
+// GAP AUDIT (2026-06): no package pricing CSV exists. The Packages tab now shows
+// an empty state ("No package data available"). BYPASSED (emptied); the original
+// generated tree is preserved as _ORIG_PACKAGE_DATA. See reportDataGaps().
+const PACKAGE_DATA = [];
+const _ORIG_PACKAGE_DATA = (() => {
   const DESTS = [
     { id: 'CUN', name: 'Cancun',       region: 'Mexico',
       gw: [
