@@ -1,0 +1,6 @@
+# Mock pricing data (mock_v_* exports that mirror the Postgres views) IS
+# committed — it is synthetic/demo data and must ship in the Docker image,
+# since the Dockerfile COPYs data/ into the container.
+
+# Local dev static server — convenience only, not part of the deployment.
+serve-demo.ps1

@@ -801,6 +801,21 @@ function renderPackagesTable() {
   const tbody = document.getElementById('packagesBody');
   const rows = [];
 
+  // ── DATA GAP: there is no package pricing CSV yet. ──────────────────
+  // The previous tree was rendered from the hardcoded PACKAGE_DATA in
+  // data.js (no CSV backing). Until a package view is sourced, show an
+  // honest empty state instead of fabricated package rows. This gap is
+  // also listed in the console data-gap report (DataLoader.reportDataGaps).
+  if (!window.__pkgGapLogged) {
+    window.__pkgGapLogged = true;
+    console.warn('[pricing] DATA GAP: no package pricing CSV — Packages tab blanked (empty state). See DataLoader.reportDataGaps() on the hotel/flight pages.');
+  }
+  tbody.innerHTML = `<tr><td colspan="16" style="padding:40px;text-align:center;color:var(--text-muted);">
+    No package data available — not yet connected to a data source.
+  </td></tr>`;
+  return;
+
+  /* eslint-disable no-unreachable */
   const visibleDests = PACKAGE_DATA.filter(d => subtreeLeaves(d).length > 0);
   if (!visibleDests.length) {
     tbody.innerHTML = `<tr><td colspan="16" style="padding:28px;text-align:center;color:var(--text-muted);">No packages match the current filters.</td></tr>`;
