@@ -499,7 +499,8 @@
     'Publish / audit change log (Publish Changes count, PENDING / pending-publish state) — no price-change-log columns to persist or count pending edits',
     'RM Copilot narrative — booking-pace, demand drivers, "why" explanations and price-elasticity projections are not in the CSV; the copilot now states only CSV-derived figures and declines the rest',
     'Packages tab (pricing.html) — there is no package pricing CSV; the table shows "No package data available"',
-    'Parameters config (autopilot rules, alerts, price/margin controls, LOS rules) — configuration, not pricing data; shown but flagged "Sample configuration — not yet connected to a data source"',
+    'Package autopilot rules (flight.html rules drawer, PACKAGE_RULES) — no CSV source; the rules list renders empty',
+    'Parameters config (autopilot rules, alerts, price/margin controls, LOS rules) — configuration, not pricing data; every section is now blanked to an empty state ("not yet connected to a data source")',
     'Competitor table (flight) — renders from CSV comp columns where present (comp1_fare / comp2_fare / cheapest_comp_fare / comp_delta); blank where those columns are empty',
   ];
 

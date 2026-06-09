@@ -4676,7 +4676,11 @@ function openGeneralCopilot() {
     panel.classList.remove('row-open');
   }
   if (_gcpHistory.length === 0) {
-    gcpPush('asst', "Hi! I report figures straight from the loaded pricing CSV — load factor, forecast/target LF, fares, margin, rate of sale and competitor fares. If something isn't in the CSV (booking pace, demand drivers, the \"why\" behind a number) I'll say so rather than make it up. Ask away, or open a destination row for scoped figures.");
+    const hasData = (typeof FLIGHT_DATA !== 'undefined' && FLIGHT_DATA.length > 0);
+    const greeting = hasData
+      ? "Hi! I report figures straight from the loaded pricing CSV — load factor, forecast/target LF, fares, margin, rate of sale and competitor fares. If something isn't in the CSV (booking pace, demand drivers, the \"why\" behind a number) I'll say so rather than make it up. Ask away, or open a destination row for scoped figures."
+      : "No flight pricing data is loaded — the dashboard isn't connected to a data source right now, so I have nothing to report. Once the pricing CSV (or its data source) is connected I can answer from it. See the console data-gap report for details.";
+    gcpPush('asst', greeting);
   }
   renderGcpSuggest();
   setTimeout(() => { const i = document.getElementById('gcpInput'); if (i) i.focus(); }, 220);
@@ -4734,6 +4738,12 @@ function gcpAskSuggest(q) {
 
 function _generalFlightAnswer(q) {
   const ql = q.toLowerCase();
+
+  // No data loaded (CSV failed to load / not connected) → say so, rather than
+  // implying all-clear from empty arrays.
+  if (typeof FLIGHT_DATA === 'undefined' || !FLIGHT_DATA.length) {
+    return "No flight pricing data is loaded — the dashboard isn't connected to a data source, so I have nothing to report. (See the console data-gap report.)";
+  }
 
   // Questions needing data the CSV does not carry → decline honestly.
   if (/booking pace|\bpace\b|demand|driver|driving|booking curve|pickup/.test(ql))

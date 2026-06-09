@@ -60,10 +60,14 @@ Show how an RM team would review and action pricing:
   structures the pages render from. It also rebuilds `CHECK_IN_WEEKS`,
   `BRANDS`, `DESTINATIONS` and `REVENUE_MANAGERS` from the CSV, and prints a
   **console data-gap report** (`DataLoader.reportDataGaps`).
-- `data/data.js` is **retained as a fallback only** — used if the CSV
-  fetch/parse fails. Hardcoded arrays that backed non-CSV features have been
-  bypassed (emptied, originals preserved as `_ORIG_*`); see the DATA GAP
-  AUDIT banner at the top of `data.js`.
+- `data/data.js` is now a **thin "empty globals" contract** (~50 lines): it
+  declares the global names the app reads (`HOTEL_DATA`, `FLIGHT_DATA`,
+  `CHECK_IN_WEEKS`, `BRANDS`, `DESTINATIONS`, `REVENUE_MANAGERS`, plus the
+  still-referenced non-CSV arrays and two lookup helpers) as **empty**, and
+  `data-loader.js` fills the CSV-backed ones at runtime. All hand-generated
+  seed data was **removed** (recoverable from git at commit `3f9eb6b` / tag
+  `v1.1.0`). **There is no fabricated fallback anymore** — if the CSV fails to
+  load, the globals stay empty and the UI shows empty states.
 
 **Future state (planned):**
 
@@ -113,14 +117,24 @@ enumerated in the console gap report. Current features with **no CSV backing**:
 - **Publish / audit change log** — no price-change-log columns.
 - **RM Copilot narrative** — booking pace, demand drivers, "why" explanations
   and price-elasticity projections are not in the CSV; the copilot reports
-  only CSV-derived figures and declines the rest.
+  only CSV-derived figures and declines the rest. When no pricing data is
+  loaded at all (CSV failed / not connected), it says "No … pricing data is
+  loaded … not connected to a data source" instead of implying all-clear.
 - **Packages data** — no package pricing CSV; Packages tab shows
   "No package data available".
-- **Parameters config** — configuration, not pricing data; the page is shown
-  but flagged "Sample configuration — not yet connected to a data source".
+- **Package autopilot rules** (flight rules drawer) — no CSV source; renders empty.
+- **Parameters config** — configuration, not pricing data; **every section is
+  blanked to an empty state** ("not yet connected to a data source").
 
 The KPI bars compute only from CSV columns and render blank when a source
 column is absent.
+
+**Note on the Packages and Parameters pages:** `pricing.html` and
+`parameters.html` do **not** load `data-loader.js`, so they have no CSV data at
+all — both pages are entirely gap/empty-state pages, and their header filter
+dropdowns (Brand/Region/Destination/RM) render empty. Only `hotel.html` and
+`flight.html` load the CSVs. (If a populated filter bar is wanted on the
+Packages/Parameters pages, add `data-loader.js` + the PapaParse script to them.)
 
 ## Security posture
 

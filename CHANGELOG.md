@@ -12,6 +12,30 @@ Format:
 
 ---
 
+## 2026-06-09 — RM Copilot: "no data / not connected" when nothing is loaded
+- Added a guard to the general RM Copilot (hotel + flight): when `HOTEL_DATA` /
+  `FLIGHT_DATA` is empty, the greeting and answers now say "No … pricing data is
+  loaded — not connected to a data source" instead of replying with
+  falsely-reassuring lines (e.g. "no flights at risk") built from empty arrays.
+- Why: with the seed data removed, an unloaded/failed CSV leaves the dataset
+  empty; the copilot should report that honestly rather than imply all-clear.
+
+## 2026-06-09 — Strip all non-CSV seed data; CSV-only with honest empty states
+- Reduced `data.js` from the large hand-generated seed dataset to a thin
+  "empty globals" contract (~50 lines): it declares the names the app reads as
+  empty and lets `data-loader.js` fill the CSV-backed ones. Removed the seed
+  generators and all `_ORIG_*` copies (recoverable from git `3f9eb6b` / `v1.1.0`).
+- Removed the CSV-failure fallback: if the CSVs don't load, the UI now shows
+  empty states instead of fabricated seed data.
+- Blanked the Parameters page — every section renders "No data available — this
+  section is configuration and is not yet connected to a data source" (replacing
+  the previous sample-config-with-label behavior); added to the gap report.
+- Verified no remaining references to the dropped globals across the four pages,
+  and that the lookup helpers (`getFlightDateById`/`getCheckInWeekById`) still
+  work against the CSV-filled data.
+- Why: the dashboard must show ONLY data sourced from the CSVs, so every gap is
+  visible as an empty state rather than masked by hardcoded values.
+
 ## 2026-06-08 — Vendor PapaParse, lock CSP, verify zero external runtime deps
 - Vendored PapaParse locally (confirmed genuine v5.4.1, MIT) and moved it to
   `data/vendor/papaparse.min.js` so it sits under the `data/` web root and ships
