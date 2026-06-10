@@ -2157,6 +2157,15 @@ function showNoHistory(canvasId, msg) {
   el.textContent = msg || 'No booking history data available';
   el.style.display = 'flex';
 }
+function showChartCanvas(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const box = canvas.parentElement;
+  canvas.style.display = 'block';
+  if (!box) return;
+  const el = box.querySelector('.no-data-msg');
+  if (el) el.style.display = 'none';
+}
 function getEffectiveFare(date) {
   return fareOverrides[date.id] != null ? fareOverrides[date.id] : date.currentFare;
 }
@@ -2189,7 +2198,7 @@ function aggDates(dates) {
   const mRec = dates.reduce((s, x) => s + x.recMargin, 0) / dates.length;
   const forecastLF = dates.reduce((s, x) => s + x.forecastLF, 0) / dates.length;
   const targetLF   = dates.reduce((s, x) => s + x.targetLF, 0) / dates.length;
-  const hasAlert = dates.some(x => x.rateOfSale < x.rateOfSaleTarget || x.forecastLF < x.targetLF - 0.05);
+  const hasAlert = dates.some(x => x.rateOfSale < x.rateOfSaleTarget || x.forecastLF < x.targetLF);
   return {
     capacity, sold,
     unsold: capacity - sold,
@@ -2206,15 +2215,17 @@ function aggDates(dates) {
   };
 }
 
-function bedsSeatsRatio(dest) {
-  const h = HOTEL_BY_DEST[dest.id];
-  if (!h) return null;
-  const seats = dest.routes.reduce((s, r) => s + r.totalCapacity, 0);
-  // Hotel allocation is room-nights; flight capacity is seats over 8 weeks.
-  // Rough ratio: hotel bed-nights / seats over same period.
-  const beds = h.allocation;
-  if (!seats) return null;
-  return beds / seats;
+function bedsSeatsRatio(dates) {
+  // Average the flight CSV's own beds_to_seats_ratio over the given flight
+  // dates. (Previously divided raw hotel allocation (~7.4k room-nights) by
+  // total flight seats (~18k) — different units over different periods, which
+  // collapsed to ~0.4 for every destination and mislabeled them all
+  // "Under-bedded". The pricing CSV already carries the real per-flight ratio.)
+  const ratios = (dates || [])
+    .map(d => (d ? d.bedsToSeatsRatio : null))
+    .filter(v => Number.isFinite(v));
+  if (!ratios.length) return null;
+  return ratios.reduce((s, v) => s + v, 0) / ratios.length;
 }
 function hotelOccForWeek(dest, weekIdx) {
   const h = HOTEL_BY_DEST[dest.id];
@@ -2275,7 +2286,6 @@ function renderRecsTable() {
 
     // Each route shares the same 8 weekly departure dates, indexed 0-7.
     const weekCount = dest.routes[0]?.dates?.length || 0;
-    const ratio  = bedsSeatsRatio(dest);
 
     for (let weekIdx = 0; weekIdx < weekCount; weekIdx++) {
       const dwKey = `${dest.id}::${weekIdx}`;
@@ -2307,6 +2317,7 @@ function renderRecsTable() {
       const refDateStr = datesAtWeek[0]?.departureDate || '';
       const shortDt    = shortMMDD(refDateStr);
       const hOcc       = hotelOccForWeek(dest, weekIdx);
+      const ratio      = bedsSeatsRatio(datesAtWeek);
 
       const entryRows = [];
       const entry = { weekIdx, forecastLF: dwAgg.forecastLF, rows: entryRows };
@@ -2360,7 +2371,7 @@ function renderRecsTable() {
         const routeOpen = expandedRoutes.has(routeKey);
         const rAgg = aggDates([date]);
         const rosAheadRoute = date.rateOfSale >= date.rateOfSaleTarget;
-        const routeAlert = !rosAheadRoute || date.forecastLF < date.targetLF - 0.05;
+        const routeAlert = !rosAheadRoute || date.forecastLF < date.targetLF;
 
         entryRows.push(`
           <tr class="row-bedtype clickable" onclick="toggleRoute('${routeKey}')" style="cursor:pointer;">
@@ -2414,9 +2425,6 @@ function renderRecsTable() {
           const blendRecMargin  = blend(x => x.recMargin,     x => x.recMargin);
           const blendForecast = day.forecastLF;
           const blendTarget   = day.targetLF;
-          // Comp fares — economy class is the reference (most commonly compared)
-          const compA = eco ? eco.comp1Fare : day.comp1Fare;
-          const compB = eco ? eco.comp2Fare : day.comp2Fare;
 
           const hasNote    = !!notes[day.id];
           const dayAnyAuto = (eco && eco.autoChanged) || (biz && biz.autoChanged);
@@ -2439,8 +2447,8 @@ function renderRecsTable() {
               <td class="text-right num">${fmt$(blendCurrMargin)}</td>
               <td class="text-right num">${fmt$(blendRecMargin)}</td>
               <td class="text-right">${deltaCell(blendRecMargin - blendCurrMargin)}</td>
-              <td class="text-right num" title="Economy comp 1">${fmt$(compA)}</td>
-              <td class="text-right num" title="Economy comp 2">${fmt$(compB)}</td>
+              <td class="text-muted">—</td>
+              <td class="text-muted">—</td>
               <td class="flags-cell">
                 <div class="flags-inline">
                   ${day.hasCostChange ? '<span class="cost-change-flag" title="Cost change">⚠️</span>' : ''}
@@ -2479,7 +2487,6 @@ function renderRecsTable() {
             const lfLeaf  = cd.capacity ? cd.sold / cd.capacity : 0;
             const isRejected = rejectedRecs.has(leafKey);
             const isAuto     = !!cd.autoChanged;
-            const compDelta  = eff - Math.min(cd.comp1Fare, cd.comp2Fare);
             // No persisted pending-publish state (no change-log backing). Accept/reject
             // still update the row in-session, but we don't show a PENDING highlight.
             const rowClass   = 'row-unit';
@@ -2504,8 +2511,8 @@ function renderRecsTable() {
                 <td class="text-right num">${fmt$(cd.currentMargin)}</td>
                 <td class="text-right num">${fmt$(cd.recMargin)}</td>
                 <td class="text-right">${deltaCell(cd.recMargin - cd.currentMargin)}</td>
-                <td class="text-right num" title="Comp 1">${fmt$(cd.comp1Fare)}</td>
-                <td class="text-right num" title="Comp 2 · Δ vs ours ${compDelta >= 0 ? '+' : ''}${fmt$(compDelta)}">${fmt$(cd.comp2Fare)}</td>
+                <td class="text-muted">—</td>
+                <td class="text-muted">—</td>
                 <td class="flags-cell">
                   <div class="flags-inline">
                     ${isAuto     ? `<span class="badge-auto" title="${cd.autoChangedRule || 'Auto-adjusted by rules engine'}">⚡ AUTO</span>` : ''}
@@ -2626,18 +2633,25 @@ function computeMetrics() {
       ? rows.reduce((s, r) => s + n(r.forecast_lf_pct), 0) / Math.max(1, rows.length) / 100 : null;
     const avgFareChange = has('fare_delta_eco')
       ? rows.reduce((s, r) => s + n(r.fare_delta_eco), 0) / Math.max(1, rows.length) : null;
+    // "Behind target pace" is definitional: rate of sale below 100% of the
+    // CSV's target (ros_pct_of_target). No alert-threshold column exists, so we
+    // use the real boundary rather than an invented cutoff (was a hardcoded <75).
     const rosAlerts = has('ros_pct_of_target')
-      ? rows.filter(r => n(r.ros_pct_of_target) < 75).length : null;
+      ? rows.filter(r => n(r.ros_pct_of_target) < 100).length : null;
+    // comp_delta = our fare − cheapest competitor; >0 means the competitor is
+    // priced below us (they undercut us). (Was <0, which counted the opposite.)
     const compUndercuts = has('comp_delta')
-      ? rows.filter(r => n(r.comp_delta) < 0).length : null;
-    const pendingApproval = has('auto_changed')
-      ? rows.filter(r => r.auto_changed === true).length : null;
+      ? rows.filter(r => n(r.comp_delta) > 0).length : null;
+    // No publish/approval/change-log column exists in the CSV, so there is no
+    // honest "pending approval / waiting to publish" count. Leave it blank
+    // rather than proxying it with the unrelated auto_changed flag.
+    const pendingApproval = null;
     return { flightsBehind, avgForecastLF, avgFareChange, rosAlerts, compUndercuts, pendingApproval };
   }
 
   // Fallback path (data.js generated data).
   const allDates = FLIGHT_DATA.flatMap(d => d.routes.flatMap(r => r.dates));
-  const flightsBehind = allDates.filter(x => x.forecastLF < x.targetLF - 0.05).length;
+  const flightsBehind = allDates.filter(x => x.forecastLF < x.targetLF).length;
   const avgForecastLF = allDates.reduce((s, x) => s + x.forecastLF, 0) / Math.max(1, allDates.length);
   const avgFareChange = allDates.reduce((s, x) => s + (x.recFare - getEffectiveFare(x)), 0) / Math.max(1, allDates.length);
   const rosAlerts = allDates.filter(x => x.rateOfSale < x.rateOfSaleTarget).length;
@@ -2860,18 +2874,19 @@ function openExposure(dateId) {
   const { destination, route, date } = hit;
 
   const lfPctNow = Math.round((date.capacity ? date.sold / date.capacity : 0) * 100);
+  const curveMatch = findFlightBookingCurveForDate(destination, route, date);
   document.getElementById('exposurePropName').innerHTML =
     `<span class="font-mono" style="color:#fff;">${route.flightNum}</span>
      <span style="color:#9ca3af;margin-left:8px;">${route.origin} → ${destination.id}</span>
      <span style="color:#9ca3af;margin-left:8px;">${date.departureDate} ${date.departureTime}</span>
      <span style="color:#9ca3af;margin-left:8px;">Cap ${date.capacity}</span>
-     <span style="color:#9ca3af;margin-left:8px;">LF ${lfPctNow}%</span>`;
+     <span style="color:#9ca3af;margin-left:8px;">LF ${lfPctNow}%</span>
+     ${bookingCurveBadge(curveMatch)}`;
 
   showExposure();
 
-  // No historical booking/fare snapshot data exists in the CSV — show an
-  // honest empty state instead of a simulated S-curve / fare worm.
-  showNoHistory('bookingCurveChart', 'No booking history data available');
+  // Booking curve renders from CSV where available; fare history still has no source.
+  renderFlightBookingCurve(curveMatch, date);
   showNoHistory('fareHistoryChart', 'No fare history data available');
 }
 
@@ -2883,28 +2898,22 @@ function openDestWeekCurve(destId, weekIdx) {
   const agg = aggDates(datesAtWeek);
   const refDate = datesAtWeek[0].departureDate;
   const shortDt = shortMMDD(refDate);
-
-  // Synthesize a date-like object so drawCharts() can reuse its booking + fare logic.
-  const syn = {
+  const curveMatch = findFlightBookingCurveForDestWeek(dest);
+  const refCurveDate = Object.assign({}, datesAtWeek[0], {
     id: `${destId}-w${weekIdx}`,
-    capacity:    agg.capacity,
-    sold:        agg.sold,
-    targetLF:    agg.targetLF,
-    forecastLF:  agg.forecastLF,
-    currentFare: agg.avgCurrentFare,
-    comp1Fare:   Math.round(datesAtWeek.reduce((s, d) => s + d.comp1Fare, 0) / datesAtWeek.length),
-    comp2Fare:   Math.round(datesAtWeek.reduce((s, d) => s + d.comp2Fare, 0) / datesAtWeek.length),
-  };
+    departureDate: refDate,
+  });
 
   document.getElementById('exposurePropName').innerHTML =
     `<span style="color:#fff;font-weight:500;">${dest.name}</span>
      <span style="color:#9ca3af;margin-left:6px;">- Wk ${shortDt}</span>
      <span style="color:#9ca3af;margin-left:8px;">Cap ${agg.capacity.toLocaleString()}</span>
      <span style="color:#9ca3af;margin-left:8px;">Sold ${agg.sold.toLocaleString()}</span>
-     <span style="color:#9ca3af;margin-left:8px;">LF ${Math.round(agg.lf * 100)}%</span>`;
+     <span style="color:#9ca3af;margin-left:8px;">LF ${Math.round(agg.lf * 100)}%</span>
+     ${bookingCurveBadge(curveMatch)}`;
 
   showExposure();
-  showNoHistory('bookingCurveChart', 'No booking history data available');
+  renderFlightBookingCurve(curveMatch, refCurveDate);
   showNoHistory('fareHistoryChart', 'No fare history data available');
 }
 function showExposure() {
@@ -2920,6 +2929,241 @@ function closeExposure() {
   document.getElementById('analyticsBackdrop').classList.remove('open');
 }
 function toggleExposure() { closeExposure(); }
+
+function curveNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function isoFromText(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+function isoFromMMDDYY(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (!m) return isoFromText(s);
+  return `20${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+}
+function daysBetweenIso(startIso, endIso) {
+  if (!startIso || !endIso) return null;
+  const start = new Date(`${startIso}T00:00:00Z`);
+  const end = new Date(`${endIso}T00:00:00Z`);
+  if (isNaN(start) || isNaN(end)) return null;
+  return Math.round((end - start) / 86400000);
+}
+function bookingCurveRows() {
+  return (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined' && Array.isArray(FLIGHT_BOOKING_CURVE_DATA))
+    ? FLIGHT_BOOKING_CURVE_DATA
+    : [];
+}
+function makeBookingCurveMatch(rows, label) {
+  return rows && rows.length ? { rows, label } : null;
+}
+function findFlightBookingCurveForDate(destination, route, date) {
+  const rows = bookingCurveRows();
+  if (!rows.length || !destination || !route || !date) return null;
+  const destId = String(destination.id);
+  const origin = String(route.origin || '');
+  const depIso = isoFromMMDDYY(date.departureDate);
+
+  const exactEntity = rows.filter(r => String(r.entity_id) === String(date.id));
+  if (exactEntity.length) return makeBookingCurveMatch(exactEntity, 'Exact curve');
+
+  const routeDate = rows.filter(r =>
+    String(r.destination_id) === destId &&
+    String(r.gateway_code) === origin &&
+    String(r.flight_num) === String(route.flightNum) &&
+    String(r.departure_date) === String(depIso)
+  );
+  if (routeDate.length) return makeBookingCurveMatch(routeDate, 'Route/date curve');
+
+  const destGateway = rows.filter(r =>
+    String(r.destination_id) === destId &&
+    String(r.gateway_code) === origin
+  );
+  if (destGateway.length) return makeBookingCurveMatch(destGateway, 'Gateway reference');
+
+  const destRows = rows.filter(r => String(r.destination_id) === destId);
+  return makeBookingCurveMatch(destRows, 'Destination reference');
+}
+function findFlightBookingCurveForDestWeek(destination) {
+  const rows = bookingCurveRows();
+  if (!rows.length || !destination) return null;
+  const destRows = rows.filter(r => String(r.destination_id) === String(destination.id));
+  return makeBookingCurveMatch(destRows, 'Destination reference');
+}
+function bookingCurveBadge(match) {
+  const text = match ? match.label : 'No curve data';
+  const color = match ? '#9ca3af' : '#e74c3c';
+  const border = match ? 'rgba(156,163,175,0.25)' : 'rgba(231,76,60,0.35)';
+  return `<span style="color:${color};border:1px solid ${border};border-radius:999px;padding:2px 7px;margin-left:8px;font-size:10px;">${text}</span>`;
+}
+function flightCurveTodayDtc(refDate) {
+  const depIso = isoFromMMDDYY(refDate && refDate.departureDate);
+  const evalIso = isoFromText(refDate && refDate.lastEvaluatedAt)
+    || isoFromText(window.__flightRows && window.__flightRows[0] && window.__flightRows[0].last_evaluated_at)
+    || new Date().toISOString().slice(0, 10);
+  const dtc = daysBetweenIso(evalIso, depIso);
+  if (dtc === null) return 45;
+  return Math.max(0, Math.min(500, dtc));
+}
+function curveValueAt(dayMap, day) {
+  const exact = dayMap[String(day)];
+  if (exact !== undefined) return exact;
+  const days = Object.keys(dayMap).map(Number).filter(Number.isFinite).sort((a, b) => b - a);
+  if (!days.length) return null;
+  if (day >= days[0]) return dayMap[String(days[0])];
+  if (day <= days[days.length - 1]) return dayMap[String(days[days.length - 1])];
+  for (let i = 0; i < days.length - 1; i++) {
+    const hi = days[i];
+    const lo = days[i + 1];
+    if (day <= hi && day >= lo) {
+      const hiVal = dayMap[String(hi)];
+      const loVal = dayMap[String(lo)];
+      if (hiVal == null || loVal == null) return null;
+      const t = (hi - day) / (hi - lo);
+      return hiVal + ((loVal - hiVal) * t);
+    }
+  }
+  return null;
+}
+function buildFlightBookingCurveSeries(rows, todayDtc) {
+  const buckets = {};
+  rows.forEach(r => {
+    const type = String(r.curve_type || '').toUpperCase();
+    if (!['ACTUAL', 'TARGET', 'FORECAST'].includes(type)) return;
+    const day = curveNum(r.days_to_departure);
+    if (day === null) return;
+    const key = `${type}|${day}`;
+    if (!buckets[key]) buckets[key] = { type, day, sold: 0, cap: 0, pct: 0, n: 0 };
+    const b = buckets[key];
+    const sold = curveNum(r.sold_cumulative);
+    const cap = curveNum(r.capacity);
+    const pct = curveNum(r.sold_pct);
+    if (sold !== null && cap !== null && cap > 0) {
+      b.sold += sold;
+      b.cap += cap;
+    } else if (pct !== null) {
+      b.pct += pct;
+      b.n += 1;
+    }
+  });
+
+  const maps = { ACTUAL: {}, TARGET: {}, FORECAST: {} };
+  Object.values(buckets).forEach(b => {
+    const frac = b.cap > 0 ? (b.sold / b.cap) : (b.n ? (b.pct / b.n) : null);
+    if (frac === null) return;
+    maps[b.type][String(b.day)] = Math.max(0, Math.min(100, Math.round(frac * 1000) / 10));
+  });
+
+  const daySet = new Set([todayDtc]);
+  Object.values(maps).forEach(map => Object.keys(map).forEach(d => daySet.add(Number(d))));
+  const days = Array.from(daySet).filter(Number.isFinite).sort((a, b) => b - a);
+  const actual = days.map(d => d >= todayDtc ? curveValueAt(maps.ACTUAL, d) : null);
+  const target = days.map(d => curveValueAt(maps.TARGET, d));
+  const forecast = days.map(d => d <= todayDtc ? curveValueAt(maps.FORECAST, d) : null);
+  const deficitLower = days.map((d, i) => {
+    if (d < todayDtc) return null;
+    const a = actual[i], t = target[i];
+    if (a == null || t == null) return null;
+    return a < t ? a : t;
+  });
+  const deficitUpper = days.map((d, i) => {
+    if (d < todayDtc) return null;
+    const a = actual[i], t = target[i];
+    if (a == null || t == null) return null;
+    return a < t ? t : t;
+  });
+  const chartDays = days.concat([todayDtc, todayDtc]);
+  return {
+    days: chartDays,
+    actual: actual.concat([null, null]),
+    target: target.concat([null, null]),
+    forecast: forecast.concat([null, null]),
+    deficitLower: deficitLower.concat([null, null]),
+    deficitUpper: deficitUpper.concat([null, null]),
+    todayLine: days.map(() => null).concat([0, 100]),
+  };
+}
+function renderFlightBookingCurve(match, refDate) {
+  if (bookingChart) {
+    bookingChart.destroy();
+    bookingChart = null;
+  }
+  if (!match || !match.rows || !match.rows.length) {
+    showNoHistory('bookingCurveChart', 'No booking history data available for this flight.');
+    return;
+  }
+  const todayDtc = flightCurveTodayDtc(refDate);
+  const s = buildFlightBookingCurveSeries(match.rows, todayDtc);
+  const hasData = [s.actual, s.target, s.forecast].some(arr => arr.some(v => v != null));
+  if (!hasData) {
+    showNoHistory('bookingCurveChart', 'No booking history data available for this flight.');
+    return;
+  }
+  showChartCanvas('bookingCurveChart');
+  bookingChart = new Chart(document.getElementById('bookingCurveChart'), {
+    type: 'line',
+    data: {
+      labels: s.days,
+      datasets: [
+        { label: 'DeficitUpper', data: s.deficitUpper, borderColor: 'rgba(0,0,0,0)', backgroundColor: 'rgba(224,82,82,0.22)', borderWidth: 0, pointRadius: 0, fill: '+1', tension: 0.35, spanGaps: false },
+        { label: 'DeficitLower', data: s.deficitLower, borderColor: 'rgba(0,0,0,0)', backgroundColor: 'rgba(0,0,0,0)',       borderWidth: 0, pointRadius: 0, fill: false, tension: 0.35, spanGaps: false },
+        { label: 'Actual',       data: s.actual,       borderColor: '#e91e8c', backgroundColor: 'rgba(233,30,140,0.10)', borderWidth: 2.4, borderDash: [],     tension: 0.35, pointRadius: 0, fill: true, spanGaps: false },
+        { label: 'Target',       data: s.target,       borderColor: '#e5e7eb', borderWidth: 1.6, borderDash: [6, 3], pointRadius: 0, tension: 0.35, fill: false },
+        { label: 'Forecast',     data: s.forecast,     borderColor: '#9ca3af', borderWidth: 2,   borderDash: [2, 3], pointRadius: 0, tension: 0.35, fill: false, spanGaps: false },
+        { label: 'Today',        data: s.todayLine,    borderColor: '#ffffff', borderWidth: 1.5, pointRadius: 0, borderDash: [3, 3], spanGaps: true },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { left: 0, right: 0 } },
+      plugins: { legend: { display: false }, tooltip: { mode: 'nearest', intersect: false } },
+      scales: {
+        x: {
+          type: 'linear',
+          reverse: true,
+          min: 0,
+          max: 500,
+          bounds: 'ticks',
+          afterFit: function(axis) { axis.paddingRight = 0; },
+          grid: {
+            display: true,
+            color: (ctx) => {
+              const v = ctx.tick && ctx.tick.value;
+              if (_F_X_KEY_THRESHOLDS.has(v)) return 'rgba(233, 30, 140, 0.35)';
+              if (_F_X_LABEL_MARKERS.has(v))  return 'rgba(156, 163, 175, 0.10)';
+              return 'rgba(0, 0, 0, 0)';
+            },
+            lineWidth: (ctx) => {
+              const v = ctx.tick && ctx.tick.value;
+              return _F_X_KEY_THRESHOLDS.has(v) ? 1.2 : 1;
+            },
+          },
+          title: { display: true, text: 'Days to Departure', color: '#9ca3af', font: { size: 10 } },
+          ticks: {
+            font: { size: 10 },
+            color: '#9ca3af',
+            autoSkip: true,
+            maxTicksLimit: 18,
+            maxRotation: 0,
+            callback: function(value) { return _F_X_LABEL_MARKERS.has(value) ? value : ''; },
+          },
+        },
+        y: {
+          min: 0,
+          max: 100,
+          grid: { color: '#2a2d35' },
+          ticks: { font: { size: 10 }, color: '#9ca3af', callback: v => v + '%' },
+          title: { display: true, text: '% Sold', color: '#9ca3af', font: { size: 10 } },
+        },
+      },
+    },
+  });
+}
 // ── 500-day S-curve booking chart + realistic fare worm ─────
 // Piecewise S-curve knots for cumulative % of seats sold vs days-to-departure.
 const _FLIGHT_SCURVE_KNOTS = [
@@ -3450,7 +3694,7 @@ function passesFlightDate(date) {
   if (af.alertCompCheaper && compD <= 0) return false;
   if (af.alertLocked && !date.locked) return false;
   if (af.alertNotes && !hasNote) return false;
-  if (af.alertBehindLF && !(date.forecastLF < date.targetLF - 0.05)) return false;
+  if (af.alertBehindLF && !(date.forecastLF < date.targetLF)) return false;
 
   if (lf  < af.currentLF.min  || lf  > af.currentLF.max)  return false;
   if (fLF < af.forecastLF.min || fLF > af.forecastLF.max) return false;
@@ -3994,7 +4238,7 @@ function renderCalPanel() {
   // type === 'dest'
   const datesAtWeek = dest.routes.map(r => r.dates[weekIdx]).filter(Boolean);
   const agg = aggDates(datesAtWeek);
-  const ratio = bedsSeatsRatio(dest);
+  const ratio = bedsSeatsRatio(datesAtWeek);
   const hOcc  = hotelOccForWeek(dest, weekIdx);
   const routeChips = dest.routes.map(r => {
     const d = r.dates[weekIdx];
@@ -4098,25 +4342,26 @@ function _initApp() {
     _initApp();
   };
   if (typeof loadData !== 'function') {
-    console.warn('[flight] data-loader.js unavailable — using data.js fallback data.');
+    console.warn('[flight] data-loader.js unavailable — rendering empty data.js contract.');
     finish();
     return;
   }
   loadData()
-    .then(({ hotelData, flightData }) => {
+    .then(({ hotelData, flightData, flightBookingCurveData }) => {
       window.__hotelRows = hotelData;
       window.__flightRows = flightData;
-      const meta = DataLoader.applyToGlobals(hotelData, flightData);
+      window.__flightBookingCurveRows = flightBookingCurveData;
+      const meta = DataLoader.applyToGlobals(hotelData, flightData, flightBookingCurveData);
       window.__filterRegions = meta && meta.regions;
       // Rebuild the dest→hotel lookup used for Beds:Seats and hotel-occ columns.
       if (typeof HOTEL_BY_DEST !== 'undefined' && typeof HOTEL_DATA !== 'undefined') {
         Object.keys(HOTEL_BY_DEST).forEach(k => delete HOTEL_BY_DEST[k]);
         HOTEL_DATA.forEach(h => { HOTEL_BY_DEST[h.id] = h; });
       }
-      DataLoader.reportDataGaps(hotelData, flightData);
+      DataLoader.reportDataGaps(hotelData, flightData, flightBookingCurveData);
     })
     .catch(err => {
-      console.warn('[flight] CSV load failed — falling back to generated data.js data:', err);
+      console.warn('[flight] CSV load failed — rendering empty data.js contract:', err);
     })
     .finally(finish);
 })();
@@ -4416,7 +4661,7 @@ function _flightRowContext(destId, weekIdx) {
   const fcstPct    = Math.round((agg.forecastLF || 0) * 100);
   const deltaFare  = agg.deltaFare;
   const deltaMarg  = agg.deltaMargin;
-  const ratio      = bedsSeatsRatio(dest);
+  const ratio      = bedsSeatsRatio(datesAtWeek);
   const hOcc       = hotelOccForWeek(dest, weekIdx);
   const hOccPct    = hOcc != null ? Math.round(hOcc * 100) : null;
   const rosAlerts  = datesAtWeek.filter(d => d.rateOfSale < d.rateOfSaleTarget).length;
@@ -4424,8 +4669,9 @@ function _flightRowContext(destId, weekIdx) {
   const compCheaperRoutes = datesAtWeek.filter(d => Math.min(d.comp1Fare, d.comp2Fare) < (getEffectiveFare(d))).length;
   let ratioLbl = 'balanced';
   if (ratio != null) {
-    if (ratio < 0.95)      ratioLbl = 'under-bedded';
-    else if (ratio > 1.05) ratioLbl = 'over-bedded';
+    // Same cut-points as the table badge / the CSV's own beds_seats_label.
+    if (ratio < 0.85)      ratioLbl = 'under-bedded';
+    else if (ratio > 1.15) ratioLbl = 'over-bedded';
   }
   const routes = dest.routes.map(r => ({ route: r, date: r.dates[weekIdx] })).filter(x => x.date);
 
@@ -4586,11 +4832,17 @@ function rowCopilotAskSuggest(q) {
   rowCopilotSend();
 }
 
-// Standard reply when a question needs data the pricing CSV does not carry.
+// Standard reply when a question needs data the loaded CSVs do not carry.
 // The copilot only reports values that exist in the loaded CSV; anything it
 // cannot back with a real column it declines rather than inventing.
 function _copilotNoData(topic) {
-  return `I don't have ${topic} in the loaded data. This copilot only reports figures that exist in the pricing CSV, so I can't answer that. It's listed in the console data-gap report.`;
+  return `I don't have ${topic} in the loaded data. This copilot only reports figures that exist in the loaded CSVs, so I can't answer that. It's listed in the console data-gap report.`;
+}
+function _flightBookingCurveCopilotNote() {
+  if (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined' && FLIGHT_BOOKING_CURVE_DATA.length) {
+    return "Flight booking-curve rows are loaded for the chart. Open a flight row and use the Booking Curve button to see actual, target and forecast cumulative sold curves. I still don't have demand-driver or \"why\" explanations to narrate here.";
+  }
+  return _copilotNoData('booking-curve data');
 }
 
 function _flightAnswer(q) {
@@ -4599,9 +4851,10 @@ function _flightAnswer(q) {
   const ql = q.toLowerCase();
 
   // ── Questions needing data the CSV doesn't carry → decline. ──
-  // No booking-pace history, no demand drivers, no price-elasticity in the CSV.
-  if (/booking pace|\bpace\b|demand|driver|driving|booking curve|pickup/.test(ql))
-    return _copilotNoData('booking-pace or demand data (there is no booking history in the CSV)');
+  if (/booking pace|\bpace\b|booking curve|pickup/.test(ql))
+    return _flightBookingCurveCopilotNote();
+  if (/demand|driver|driving/.test(ql))
+    return _copilotNoData('demand-driver data');
   if (/elasticit|projection|\bproject\b|predict|uplift|\blift\b/.test(ql))
     return _copilotNoData('price-elasticity or fare-impact projections');
 
@@ -4647,7 +4900,7 @@ function _flightAnswer(q) {
   }
 
   // Fallback — advertise only CSV-backed topics.
-  return `For ${ctx.dest.name} ${ctx.wkLbl} I can report figures from the pricing CSV: load factor, forecast/target LF, current & rec fare, margin, rate of sale, beds:seats ratio and competitor fares. I don't have booking pace, demand drivers or "why" explanations — those aren't in the data.`;
+  return `For ${ctx.dest.name} ${ctx.wkLbl} I can report figures from the pricing CSV: load factor, forecast/target LF, current & rec fare, margin, rate of sale, beds:seats ratio and competitor fares. The row Booking Curve button uses the curve CSV where a match exists. I don't have demand drivers or "why" explanations — those aren't in the data.`;
 }
 
 // ── General RM Copilot (floating bottom-right widget) ─────
@@ -4678,7 +4931,7 @@ function openGeneralCopilot() {
   if (_gcpHistory.length === 0) {
     const hasData = (typeof FLIGHT_DATA !== 'undefined' && FLIGHT_DATA.length > 0);
     const greeting = hasData
-      ? "Hi! I report figures straight from the loaded pricing CSV — load factor, forecast/target LF, fares, margin, rate of sale and competitor fares. If something isn't in the CSV (booking pace, demand drivers, the \"why\" behind a number) I'll say so rather than make it up. Ask away, or open a destination row for scoped figures."
+      ? "Hi! I report figures straight from the loaded pricing CSV — load factor, forecast/target LF, fares, margin, rate of sale and competitor fares. The Booking Curve chart uses the curve CSV where a match exists. If something isn't in the data (demand drivers, the \"why\" behind a number) I'll say so rather than make it up. Ask away, or open a destination row for scoped figures."
       : "No flight pricing data is loaded — the dashboard isn't connected to a data source right now, so I have nothing to report. Once the pricing CSV (or its data source) is connected I can answer from it. See the console data-gap report for details.";
     gcpPush('asst', greeting);
   }
@@ -4746,8 +4999,10 @@ function _generalFlightAnswer(q) {
   }
 
   // Questions needing data the CSV does not carry → decline honestly.
-  if (/booking pace|\bpace\b|demand|driver|driving|booking curve|pickup/.test(ql))
-    return _copilotNoData('booking-pace or demand data (there is no booking history in the CSV)');
+  if (/booking pace|\bpace\b|booking curve|pickup/.test(ql))
+    return _flightBookingCurveCopilotNote();
+  if (/demand|driver|driving/.test(ql))
+    return _copilotNoData('demand-driver data');
 
   // Most at risk
   if (/(most at risk|at risk|risk|behind target|behind plan)/.test(ql)) {
@@ -4816,7 +5071,7 @@ function _generalFlightAnswer(q) {
   }
 
   // Fallback — only advertise CSV-backed topics.
-  return "I report figures from the loaded pricing CSV. Try: at-risk flights, where competitors are cheaper, best performers or which routes need fare adjustments — or click ✦ Ask on a specific row. I don't have booking pace, demand drivers or \"why\" explanations.";
+  return "I report figures from the loaded pricing CSV. Try: at-risk flights, where competitors are cheaper, best performers or which routes need fare adjustments — or click ✦ Ask on a specific row. Booking curves render from the curve CSV where a match exists; I don't have demand drivers or \"why\" explanations.";
 }
 
 /* ══════════════════════════════════════════════════════════════════

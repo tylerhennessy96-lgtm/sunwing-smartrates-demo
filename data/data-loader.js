@@ -1,8 +1,7 @@
 // ── Sunwing RMS — real-data loader ──────────────────────────
-// Loads the two database-view CSV exports (hotel + flight pricing) and
-// reshapes them into the nested HOTEL_DATA / FLIGHT_DATA structures the
-// dashboards render from. data.js stays in place as a generated fallback:
-// if the CSV fetch/parse fails, the pages keep their data.js data.
+// Loads the database-view CSV exports and reshapes them into the globals the
+// dashboards render from. data.js stays in place only as an empty global
+// contract; if the required pricing CSVs fail, the UI renders empty states.
 //
 // Served layout note: the Dockerfile copies `data/` to the nginx web root,
 // so hotel.html / flight.html and the CSVs are siblings at runtime. We try a
@@ -11,14 +10,19 @@
   'use strict';
 
   const HOTEL_CSV_CANDIDATES = [
-    './mock_v_hotel_pricing.csv',              // nginx web root (data/ flattened)
-    './data/mock_v_hotel_pricing.csv',         // repo-root served
-    './application/data/mock_v_hotel_pricing.csv',
+    './v_hotel_pricing_pg.csv',              // nginx web root (data/ flattened)
+    './data/v_hotel_pricing_pg.csv',         // repo-root served
+    './application/data/v_hotel_pricing_pg.csv',
   ];
   const FLIGHT_CSV_CANDIDATES = [
-    './mock_v_flight_pricing.csv',
-    './data/mock_v_flight_pricing.csv',
-    './application/data/mock_v_flight_pricing.csv',
+    './v_flight_pricing_pg.csv',
+    './data/v_flight_pricing_pg.csv',
+    './application/data/v_flight_pricing_pg.csv',
+  ];
+  const FLIGHT_BOOKING_CURVE_CSV_CANDIDATES = [
+    './v_flight_booking_curve_pg.csv',
+    './data/v_flight_booking_curve_pg.csv',
+    './application/data/v_flight_booking_curve_pg.csv',
   ];
 
   // Columns that should be coerced to real booleans after parsing.
@@ -34,7 +38,8 @@
     if (v === true || v === 1) return true;
     if (v === false || v === 0 || v === null || v === undefined) return false;
     const s = String(v).trim().toLowerCase();
-    return s === '1' || s === 'true';
+    // Accept Postgres-style 't'/'f' and y/n in addition to true/1.
+    return s === '1' || s === 'true' || s === 't' || s === 'yes' || s === 'y';
   }
   function pctToFrac(v) {
     // CSV stores occupancy / load factor as 0–100; the UI helpers expect 0–1.
@@ -94,6 +99,67 @@
     }));
   }
 
+  // ── Schema normalization (Postgres view export → loader contract) ─────────
+  // The mock CSV exports mirror the live `v_*` views, whose column names/units
+  // drifted from the contract the loader + pages were written against. These map
+  // the new names and DERIVE the columns the export dropped, so the rest of the
+  // app (and the KPI/alert logic) is unchanged. Both functions are written to be
+  // backward-compatible: if an old-schema column is already present they keep it,
+  // so either export shape loads.
+  function normalizeFlightRow(r) {
+    const capTot  = num(r.capacity_total) || 0;
+    const soldTot = num(r.sold_total) || 0;
+    const cfe = num(r.current_fare_eco), rfe = num(r.rec_fare_eco);
+    const cfb = num(r.current_fare_biz), rfb = num(r.rec_fare_biz);
+    const comps = [num(r.comp1_fare), num(r.comp2_fare)].filter(v => v !== null && v > 0);
+    const cheapest = comps.length ? Math.min.apply(null, comps) : null;
+    const ros = num(r.rate_of_sale), rosT = num(r.rate_of_sale_target);
+    const fLf = num(r.forecast_lf), tLf = num(r.target_lf);
+    const ratio = num(r.beds_to_seats_ratio);
+    const has = (k) => r[k] !== undefined && r[k] !== null && r[k] !== '';
+    return Object.assign({}, r, {
+      category:      r.flight_category != null ? r.flight_category : r.category,
+      unsold_total:  has('unsold_total') ? r.unsold_total : Math.max(0, capTot - soldTot),
+      // The view ships LF as 0–1 fractions; the loader's pctToFrac expects 0–100.
+      forecast_lf_pct: fLf != null ? fLf * 100 : num(r.forecast_lf_pct),
+      target_lf_pct:   tLf != null ? tLf * 100 : num(r.target_lf_pct),
+      current_lf_pct:  has('current_lf_pct') ? num(r.current_lf_pct)
+                        : (capTot ? (soldTot / capTot) * 100 : null),
+      fare_delta_eco:  has('fare_delta_eco') ? num(r.fare_delta_eco)
+                        : ((cfe != null && rfe != null) ? rfe - cfe : null),
+      fare_delta_biz:  has('fare_delta_biz') ? num(r.fare_delta_biz)
+                        : ((cfb != null && rfb != null) ? rfb - cfb : null),
+      ros_pct_of_target: has('ros_pct_of_target') ? num(r.ros_pct_of_target)
+                        : ((ros != null && rosT) ? (ros / rosT) * 100 : null),
+      cheapest_comp_fare: has('cheapest_comp_fare') ? num(r.cheapest_comp_fare) : cheapest,
+      comp_delta:      has('comp_delta') ? num(r.comp_delta)
+                        : ((cheapest != null && cfe != null) ? cfe - cheapest : null),
+      beds_seats_label: has('beds_seats_label') ? r.beds_seats_label
+                        : (ratio == null ? null
+                           : ratio < 0.85 ? 'Under-bedded'
+                           : ratio > 1.15 ? 'Over-bedded' : 'Balanced'),
+      last_modified_by_name: r.last_modified_by_name != null ? r.last_modified_by_name : r.last_modified_by,
+      // capacity_alert: no column in this export → left absent (alerts blank).
+    });
+  }
+  function normalizeHotelRow(r) {
+    const cAdr = num(r.current_adr), rAdr = num(r.rec_adr);
+    const cMar = num(r.current_margin), rMar = num(r.rec_margin);
+    const fOcc = num(r.forecast_occ), cOcc = num(r.current_occ);
+    const has = (k) => r[k] !== undefined && r[k] !== null && r[k] !== '';
+    return Object.assign({}, r, {
+      inventory_id:     r.inventory_id != null ? r.inventory_id : r.hotel_inventory_id,
+      forecast_occ_pct: fOcc != null ? fOcc * 100 : num(r.forecast_occ_pct),
+      current_occ_pct:  cOcc != null ? cOcc * 100 : num(r.current_occ_pct),
+      adr_delta:        has('adr_delta') ? num(r.adr_delta)
+                         : ((cAdr != null && rAdr != null) ? rAdr - cAdr : null),
+      margin_delta:     has('margin_delta') ? num(r.margin_delta)
+                         : ((cMar != null && rMar != null) ? rMar - cMar : null),
+      margin_pct:       has('margin_pct') ? num(r.margin_pct) : num(r.current_margin_pct),
+      last_modified_by_name: r.last_modified_by_name != null ? r.last_modified_by_name : r.last_modified_by,
+    });
+  }
+
   // ── CSV fetch + parse + clean ─────────────────────────────
   async function fetchFirstOk(candidates, label) {
     let lastErr = null;
@@ -110,6 +176,15 @@
       }
     }
     throw new Error(`Could not load ${label} CSV (tried ${candidates.length} paths): ${lastErr}`);
+  }
+
+  async function fetchOptionalFirstOk(candidates, label) {
+    try {
+      return await fetchFirstOk(candidates, label);
+    } catch (e) {
+      console.warn(`[data-loader] optional ${label} CSV not loaded:`, e);
+      return null;
+    }
   }
 
   function parseCsv(text) {
@@ -137,15 +212,18 @@
     return clean;
   }
 
-  // Public: load + clean both CSVs, returning flat arrays of row objects.
+  // Public: load + clean the CSVs, returning flat arrays of row objects.
   async function loadData() {
-    const [hotelText, flightText] = await Promise.all([
+    const [hotelText, flightText, flightBookingCurveText] = await Promise.all([
       fetchFirstOk(HOTEL_CSV_CANDIDATES, 'hotel pricing'),
       fetchFirstOk(FLIGHT_CSV_CANDIDATES, 'flight pricing'),
+      fetchOptionalFirstOk(FLIGHT_BOOKING_CURVE_CSV_CANDIDATES, 'flight booking curve'),
     ]);
-    const hotelData = parseCsv(hotelText);
-    const flightData = parseCsv(flightText);
-    return { hotelData, flightData };
+    const hotelData = parseCsv(hotelText).map(normalizeHotelRow);
+    const flightData = parseCsv(flightText).map(normalizeFlightRow);
+    // The booking-curve export keeps its original schema, so it needs no remap.
+    const flightBookingCurveData = flightBookingCurveText ? parseCsv(flightBookingCurveText) : [];
+    return { hotelData, flightData, flightBookingCurveData };
   }
 
   // ── Hotel: flat rows → nested HOTEL_DATA shape ────────────
@@ -336,6 +414,7 @@
       capacityAlert: bool(r.capacity_alert),
       autoChanged: bool(r.auto_changed),
       autoChangedRule: r.auto_changed_rule || null,
+      lastEvaluatedAt: r.last_evaluated_at || null,
       economy,
       business,
     };
@@ -430,8 +509,8 @@
   }
 
   // ── Mutate the data.js globals in place ───────────────────
-  // HOTEL_DATA / FLIGHT_DATA / CHECK_IN_WEEKS / BRANDS / DESTINATIONS /
-  // REVENUE_MANAGERS are `const` arrays declared in data.js. We can't rebind
+  // HOTEL_DATA / FLIGHT_DATA / FLIGHT_BOOKING_CURVE_DATA / CHECK_IN_WEEKS /
+  // BRANDS / DESTINATIONS / REVENUE_MANAGERS are `const` arrays declared in data.js. We can't rebind
   // them, but we can swap their contents — the rest of the app reads the same
   // array reference, so it transparently picks up the CSV-derived data.
   // (data.js, filters.js, data-loader.js and the inline scripts all share the
@@ -442,12 +521,13 @@
     items.forEach(x => arr.push(x));
   }
 
-  function applyToGlobals(hotelRows, flightRows) {
+  function applyToGlobals(hotelRows, flightRows, flightBookingCurveRows) {
     const hotel = buildHotelData(hotelRows);
     const flight = buildFlightData(flightRows);
 
     if (typeof HOTEL_DATA !== 'undefined') swap(HOTEL_DATA, hotel.destinations);
     if (typeof FLIGHT_DATA !== 'undefined') swap(FLIGHT_DATA, flight.destinations);
+    if (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined') swap(FLIGHT_BOOKING_CURVE_DATA, flightBookingCurveRows || []);
     // Week index list — hotel & flight share the same weeks, so either works
     // for the global CHECK_IN_WEEKS the hotel page iterates by index.
     if (typeof CHECK_IN_WEEKS !== 'undefined') {
@@ -488,16 +568,20 @@
     'beds_to_seats_ratio', 'beds_seats_label', 'has_cost_change', 'auto_changed', 'price_locked',
     'capacity_alert', 'last_modified_by_name',
   ];
-  // UI features with no backing column in either CSV. Each of these now shows
+  const EXPECTED_FLIGHT_BOOKING_CURVE_COLS = [
+    'product_type', 'entity_id', 'destination_id', 'gateway_code', 'flight_num',
+    'departure_date', 'snapshot_date', 'days_to_departure', 'sold_cumulative',
+    'capacity', 'sold_pct', 'curve_type',
+  ];
+  // UI features with no backing column in the loaded CSVs. Each of these now shows
   // an empty state / blank in the UI instead of fabricated data.
   const KNOWN_FEATURE_GAPS = [
-    'Notes / comments (📝 icon + notes modal) — no notes column in either CSV',
-    'Booking-curve history (cumulative % sold over days-to-departure) — no per-period booking snapshots; chart shows "No booking history data available"',
+    'Notes / comments (📝 icon + notes modal) — no notes column in the loaded CSVs',
     'Fare / price history (price-worm chart) — no historical fare time series; chart shows "No fare history data available"',
     'Booking sparklines (recent-pace mini charts) — no booking snapshots; shown as empty',
     'Hotel cost-change detail (old cost, new cost, change $/%, date received) — only a has_cost_change boolean, so the Cost Change Exceptions detail columns are blank',
     'Publish / audit change log (Publish Changes count, PENDING / pending-publish state) — no price-change-log columns to persist or count pending edits',
-    'RM Copilot narrative — booking-pace, demand drivers, "why" explanations and price-elasticity projections are not in the CSV; the copilot now states only CSV-derived figures and declines the rest',
+    'RM Copilot narrative — demand drivers, "why" explanations and price-elasticity projections are not in the CSV; the copilot states only CSV-derived figures and declines the rest',
     'Packages tab (pricing.html) — there is no package pricing CSV; the table shows "No package data available"',
     'Package autopilot rules (flight.html rules drawer, PACKAGE_RULES) — no CSV source; the rules list renders empty',
     'Parameters config (autopilot rules, alerts, price/margin controls, LOS rules) — configuration, not pricing data; every section is now blanked to an empty state ("not yet connected to a data source")',
@@ -516,9 +600,14 @@
     return { missing, empty };
   }
 
-  function reportDataGaps(hotelRows, flightRows) {
+  function reportDataGaps(hotelRows, flightRows, flightBookingCurveRows) {
     const h = colStatus(hotelRows, EXPECTED_HOTEL_COLS);
     const f = colStatus(flightRows, EXPECTED_FLIGHT_COLS);
+    const bc = colStatus(flightBookingCurveRows, EXPECTED_FLIGHT_BOOKING_CURVE_COLS);
+    const featureGaps = KNOWN_FEATURE_GAPS.slice();
+    if (!flightBookingCurveRows || !flightBookingCurveRows.length) {
+      featureGaps.unshift('Flight booking-curve history (cumulative % sold over days-to-departure) — no booking-curve CSV loaded; chart shows "No booking history data available"');
+    }
     const group = (typeof console.groupCollapsed === 'function')
       ? console.groupCollapsed.bind(console) : console.log.bind(console);
     const groupEnd = (typeof console.groupEnd === 'function') ? console.groupEnd.bind(console) : function () {};
@@ -530,21 +619,23 @@
     group('%c1. Columns expected but missing from the CSV', bold);
     console.log('Hotel CSV  — missing columns:', h.missing.length ? h.missing : '(none — all expected columns present)');
     console.log('Flight CSV — missing columns:', f.missing.length ? f.missing : '(none — all expected columns present)');
+    console.log('Flight booking-curve CSV — missing columns:', bc.missing.length ? bc.missing : '(none — all expected columns present)');
     groupEnd();
 
     // ── 2. Columns present but ENTIRELY EMPTY (every row null/blank) ──
     group('%c2. Columns present but entirely empty', bold);
     console.log('Hotel CSV  — empty columns:', h.empty.length ? h.empty : '(none)');
     console.log('Flight CSV — empty columns:', f.empty.length ? f.empty : '(none)');
+    console.log('Flight booking-curve CSV — empty columns:', bc.empty.length ? bc.empty : '(none)');
     groupEnd();
 
     // ── 3. UI features with NO CSV backing at all (blanked / empty state) ──
     group('%c3. UI features with NO CSV backing (shown blank / empty state)', bold);
-    KNOWN_FEATURE_GAPS.forEach(g => console.log('   • ' + g));
+    featureGaps.forEach(g => console.log('   • ' + g));
     groupEnd();
 
     groupEnd();
-    return { hotel: h, flight: f, featureGaps: KNOWN_FEATURE_GAPS };
+    return { hotel: h, flight: f, flightBookingCurve: bc, featureGaps };
   }
 
   // ── exports ───────────────────────────────────────────────

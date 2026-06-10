@@ -49,20 +49,36 @@ Show how an RM team would review and action pricing:
 
 **Current state — CSV-driven:**
 
-- Two CSV exports live in `data/`:
-  - `mock_v_hotel_pricing.csv`  — ~3,456 rows, 41 columns
-  - `mock_v_flight_pricing.csv` — ~864 rows, 61 columns
-- The filenames mirror the Postgres views they are exported from:
-  **`v_hotel_pricing`** and **`v_flight_pricing`** (the `mock_v_` prefix
-  marks them as mocked view exports).
-- `data/data-loader.js` fetches both CSVs, parses them with PapaParse, and
-  reshapes the flat rows into the nested `HOTEL_DATA` / `FLIGHT_DATA`
-  structures the pages render from. It also rebuilds `CHECK_IN_WEEKS`,
-  `BRANDS`, `DESTINATIONS` and `REVENUE_MANAGERS` from the CSV, and prints a
-  **console data-gap report** (`DataLoader.reportDataGaps`).
+- Three CSV exports live in `data/` (larger `v_*` view exports, ~80 MB total):
+  - `v_hotel_pricing_pg.csv`  — ~232k rows, 36 columns
+  - `v_flight_pricing_pg.csv` — ~6k rows, 52 columns
+  - `v_flight_booking_curve_pg.csv` — ~218k rows, 12 columns
+  - These cover **2 destinations** but a wide time range (~184–314 weekly
+    periods, 2024–2027) and many hotels/room categories; some rows are sparse
+    (placeholder names, `$0` fares/ADR) — the UI shows them faithfully.
+- The filenames mirror the Postgres views they are exported from
+  (**`v_hotel_pricing`**, **`v_flight_pricing`**, **`v_flight_booking_curve`**);
+  the `_pg` suffix marks them as Postgres view exports.
+- **Schema-normalization layer** (`data-loader.js`, `normalizeFlightRow` /
+  `normalizeHotelRow`): the view exports renamed/dropped columns and ship LF &
+  occupancy as **0–1 fractions** (not 0–100). The normalizer maps the new names
+  (`flight_category`→`category`, `forecast_lf`→`forecast_lf_pct`×100,
+  `current_occ`→`current_occ_pct`×100, `last_modified_by`→`last_modified_by_name`,
+  `hotel_inventory_id`→`inventory_id`, …) and derives the dropped ones
+  (`fare_delta_*`, `ros_pct_of_target`, `cheapest_comp_fare`, `comp_delta`,
+  `current_lf_pct`, `adr_delta`, `margin_delta`). It is backward-compatible, so
+  the older mock schema still loads. `capacity_alert` has **no column** in this
+  export, so capacity-alert badges are blank (honest empty state).
+- `data/data-loader.js` fetches the CSVs, parses them with PapaParse, and
+  reshapes the flat pricing rows into the nested `HOTEL_DATA` / `FLIGHT_DATA`
+  structures the pages render from. It also loads `FLIGHT_BOOKING_CURVE_DATA`,
+  rebuilds `CHECK_IN_WEEKS`, `BRANDS`, `DESTINATIONS` and `REVENUE_MANAGERS`
+  from the CSV, and prints a **console data-gap report**
+  (`DataLoader.reportDataGaps`).
 - `data/data.js` is now a **thin "empty globals" contract** (~50 lines): it
   declares the global names the app reads (`HOTEL_DATA`, `FLIGHT_DATA`,
-  `CHECK_IN_WEEKS`, `BRANDS`, `DESTINATIONS`, `REVENUE_MANAGERS`, plus the
+  `FLIGHT_BOOKING_CURVE_DATA`, `CHECK_IN_WEEKS`, `BRANDS`, `DESTINATIONS`,
+  `REVENUE_MANAGERS`, plus the
   still-referenced non-CSV arrays and two lookup helpers) as **empty**, and
   `data-loader.js` fills the CSV-backed ones at runtime. All hand-generated
   seed data was **removed** (recoverable from git at commit `3f9eb6b` / tag
@@ -98,24 +114,37 @@ Show how an RM team would review and action pricing:
 | `parameters.html` | Autopilot rules, alerts, price/margin controls, LOS rules     |
 | `index.html`      | Small entry point                                             |
 
-Shared assets: `styles.css`, `data.js` (fallback seed), `data-loader.js`
+Shared assets: `styles.css`, `data.js` (empty globals contract), `data-loader.js`
 (CSV loader), `chart.local.js` (chart shim), `filters.js` (header filters).
 
 ## Data honesty / known gaps
 
 The demo deliberately shows **only data that comes from the CSVs**. Anything
 without a CSV backing is blanked (empty state) rather than fabricated, and is
-enumerated in the console gap report. Current features with **no CSV backing**:
+enumerated in the console gap report. Current gaps and partial-backed areas:
 
-- **Notes / comments** — no notes column in either CSV.
-- **Booking-curve history** — no per-period booking snapshots; chart shows
-  "No booking history data available".
+- **Notes / comments** — no notes column in the loaded CSVs.
+- **Flight booking curves** are backed by
+  `v_flight_booking_curve_pg.csv`. Its `entity_id`s match the
+  pricing `flight_date_id`s exactly (all 864 flights), so every flight resolves
+  to an **"Exact curve"** match. The fallback chain (route/date → destination+gateway
+  → destination-wide) remains in place for any flight without an exact row, and a
+  flight with no curve rows at all still shows "No booking history data available".
 - **Fare / price history** ("price worm") — no historical fare time series.
 - **Booking sparklines** — no booking snapshots.
 - **Hotel cost-change detail** (old/new cost, change $/%, date) — the CSV
   carries only a `has_cost_change` boolean, so detail columns are blank.
-- **Publish / audit change log** — no price-change-log columns.
-- **RM Copilot narrative** — booking pace, demand drivers, "why" explanations
+- **Publish / audit change log** — no price-change-log columns. There is no
+  publish/approval/status column, so the **"Pending approval" KPI is blank** on
+  both pages (it previously proxied the unrelated `auto_changed` flag).
+- **No invented alert thresholds.** Alerts use only the real target columns: a
+  flight is "behind target" when `current_lf_pct < target_lf_pct` / rate of sale
+  `< 100%` of `rate_of_sale_target`; capacity alerts come from `capacity_alert`.
+  The hotel CSV has **no occupancy target/plan column**, so "Hotels behind plan"
+  and "High demand" KPIs are **blank**, the hotel fast/slow-seller row badges are
+  removed, and the copilot declines to flag "behind plan" (it lists lowest
+  forecast occupancy instead). No hardcoded cutoffs or tolerance buffers.
+- **RM Copilot narrative** — demand drivers, "why" explanations
   and price-elasticity projections are not in the CSV; the copilot reports
   only CSV-derived figures and declines the rest. When no pricing data is
   loaded at all (CSV failed / not connected), it says "No … pricing data is

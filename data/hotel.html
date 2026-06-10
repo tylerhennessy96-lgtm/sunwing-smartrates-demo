@@ -1898,10 +1898,9 @@ function alertsCellHTML(a) {
   if (a.hasCostChange) {
     parts.push('<span class="cost-change-flag" title="Cost change / alert">⚠️</span>');
   }
-  const fastSeller = (a.soldPct > 0.80) || (a.forecastOcc != null && a.forecastOcc >= 0.85);
-  const slowSeller = (a.soldPct < 0.35) && (a.daysToCheckIn != null && a.daysToCheckIn < 60);
-  if (fastSeller) parts.push('<span class="alert-fast" title="High demand / fast seller — consider yield uplift">🔥</span>');
-  if (slowSeller) parts.push('<span class="alert-slow" title="Slow seller — consider promotional pricing">🐢</span>');
+  // No "fast/slow seller" badges: the hotel CSV has no occupancy target/plan to
+  // judge demand against, so any sold%/occ cutoff here would be invented. Only
+  // the real has_cost_change flag is shown.
   return parts.join('');
 }
 
@@ -2207,28 +2206,21 @@ function computeMetrics() {
     const n = (v) => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
     const cols = Object.keys(rows[0]);
     const has = (c) => cols.includes(c);
-    // Hotels behind plan: distinct hotel_id whose average forecast_occ_pct < 60.
-    let hotelsBehind = null, highDemand = null;
-    if (has('hotel_id') && has('forecast_occ_pct')) {
-      const byHotel = {};
-      rows.forEach(r => {
-        (byHotel[r.hotel_id] = byHotel[r.hotel_id] || []).push(n(r.forecast_occ_pct));
-      });
-      hotelsBehind = 0; highDemand = 0;
-      Object.values(byHotel).forEach(vals => {
-        const avg = vals.reduce((s, v) => s + v, 0) / Math.max(1, vals.length);
-        if (avg < 60) hotelsBehind++;
-        if (avg >= 75) highDemand++;
-      });
-    }
+    // "Hotels behind plan" and "High demand" need a target/plan occupancy to
+    // compare against, but the hotel CSV carries only current_occ_pct and
+    // forecast_occ_pct — no target column. There is no honest threshold, so both
+    // stay blank rather than using invented < 60 / >= 75 cutoffs.
+    const hotelsBehind = null, highDemand = null;
     const avgForecastOcc = has('forecast_occ_pct')
       ? rows.reduce((s, r) => s + n(r.forecast_occ_pct), 0) / Math.max(1, rows.length) / 100 : null;
     const avgADRChange = has('adr_delta')
       ? rows.reduce((s, r) => s + n(r.adr_delta), 0) / Math.max(1, rows.length) : null;
     const costChanges = has('has_cost_change')
       ? rows.filter(r => r.has_cost_change === true).length : null;
-    const pendingApproval = has('auto_changed')
-      ? rows.filter(r => r.auto_changed === true && r.price_locked !== true).length : null;
+    // No publish/approval/change-log column exists in the hotel CSV, so there is
+    // no honest "pending approval / waiting to publish" count. Leave it blank
+    // rather than proxying it with the unrelated auto_changed flag.
+    const pendingApproval = null;
     return { hotelsBehind, avgForecastOcc, avgADRChange, highDemand, costChanges, pendingApproval };
   }
 
@@ -3501,24 +3493,25 @@ function _initApp() {
     _initApp();
   };
   if (typeof loadData !== 'function') {
-    console.warn('[hotel] data-loader.js unavailable — using data.js fallback data.');
+    console.warn('[hotel] data-loader.js unavailable — rendering empty data.js contract.');
     finish();
     return;
   }
   loadData()
-    .then(({ hotelData, flightData }) => {
+    .then(({ hotelData, flightData, flightBookingCurveData }) => {
       window.__hotelRows = hotelData;
       window.__flightRows = flightData;
-      const meta = DataLoader.applyToGlobals(hotelData, flightData);
+      window.__flightBookingCurveRows = flightBookingCurveData;
+      const meta = DataLoader.applyToGlobals(hotelData, flightData, flightBookingCurveData);
       window.__filterRegions = meta && meta.regions;
       if (typeof HOTEL_BY_DEST !== 'undefined') {
         Object.keys(HOTEL_BY_DEST).forEach(k => delete HOTEL_BY_DEST[k]);
         HOTEL_DATA.forEach(h => { HOTEL_BY_DEST[h.id] = h; });
       }
-      DataLoader.reportDataGaps(hotelData, flightData);
+      DataLoader.reportDataGaps(hotelData, flightData, flightBookingCurveData);
     })
     .catch(err => {
-      console.warn('[hotel] CSV load failed — falling back to generated data.js data:', err);
+      console.warn('[hotel] CSV load failed — rendering empty data.js contract:', err);
     })
     .finally(finish);
 })();
@@ -3539,7 +3532,6 @@ function _hotelRowContext(destId, weekIdx) {
   const dwMargin = aggMargin(dwWeeks);
 
   const costChangeCount = dwWeeks.filter(w => w.hasCostChange).length;
-  const undersoldCount  = dwWeeks.filter(w => w.allocation && (w.sold / w.allocation) < 0.5).length;
 
   const wkLbl    = 'Wk ' + (wkMeta.weekStart || '').slice(0, 5);
   const occPct   = Math.round((dwAgg.forecastOcc || 0) * 100);
@@ -3550,7 +3542,7 @@ function _hotelRowContext(destId, weekIdx) {
     kind: 'hotel',
     dest, weekIdx, wkMeta, wkLbl,
     dwAgg, dwWeeks, dwMargin,
-    costChangeCount, undersoldCount,
+    costChangeCount,
     occPct, curOccPct, marginPct,
   };
 }
@@ -3635,7 +3627,6 @@ function _hotelContextMessage(ctx) {
     + `- Avg ADR: ${fmt$(ctx.dwAgg.currentADR)} | Rec ADR: ${fmt$(ctx.dwAgg.recADR)} | Delta: ${deltaStr}\n`
     + `- Avg Margin: ${marginStr}\n`
     + `- ${ctx.costChangeCount} hotels with cost change alerts\n`
-    + `- ${ctx.undersoldCount} room categories undersold (<50%)\n`
     + `What would you like to explore?`;
 }
 
@@ -3643,10 +3634,10 @@ function renderRowCopilotSuggest() {
   const ctx = _rowCopilotCtxData;
   if (!ctx) return;
   const qs = [];
-  if (ctx.occPct < 60)             qs.push('Show occupancy by hotel');
+  qs.push('Show occupancy by hotel');
   if (ctx.costChangeCount > 0)     qs.push('How many cost changes are flagged?');
   qs.push('Show margin breakdown');
-  qs.push('Which room categories are undersold?');
+  qs.push('Show room categories by sold %');
   const uniq = Array.from(new Set(qs)).slice(0, 4);
   const el = document.getElementById('rowCopilotSuggest');
   el.innerHTML = uniq.map(q =>
@@ -3756,15 +3747,13 @@ function _hotelAnswer(q) {
     const list = [];
     ctx.dest.hotels.forEach(h => h.categories.forEach(c => {
       const w = c.checkInWeeks[ctx.weekIdx];
-      if (!w) return;
-      const soldPct = w.allocation ? w.sold / w.allocation : 0;
-      const delta = w.recADR - w.currentADR;
-      if (soldPct < 0.5 || delta < 0) list.push({ hotel: h.name, name: c.name, occ: soldPct, rec: w.recADR });
+      if (!w || !w.allocation) return;
+      list.push({ hotel: h.name, name: c.name, occ: w.sold / w.allocation, rec: w.recADR });
     }));
     list.sort((a, b) => a.occ - b.occ);
-    if (list.length === 0) return `All room categories for ${ctx.dest.name} ${ctx.wkLbl} are tracking at or above 50% sold.`;
+    if (list.length === 0) return `No room-category sold % is available for ${ctx.dest.name} ${ctx.wkLbl}.`;
     const lines = list.slice(0, 5).map(x => `• ${x.hotel} — ${x.name}: ${Math.round(x.occ * 100)}% sold · rec ADR $${x.rec}`).join('\n');
-    return `Room categories below 50% sold or with a lower rec ADR for ${ctx.dest.name} ${ctx.wkLbl}:\n${lines}`;
+    return `Room categories for ${ctx.dest.name} ${ctx.wkLbl}, lowest sold % first (from the CSV):\n${lines}`;
   }
 
   // Fallback — advertise only what the CSV can answer.
@@ -3871,20 +3860,17 @@ function _generalHotelAnswer(q) {
   if (/booking pace|\bpace\b|demand|driver|driving|booking curve|pickup/.test(ql))
     return _copilotNoData('booking-pace or demand data (there is no booking history in the CSV)');
 
-  // Behind plan
+  // "Behind plan / at risk" — the hotel CSV carries current & forecast occupancy
+  // but no occupancy target/plan, so there is nothing to honestly flag "behind"
+  // against. Report the lowest forecast-occupancy hotels instead and say so.
   if (/(behind plan|behind target|behind|at risk|underperform)/.test(ql)) {
-    const behind = [];
-    HOTEL_DATA.forEach(dest => {
-      dest.hotels.forEach(h => {
-        if (h.forecastOcc < 0.60) {
-          behind.push({ hotel: h, dest, occ: h.forecastOcc });
-        }
-      });
-    });
-    behind.sort((a, b) => a.occ - b.occ);
-    if (behind.length === 0) return "No hotels flagged as behind plan — forecast occupancy is tracking at or above threshold everywhere.";
-    const lines = behind.slice(0, 5).map(x => `• ${x.hotel.name} (${x.dest.name}): ${Math.round(x.occ * 100)}% forecast occ`).join('\n');
-    return `${behind.length} hotels are behind occupancy plan. Lowest:\n${lines}`;
+    const all = [];
+    HOTEL_DATA.forEach(dest => dest.hotels.forEach(h => all.push({ hotel: h, dest, occ: h.forecastOcc })));
+    if (all.length === 0) return _copilotNoData('hotel occupancy data');
+    all.sort((a, b) => a.occ - b.occ);
+    const lines = all.slice(0, 5).map(x => `• ${x.hotel.name} (${x.dest.name}): ${Math.round(x.occ * 100)}% forecast occ`).join('\n');
+    return `The CSV has no occupancy target/plan, so I can't flag hotels as "behind plan." `
+      + `Here are the lowest forecast-occupancy hotels (from the CSV):\n${lines}`;
   }
 
   // Lowest occupancy

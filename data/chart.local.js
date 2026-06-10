@@ -83,9 +83,17 @@
   LocalChart.prototype.render = function () {
     var canvas = this.canvas;
     var ctx = this.ctx;
+    // Size to the PARENT container (Chart.js-style responsive sizing). A bare
+    // <canvas> with no CSS size defaults to 300x150, so reading its own rect
+    // pins the chart to that default instead of filling its wrapper. The pages
+    // wrap each canvas in a `position:relative; width:100%; height:NNNpx` box,
+    // so the parent's content box is the width/height we should fill.
+    var parent = (canvas.parentNode && canvas.parentNode.nodeType === 1) ? canvas.parentNode : null;
     var rect = canvas.getBoundingClientRect();
-    var width = Math.max(320, Math.round(rect.width || canvas.clientWidth || 640));
-    var height = Math.max(220, Math.round(rect.height || canvas.clientHeight || 320));
+    var availW = (parent && parent.clientWidth) || rect.width || canvas.clientWidth || 640;
+    var availH = (parent && parent.clientHeight) || rect.height || canvas.clientHeight || 320;
+    var width = Math.max(120, Math.round(availW));
+    var height = Math.max(120, Math.round(availH));
     var dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
 
     canvas.width = Math.round(width * dpr);
@@ -145,7 +153,32 @@
       return values;
     }
 
-    var xTicks = tickValues(xLabels, xMin, xMax, 8);
+    // Evenly-spaced "nice" tick values (1/2/2.5/5 × 10^n steps) across a
+    // numeric range, so the x-axis is labelled by VALUE at round intervals
+    // (e.g. 0,100,…,500) instead of one tick per data point.
+    function niceTicks(min, max, maxCount) {
+      if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return [min];
+      var span = max - min;
+      var rawStep = span / Math.max(1, maxCount);
+      var mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+      var norm = rawStep / mag;
+      var step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+      var ticks = [];
+      var start = Math.ceil(min / step - 1e-6) * step;
+      for (var v = start; v <= max + step * 1e-6; v += step) {
+        ticks.push(Math.round(v * 1e6) / 1e6);
+      }
+      if (!ticks.length || ticks[0] > min + step * 1e-6) ticks.unshift(min);
+      if (ticks[ticks.length - 1] < max - step * 1e-6) ticks.push(max);
+      return ticks;
+    }
+
+    // x ticks: round, evenly-by-value, and capped to what fits the plot
+    // width so labels never crowd/overlap. y ticks keep their even split.
+    var xTickCap = (xScale.ticks && Number.isFinite(xScale.ticks.maxTicksLimit))
+      ? xScale.ticks.maxTicksLimit : 10;
+    var xTickFit = Math.max(2, Math.floor(plot.width / 64));
+    var xTicks = niceTicks(xMin, xMax, Math.min(xTickCap, xTickFit, 11));
     var yTicks = tickValues(null, yMin, yMax, 5);
 
     ctx.font = "10px sans-serif";
@@ -165,14 +198,42 @@
       ctx.fillText(label, 6, y + 3);
     });
 
-    xTicks.forEach(function (tick) {
-      var x = projectX(tick);
-      var formatter = xScale.ticks && xScale.ticks.callback;
-      var label = formatter ? formatter(tick) : String(Math.round(tick));
-      if (!label) return;
-      ctx.fillStyle = "#9ca3af";
-      ctx.fillText(String(label), x - 8, plot.top + plot.height + 16);
-    });
+    // Draw in left-to-right pixel order (the axis may be reversed) so the
+    // overlap guard can compare against the previously placed label.
+    var xGridOn = !(xScale.grid && xScale.grid.display === false);
+    var xFormatter = xScale.ticks && xScale.ticks.callback;
+    var xTickColor = (xScale.ticks && xScale.ticks.color) || "#9ca3af";
+    var lastLabelRight = -Infinity;
+    xTicks
+      .map(function (tick) { return { tick: tick, x: projectX(tick) }; })
+      .sort(function (a, b) { return a.x - b.x; })
+      .forEach(function (t) {
+        if (xGridOn) {
+          ctx.beginPath();
+          ctx.moveTo(t.x, plot.top);
+          ctx.lineTo(t.x, plot.top + plot.height);
+          // grid.color may be a per-tick callback in the page config; only a
+          // plain string is a valid strokeStyle, otherwise use the default.
+          ctx.strokeStyle = (xScale.grid && typeof xScale.grid.color === "string")
+            ? xScale.grid.color : "#2a2d35";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+        // The page callbacks blank non-marker values; fall back to the
+        // rounded number so our evenly-spaced ticks are always labelled.
+        var raw = xFormatter ? xFormatter(t.tick) : null;
+        var label = (raw === "" || raw == null) ? String(Math.round(t.tick)) : String(raw);
+        if (!label) return;
+        var w = ctx.measureText(label).width;
+        var tx = t.x - w / 2;
+        // Keep first/last labels inside the canvas instead of clipping them.
+        if (tx < plot.left - 2) tx = plot.left - 2;
+        if (tx + w > plot.left + plot.width + 2) tx = plot.left + plot.width + 2 - w;
+        if (tx < lastLabelRight + 6) return; // would overlap previous label
+        lastLabelRight = tx + w;
+        ctx.fillStyle = xTickColor;
+        ctx.fillText(label, tx, plot.top + plot.height + 16);
+      });
 
     datasets.forEach(function (dataset, index) {
       var datasetXs = labels.map(projectX);

@@ -5,9 +5,9 @@
 // commit 3f9eb6b / tag v1.1.0 if you ever need to see what was there.)
 //
 // What remains is a thin CONTRACT: the global names the rest of the app reads,
-// declared empty. `data-loader.js` loads the two CSVs and fills the CSV-backed
-// globals in place (HOTEL_DATA / FLIGHT_DATA / CHECK_IN_WEEKS / BRANDS /
-// DESTINATIONS / REVENUE_MANAGERS). If the CSV fails to load, these stay empty
+// declared empty. `data-loader.js` loads the CSVs and fills the CSV-backed
+// globals in place (HOTEL_DATA / FLIGHT_DATA / FLIGHT_BOOKING_CURVE_DATA /
+// CHECK_IN_WEEKS / BRANDS / DESTINATIONS / REVENUE_MANAGERS). If the CSV fails to load, these stay empty
 // and the UI shows honest empty states — nothing is fabricated.
 //
 // Globals with NO CSV source (competitor detail, publish/audit log, packages,
@@ -18,8 +18,9 @@
 const BRANDS           = [];   // ← CSV brand_name
 const DESTINATIONS     = [];   // ← CSV destination rows {id,name,region,country,brand,revenueManager}
 const REVENUE_MANAGERS = [];   // ← CSV last_modified_by_name (loader prepends 'All RMs')
-const HOTEL_DATA       = [];   // ← built from mock_v_hotel_pricing.csv
-const FLIGHT_DATA      = [];   // ← built from mock_v_flight_pricing.csv
+const HOTEL_DATA       = [];   // ← built from v_hotel_pricing_pg.csv
+const FLIGHT_DATA      = [];   // ← built from v_flight_pricing_pg.csv
+const FLIGHT_BOOKING_CURVE_DATA = []; // ← built from v_flight_booking_curve_pg.csv
 const CHECK_IN_WEEKS   = [];   // ← week index list derived from the CSVs
 
 // ── No CSV source yet → features render empty states (see reportDataGaps) ──
