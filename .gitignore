@@ -4,3 +4,13 @@
 
 # Local dev static server — convenience only, not part of the deployment.
 serve-demo.ps1
+
+# FastAPI backend local environment and Python bytecode.
+backend/.venv/
+backend/.env
+backend/__pycache__/
+backend/app/__pycache__/
+*.pyc
+
+# Keep the example backend environment file tracked.
+!backend/.env.example
