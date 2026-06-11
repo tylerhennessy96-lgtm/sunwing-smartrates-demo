@@ -1634,24 +1634,39 @@ let   activeNoteKey  = null;
 // ── Header filter state (Brand / Region / Destination / Dates / RM) ──
 let headerFilters = { brand: [], region: [], destination: [], rm: [], dates: null };
 
+function parseAppDate(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (m) return new Date(2000 + Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function endOfSelectedWeek(d) {
+  const out = new Date(d);
+  out.setDate(out.getDate() + 6);
+  out.setHours(23, 59, 59, 999);
+  return out;
+}
+function weekOverlapsSelectedRange(weekStart, range) {
+  const wkStart = parseAppDate(weekStart);
+  if (!wkStart || !range || !range.start) return true;
+  wkStart.setHours(0, 0, 0, 0);
+  const wkEnd = new Date(wkStart);
+  wkEnd.setDate(wkEnd.getDate() + 6);
+  wkEnd.setHours(23, 59, 59, 999);
+  const rangeStart = new Date(range.start);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = endOfSelectedWeek(range.end || range.start);
+  return wkEnd.getTime() >= rangeStart.getTime() && wkStart.getTime() <= rangeEnd.getTime();
+}
+
 function passesHeaderFilters(dest, wkMeta) {
   const hf = headerFilters;
   if (hf.brand.length       && !hf.brand.includes(dest.brand)) return false;
   if (hf.region.length      && !hf.region.includes(dest.region)) return false;
   if (hf.destination.length && !hf.destination.includes(dest.name)) return false;
   if (hf.rm.length          && !hf.rm.includes(dest.revenueManager)) return false;
-  if (hf.dates && hf.dates.start) {
-    // Parse weekStart "MM/DD/YY" → Date
-    const parts = (wkMeta.weekStart || '').split('/').map(Number);
-    if (parts.length === 3) {
-      const wkDate = new Date(2000 + parts[2], parts[0] - 1, parts[1]);
-      wkDate.setHours(0, 0, 0, 0);
-      const lo = hf.dates.start.getTime();
-      const hi = (hf.dates.end || hf.dates.start).getTime();
-      const t = wkDate.getTime();
-      if (t < lo || t > hi) return false;
-    }
-  }
+  if (hf.dates && hf.dates.start) return weekOverlapsSelectedRange(wkMeta && wkMeta.weekStart, hf.dates);
   return true;
 }
 function headerFiltersActive() {
@@ -1973,8 +1988,10 @@ function renderRecsTable() {
       const dwAgg = aggCatsAtWeek(allCatsForAgg, weekIdx);
       const dwWeeks = allCatsForAgg.map(c => c.checkInWeeks[weekIdx]).filter(Boolean);
       const dwMargin = aggMargin(dwWeeks);
-      // "MM/DD" extracted from weekStart (which is "MM/DD/YY")
-      const shortDate = (wkMeta.weekStart || '').slice(0, 5);
+      // Use the per-week label the loader year-stamps (same source the flights
+      // tab uses) so the year shows and the format matches across tabs.
+      const weekDisplay = (dwWeeks[0] && dwWeeks[0].weekLabel)
+        || wkMeta.weekLabel || `Wk ${wkMeta.weekStart || ''}`;
 
       const entryRows = [];
       const entry = { weekIdx, forecastOcc: dwAgg.forecastOcc, rows: entryRows };
@@ -1986,10 +2003,10 @@ function renderRecsTable() {
           <td>
             <button class="expand-btn ${weekOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleWeek('${weekKey}')">${chevron(weekOpen)}</button>
             <span style="font-weight:600;">${dest.name}</span>
-            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- Wk ${shortDate}</span>
+            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- ${weekDisplay}</span>
             <div class="row-region">${regionBadge(dest.region)}</div>
           </td>
-          <td><span style="font-weight:500;">Wk ${shortDate}</span></td>
+          <td><span style="font-weight:500;">${weekDisplay}</span></td>
           <td class="text-right num">${dwAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${dwAgg.alloc.toLocaleString()}</td>
           <td class="text-right">${occPill(dwAgg.forecastOcc)}</td>
           <td class="text-right num">${fmtPct(dwAgg.currentOcc)}</td>
@@ -3044,10 +3061,9 @@ function calOccClass(occ) {
 function renderCalendarHead() {
   const thead = document.getElementById('calHead');
   const weekCells = CHECK_IN_WEEKS.map(wk => {
-    const mmdd = (wk.weekStart || '').slice(0, 5);
     return `<th class="cal-wk-hd">
       <div class="cal-wk-lbl">${wk.weekLabel}</div>
-      <div class="cal-wk-sub">${mmdd}</div>
+      <div class="cal-wk-sub">${wk.weekStart || ''}</div>
     </th>`;
   }).join('');
   const arrow = topSortDir === 'asc' ? '↑' : '↓';
@@ -3090,7 +3106,7 @@ function renderCalendar() {
     // Apply header filter (dest-level)
     if (headerFiltersActive()) {
       // Use a representative week to skip non-matching dests by brand/region/dest/rm
-      if (!passesHeaderFilters(dest, CHECK_IN_WEEKS[0])) return;
+      if (!passesHeaderFilters(dest, { weekStart: null })) return;
     }
     const destOpen = calExpandedDests.has(dest.id);
 
@@ -3175,6 +3191,10 @@ function renderCalendar() {
     });
   });
 
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${CHECK_IN_WEEKS.length + 1}" style="text-align:center;color:var(--text-muted);padding:32px;">No hotels match the current filters</td></tr>`;
+    return;
+  }
   tbody.innerHTML = rows.join('');
 }
 
@@ -3497,18 +3517,18 @@ function _initApp() {
     finish();
     return;
   }
-  loadData()
-    .then(({ hotelData, flightData, flightBookingCurveData }) => {
+  // The hotel page renders only HOTEL_DATA — skip the flight (2.7 MB) and
+  // booking-curve (27 MB) exports entirely.
+  loadData({ flight: false, curve: false })
+    .then(({ hotelData }) => {
       window.__hotelRows = hotelData;
-      window.__flightRows = flightData;
-      window.__flightBookingCurveRows = flightBookingCurveData;
-      const meta = DataLoader.applyToGlobals(hotelData, flightData, flightBookingCurveData);
+      const meta = DataLoader.applyToGlobals(hotelData, [], []);
       window.__filterRegions = meta && meta.regions;
       if (typeof HOTEL_BY_DEST !== 'undefined') {
         Object.keys(HOTEL_BY_DEST).forEach(k => delete HOTEL_BY_DEST[k]);
         HOTEL_DATA.forEach(h => { HOTEL_BY_DEST[h.id] = h; });
       }
-      DataLoader.reportDataGaps(hotelData, flightData, flightBookingCurveData);
+      DataLoader.reportDataGaps(hotelData, [], []);
     })
     .catch(err => {
       console.warn('[hotel] CSV load failed — rendering empty data.js contract:', err);
@@ -3533,7 +3553,7 @@ function _hotelRowContext(destId, weekIdx) {
 
   const costChangeCount = dwWeeks.filter(w => w.hasCostChange).length;
 
-  const wkLbl    = 'Wk ' + (wkMeta.weekStart || '').slice(0, 5);
+  const wkLbl    = wkMeta.weekLabel || `Wk ${wkMeta.weekStart || ''}`;
   const occPct   = Math.round((dwAgg.forecastOcc || 0) * 100);
   const curOccPct = Math.round((dwAgg.currentOcc || 0) * 100);
   const marginPct = dwMargin && dwMargin.marginPct != null ? Math.round(dwMargin.marginPct * 100) : null;

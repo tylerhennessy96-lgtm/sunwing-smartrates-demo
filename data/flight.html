@@ -1997,18 +1997,16 @@ function passesHeaderFilters(dest) {
 function passesHeaderDate(date) {
   const hf = headerFilters;
   if (!hf.dates || !hf.dates.start) return true;
-  if (!date || !date.departureDate) return true;
-  // Find the Monday of the week containing this departure date
-  const d = new Date(date.departureDate);
-  if (isNaN(d)) return true;
-  const day = d.getDay();
-  const offset = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + offset);
+  if (!date) return true;
+  if (date.weekStart) return weekOverlapsSelectedRange(date.weekStart, hf.dates);
+  if (!date.departureDate) return true;
+  const d = parseAppDate(date.departureDate);
+  if (!d) return true;
   d.setHours(0, 0, 0, 0);
-  const lo = hf.dates.start.getTime();
-  const hi = (hf.dates.end || hf.dates.start).getTime();
-  const t = d.getTime();
-  return t >= lo && t <= hi;
+  const lo = new Date(hf.dates.start);
+  lo.setHours(0, 0, 0, 0);
+  const hi = endOfSelectedWeek(hf.dates.end || hf.dates.start);
+  return d.getTime() >= lo.getTime() && d.getTime() <= hi.getTime();
 }
 function headerFiltersActive() {
   const hf = headerFilters;
@@ -2187,6 +2185,37 @@ function shortMMDD(s) {
 }
 
 // ── Aggregations ───────────────────────────────────────────
+function parseAppDate(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (m) return new Date(2000 + Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function endOfSelectedWeek(d) {
+  const out = new Date(d);
+  out.setDate(out.getDate() + 6);
+  out.setHours(23, 59, 59, 999);
+  return out;
+}
+function weekOverlapsSelectedRange(weekStart, range) {
+  const wkStart = parseAppDate(weekStart);
+  if (!wkStart || !range || !range.start) return true;
+  wkStart.setHours(0, 0, 0, 0);
+  const wkEnd = new Date(wkStart);
+  wkEnd.setDate(wkEnd.getDate() + 6);
+  wkEnd.setHours(23, 59, 59, 999);
+  const rangeStart = new Date(range.start);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = endOfSelectedWeek(range.end || range.start);
+  return wkEnd.getTime() >= rangeStart.getTime() && wkStart.getTime() <= rangeEnd.getTime();
+}
+function shortMMDDYY(s) {
+  const d = parseAppDate(s);
+  if (!d) return shortMMDD(s);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+}
+
 function aggDates(dates) {
   if (!dates.length) return null;
   const capacity = dates.reduce((s, x) => s + x.capacity, 0);
@@ -2291,8 +2320,10 @@ function renderRecsTable() {
       const dwKey = `${dest.id}::${weekIdx}`;
       const dwOpen = expandedDestWeeks.has(dwKey);
 
-      // Header date range filter — check the week's reference date
-      const refDate = dest.routes[0]?.dates[weekIdx];
+      // Header date range filter — check the week's reference date. Use the
+      // first route that actually flies this week (routes fly different week
+      // sets, so routes[0] is often empty and would skip the filter entirely).
+      const refDate = dest.routes.map(r => r.dates[weekIdx]).find(Boolean);
       if (refDate && !passesHeaderDate(refDate)) continue;
 
       // Determine which routes pass at this week
@@ -2315,7 +2346,7 @@ function renderRecsTable() {
       const dwAgg = aggDates(datesAtWeek);
       if (!dwAgg) continue;
       const refDateStr = datesAtWeek[0]?.departureDate || '';
-      const shortDt    = shortMMDD(refDateStr);
+      const weekDisplay = datesAtWeek[0]?.weekLabel || `Wk ${shortMMDDYY(refDateStr)}`;
       const hOcc       = hotelOccForWeek(dest, weekIdx);
       const ratio      = bedsSeatsRatio(datesAtWeek);
 
@@ -2329,10 +2360,10 @@ function renderRecsTable() {
           <td>
             <button class="expand-btn ${dwOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleDestWeek('${dwKey}')">${chevron(dwOpen)}</button>
             <span style="font-weight:600;">${dest.name}</span>
-            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- Wk ${shortDt}</span>
+            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- ${weekDisplay}</span>
             <div class="row-region">${regionBadge(dest.region)}</div>
           </td>
-          <td><span style="font-weight:500;">Wk ${shortDt}</span></td>
+          <td><span style="font-weight:500;">${weekDisplay}</span></td>
           <td class="text-right num">${dwAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${dwAgg.capacity.toLocaleString()}</td>
           <td class="text-right">${lfPill(dwAgg.forecastLF)}</td>
           <td class="text-right">${lfText(dwAgg.lf)}</td>
@@ -2867,6 +2898,26 @@ function _fltChgCells(scope, destId, weekIdx, routeId, dayId, cls) {
 }
 
 // ── Exposure panel (booking curve + fare history) ─────────
+// The 27 MB booking-curve export is loaded on demand the first time a curve is
+// opened, rather than on every page load.
+let _curvePromise = null;
+function ensureCurveLoaded() {
+  if (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined' && FLIGHT_BOOKING_CURVE_DATA.length) {
+    return Promise.resolve();
+  }
+  if (_curvePromise) return _curvePromise;
+  if (!window.DataLoader || !DataLoader.loadCurveRows) return Promise.resolve();
+  _curvePromise = DataLoader.loadCurveRows()
+    .then(rows => {
+      if (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined') {
+        FLIGHT_BOOKING_CURVE_DATA.length = 0;
+        rows.forEach(r => FLIGHT_BOOKING_CURVE_DATA.push(r));
+      }
+    })
+    .catch(err => { console.warn('[flight] booking-curve load failed:', err); _curvePromise = null; });
+  return _curvePromise;
+}
+
 function openExposure(dateId) {
   const hit = getFlightDateById(dateId);
   if (!hit) return;
@@ -2874,20 +2925,25 @@ function openExposure(dateId) {
   const { destination, route, date } = hit;
 
   const lfPctNow = Math.round((date.capacity ? date.sold / date.capacity : 0) * 100);
-  const curveMatch = findFlightBookingCurveForDate(destination, route, date);
-  document.getElementById('exposurePropName').innerHTML =
+  const headerBase =
     `<span class="font-mono" style="color:#fff;">${route.flightNum}</span>
      <span style="color:#9ca3af;margin-left:8px;">${route.origin} → ${destination.id}</span>
      <span style="color:#9ca3af;margin-left:8px;">${date.departureDate} ${date.departureTime}</span>
      <span style="color:#9ca3af;margin-left:8px;">Cap ${date.capacity}</span>
-     <span style="color:#9ca3af;margin-left:8px;">LF ${lfPctNow}%</span>
-     ${bookingCurveBadge(curveMatch)}`;
+     <span style="color:#9ca3af;margin-left:8px;">LF ${lfPctNow}%</span>`;
+  document.getElementById('exposurePropName').innerHTML = headerBase;
 
   showExposure();
-
-  // Booking curve renders from CSV where available; fare history still has no source.
-  renderFlightBookingCurve(curveMatch, date);
+  showNoHistory('bookingCurveChart', 'Loading booking history…');
   showNoHistory('fareHistoryChart', 'No fare history data available');
+
+  // Booking curve renders from CSV where available (loaded on demand).
+  ensureCurveLoaded().then(() => {
+    if (activeDateId !== dateId) return; // user moved to another row
+    const curveMatch = findFlightBookingCurveForDate(destination, route, date);
+    document.getElementById('exposurePropName').innerHTML = headerBase + ' ' + bookingCurveBadge(curveMatch);
+    renderFlightBookingCurve(curveMatch, date);
+  });
 }
 
 function openDestWeekCurve(destId, weekIdx) {
@@ -2897,24 +2953,32 @@ function openDestWeekCurve(destId, weekIdx) {
   if (!datesAtWeek.length) return;
   const agg = aggDates(datesAtWeek);
   const refDate = datesAtWeek[0].departureDate;
-  const shortDt = shortMMDD(refDate);
-  const curveMatch = findFlightBookingCurveForDestWeek(dest);
+  const shortDt = datesAtWeek[0]?.weekLabel || `Wk ${shortMMDDYY(refDate)}`;
   const refCurveDate = Object.assign({}, datesAtWeek[0], {
     id: `${destId}-w${weekIdx}`,
     departureDate: refDate,
   });
+  const token = refCurveDate.id;
+  activeDateId = token;
 
-  document.getElementById('exposurePropName').innerHTML =
+  const headerBase =
     `<span style="color:#fff;font-weight:500;">${dest.name}</span>
-     <span style="color:#9ca3af;margin-left:6px;">- Wk ${shortDt}</span>
+     <span style="color:#9ca3af;margin-left:6px;">- ${shortDt}</span>
      <span style="color:#9ca3af;margin-left:8px;">Cap ${agg.capacity.toLocaleString()}</span>
      <span style="color:#9ca3af;margin-left:8px;">Sold ${agg.sold.toLocaleString()}</span>
-     <span style="color:#9ca3af;margin-left:8px;">LF ${Math.round(agg.lf * 100)}%</span>
-     ${bookingCurveBadge(curveMatch)}`;
+     <span style="color:#9ca3af;margin-left:8px;">LF ${Math.round(agg.lf * 100)}%</span>`;
+  document.getElementById('exposurePropName').innerHTML = headerBase;
 
   showExposure();
-  renderFlightBookingCurve(curveMatch, refCurveDate);
+  showNoHistory('bookingCurveChart', 'Loading booking history…');
   showNoHistory('fareHistoryChart', 'No fare history data available');
+
+  ensureCurveLoaded().then(() => {
+    if (activeDateId !== token) return;
+    const curveMatch = findFlightBookingCurveForDestWeek(dest);
+    document.getElementById('exposurePropName').innerHTML = headerBase + ' ' + bookingCurveBadge(curveMatch);
+    renderFlightBookingCurve(curveMatch, refCurveDate);
+  });
 }
 function showExposure() {
   const wrap = document.getElementById('exposureWrap');
@@ -3509,8 +3573,8 @@ function runEvaluation() {
   const weekCount = (FLIGHT_DATA[0]?.routes?.[0]?.dates?.length) || 8;
   const wl = document.getElementById('reWeekList');
   wl.innerHTML = Array.from({ length: weekCount }, (_, i) => {
-    const refDate = FLIGHT_DATA[0]?.routes?.[0]?.dates?.[i]?.departureDate || `Wk ${i + 1}`;
-    const label = `Wk ${(refDate || '').slice(0, 5)}`;
+    const ref = FLIGHT_DATA[0]?.routes?.[0]?.dates?.[i];
+    const label = ref ? (ref.weekLabel || `Wk ${shortMMDDYY(ref.departureDate)}`) : `Wk ${i + 1}`;
     return `<label><input type="checkbox" class="re-week-cb" value="${i}" checked onchange="onReScopeChange()"> ${label}</label>`;
   }).join('');
   // Populate flight categories
@@ -3797,13 +3861,26 @@ let viewMode = 'list'; // 'list' | 'calendar'
 const calExpandedDests  = new Set(); // dest.id
 const calExpandedRoutes = new Set(); // `${dest.id}::${route.id}`
 
-// Build calendar header weeks from the first route's dates
-const CAL_WEEKS = (FLIGHT_DATA[0]?.routes[0]?.dates || []).map((d, i) => ({
-  idx: i,
-  departureDate: d.departureDate,
-  label: `Wk ${shortMMDD(d.departureDate)}`,
-  mmdd: shortMMDD(d.departureDate),
-}));
+function getCalendarWeeks() {
+  const routes = FLIGHT_DATA.flatMap(d => d.routes || []);
+  const weekCount = routes.reduce((max, r) => Math.max(max, (r.dates || []).length), 0);
+  const weeks = [];
+  for (let i = 0; i < weekCount; i++) {
+    // Reference date for this week index — first route that actually flies it.
+    const refDate = routes.map(r => r.dates && r.dates[i]).find(Boolean);
+    if (!refDate) continue;
+    // Respect the header date filter: only weeks in range become columns, so
+    // selecting weeks narrows the calendar instead of just blanking cells.
+    if (headerFiltersActive() && !passesHeaderDate(refDate)) continue;
+    weeks.push({
+      idx: i,
+      departureDate: refDate.departureDate,
+      label: refDate.weekLabel || `Wk ${shortMMDDYY(refDate.departureDate)}`,
+      mmdd: shortMMDDYY(refDate.departureDate),
+    });
+  }
+  return weeks;
+}
 
 function setViewMode(mode) {
   viewMode = mode;
@@ -3835,9 +3912,9 @@ function calLfClass(lf) {
   return 'cal-lo';
 }
 
-function renderCalendarHead() {
+function renderCalendarHead(calWeeks) {
   const thead = document.getElementById('calHead');
-  const weekCells = CAL_WEEKS.map(wk => {
+  const weekCells = calWeeks.map(wk => {
     return `<th class="cal-wk-hd">
       <div class="cal-wk-lbl">${wk.label}</div>
       <div class="cal-wk-sub">${wk.mmdd}</div>
@@ -3869,7 +3946,8 @@ function _calCls(focused, anyExpanded) {
 }
 
 function renderCalendar() {
-  renderCalendarHead();
+  const calWeeks = getCalendarWeeks();
+  renderCalendarHead(calWeeks);
   const tbody = document.getElementById('calBody');
   const rows = [];
   const { anyExpanded, isDestFocused, isRouteFocused } = _calFocusHelpers();
@@ -3879,12 +3957,12 @@ function renderCalendar() {
   const sortedDests = FLIGHT_DATA.slice().sort((a, b) => {
     const aLF = (() => {
       let s = 0, n = 0;
-      a.routes.forEach(r => r.dates.forEach(d => { s += d.forecastLF; n++; }));
+      a.routes.forEach(r => r.dates.forEach(d => { if (d) { s += d.forecastLF; n++; } }));
       return n ? s / n : 0;
     })();
     const bLF = (() => {
       let s = 0, n = 0;
-      b.routes.forEach(r => r.dates.forEach(d => { s += d.forecastLF; n++; }));
+      b.routes.forEach(r => r.dates.forEach(d => { if (d) { s += d.forecastLF; n++; } }));
       return n ? s / n : 0;
     })();
     return (aLF - bLF) * mul;
@@ -3895,7 +3973,8 @@ function renderCalendar() {
     const destOpen = calExpandedDests.has(dest.id);
 
     // Dest-level cells: aggregate across all routes for that week
-    const destCells = CAL_WEEKS.map((wk, weekIdx) => {
+    const destCells = calWeeks.map((wk) => {
+      const weekIdx = wk.idx;
       const datesAtWeek = dest.routes.map(r => r.dates[weekIdx]).filter(Boolean);
       if (!datesAtWeek.length) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
       if (headerFiltersActive() && !passesHeaderDate(datesAtWeek[0])) {
@@ -3930,7 +4009,8 @@ function renderCalendar() {
       const routeKey = `${dest.id}::${route.id}`;
       const routeOpen = calExpandedRoutes.has(routeKey);
 
-      const routeCells = CAL_WEEKS.map((wk, weekIdx) => {
+      const routeCells = calWeeks.map((wk) => {
+        const weekIdx = wk.idx;
         const date = route.dates[weekIdx];
         if (!date) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
         if (headerFiltersActive() && !passesHeaderDate(date)) {
@@ -3961,7 +4041,8 @@ function renderCalendar() {
       if (!routeOpen) return;
 
       // Leaf row: one row showing flight-date detail across the 8 week columns
-      const leafCells = CAL_WEEKS.map((wk, weekIdx) => {
+      const leafCells = calWeeks.map((wk) => {
+        const weekIdx = wk.idx;
         const date = route.dates[weekIdx];
         if (!date) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
         if (headerFiltersActive() && !passesHeaderDate(date)) {
@@ -3991,6 +4072,10 @@ function renderCalendar() {
     });
   });
 
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${calWeeks.length + 1}" style="text-align:center;color:var(--text-muted);padding:32px;">No flights match the current filters</td></tr>`;
+    return;
+  }
   tbody.innerHTML = rows.join('');
 }
 
@@ -4081,7 +4166,7 @@ function renderCalPanel() {
   const { type, destId, routeId, dateId, weekIdx } = calPanelCtx;
   const dest = FLIGHT_DATA.find(d => d.id === destId);
   if (!dest) return;
-  const wk = CAL_WEEKS[weekIdx] || {};
+  const wk = getCalendarWeeks()[weekIdx] || {};
   const weekLabel = wk.label + ' · ' + (wk.departureDate || '');
   const content = document.getElementById('cdpContent');
 
@@ -4308,7 +4393,10 @@ function _initApp() {
   Filters.populateStandard({
     onAnyChange: (active) => {
       headerFilters = active;
-      renderRecsTable();
+      // Re-render whichever view is showing — the calendar was previously
+      // ignored, so date-filter changes never reached it.
+      if (viewMode === 'calendar') renderCalendar();
+      else renderRecsTable();
     },
   });
   // Header Region options come from the loaded CSV (overrides the default list).
@@ -4346,24 +4434,41 @@ function _initApp() {
     finish();
     return;
   }
-  loadData()
-    .then(({ hotelData, flightData, flightBookingCurveData }) => {
-      window.__hotelRows = hotelData;
+  // Load the flight CSV first and render immediately (~3 MB). The 72 MB hotel
+  // export (used only for the Hotel Occ % column) loads in the background, and
+  // the 27 MB booking-curve loads on demand (see ensureCurveLoaded).
+  loadData({ hotel: false, curve: false })
+    .then(({ flightData }) => {
       window.__flightRows = flightData;
-      window.__flightBookingCurveRows = flightBookingCurveData;
-      const meta = DataLoader.applyToGlobals(hotelData, flightData, flightBookingCurveData);
+      const meta = DataLoader.applyToGlobals([], flightData, []);
       window.__filterRegions = meta && meta.regions;
-      // Rebuild the dest→hotel lookup used for Beds:Seats and hotel-occ columns.
-      if (typeof HOTEL_BY_DEST !== 'undefined' && typeof HOTEL_DATA !== 'undefined') {
-        Object.keys(HOTEL_BY_DEST).forEach(k => delete HOTEL_BY_DEST[k]);
-        HOTEL_DATA.forEach(h => { HOTEL_BY_DEST[h.id] = h; });
-      }
-      DataLoader.reportDataGaps(hotelData, flightData, flightBookingCurveData);
+      DataLoader.reportDataGaps([], flightData, []);
     })
     .catch(err => {
-      console.warn('[flight] CSV load failed — rendering empty data.js contract:', err);
+      console.warn('[flight] flight CSV load failed — rendering empty data.js contract:', err);
     })
-    .finally(finish);
+    .finally(() => {
+      finish();
+      // Background: load hotel occupancy for the Hotel Occ % column, then
+      // refresh. Failure just leaves that one column blank.
+      if (DataLoader.loadHotelRows && DataLoader.buildHotelData) {
+        DataLoader.loadHotelRows()
+          .then(hotelRows => {
+            const hotel = DataLoader.buildHotelData(hotelRows);
+            if (typeof HOTEL_DATA !== 'undefined') {
+              HOTEL_DATA.length = 0;
+              hotel.destinations.forEach(d => HOTEL_DATA.push(d));
+            }
+            if (typeof HOTEL_BY_DEST !== 'undefined') {
+              Object.keys(HOTEL_BY_DEST).forEach(k => delete HOTEL_BY_DEST[k]);
+              HOTEL_DATA.forEach(h => { HOTEL_BY_DEST[h.id] = h; });
+            }
+            if (typeof viewMode !== 'undefined' && viewMode === 'calendar') renderCalendar();
+            else if (typeof renderRecsTable === 'function') renderRecsTable();
+          })
+          .catch(err => console.warn('[flight] background hotel load failed — Hotel Occ % column blank:', err));
+      }
+    });
 })();
 
 // ── Package Rules ──────────────────────────────────────────
@@ -4654,7 +4759,7 @@ function _flightRowContext(destId, weekIdx) {
   if (!datesAtWeek.length) return null;
   const agg = aggDates(datesAtWeek);
   const refDate = datesAtWeek[0].departureDate;
-  const wkLbl = 'Wk ' + (refDate || '').slice(0, 5);
+  const wkLbl = datesAtWeek[0]?.weekLabel || `Wk ${shortMMDDYY(refDate)}`;
 
   const lfPct      = Math.round((agg.lf || 0) * 100);
   const tgtPct     = Math.round((agg.targetLF || 0) * 100);
@@ -4839,10 +4944,9 @@ function _copilotNoData(topic) {
   return `I don't have ${topic} in the loaded data. This copilot only reports figures that exist in the loaded CSVs, so I can't answer that. It's listed in the console data-gap report.`;
 }
 function _flightBookingCurveCopilotNote() {
-  if (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined' && FLIGHT_BOOKING_CURVE_DATA.length) {
-    return "Flight booking-curve rows are loaded for the chart. Open a flight row and use the Booking Curve button to see actual, target and forecast cumulative sold curves. I still don't have demand-driver or \"why\" explanations to narrate here.";
-  }
-  return _copilotNoData('booking-curve data');
+  // The booking-curve CSV is loaded on demand (when a curve is opened), so don't
+  // gate this on it already being in memory.
+  return "Open a flight row and use the Booking Curve button to see actual, target and forecast cumulative sold curves (loaded from the curve CSV on demand). I still don't have demand-driver or \"why\" explanations to narrate here.";
 }
 
 function _flightAnswer(q) {

@@ -12,6 +12,53 @@ Format:
 
 ---
 
+## 2026-06-11 — Load-performance: per-page CSVs, lazy curve, gzip (no data changes)
+- Loader split into per-dataset loaders (`loadHotelRows` / `loadFlightRows` /
+  `loadCurveRows`); `loadData(opts)` now fetches only the requested files.
+- Flight page: renders from the flight CSV first (~0.6 MB gzipped) and loads the
+  72 MB hotel export in the **background** (only feeds the Hotel Occ % column,
+  which shows "—" until it arrives). Beds:Seats already uses the flight CSV's own
+  column, so it's immediate.
+- Booking curve (27 MB) is now **lazy** — fetched on demand the first time a
+  Booking Curve is opened (with a "Loading…" state), not on every page load.
+- Hotel page: loads ONLY the hotel CSV — dropped the flight (2.7 MB) and curve
+  (27 MB) exports it never used.
+- gzip enabled in `nginx.conf` and the dev `serve-demo.ps1` for CSV/JS/HTML:
+  measured flight 2.7→0.59 MB, hotel 72→19 MB over the wire.
+- No CSV/data files were modified.
+
+## 2026-06-11 — Wire up the Packages tab from v_package_pricing_pg.csv
+- Added `v_package_pricing_pg.csv` (~29k rows; one row per bookable package,
+  bundling flight + hotel + package economics) and wired the previously-blanked
+  Packages tab (`pricing.html`) to it.
+- `data-loader.js`: added `loadPackageData()` (fetches ONLY the package CSV —
+  not the 80 MB hotel/flight/curve exports — date-filtered to the active
+  window), `buildPackageData()` (flat rows → Destination → Week → Gateway →
+  Package tree the page renders), and `applyPackagesToGlobals()` (fills
+  PACKAGE_DATA + the Brand/Region/Destination/RM filter globals from the package
+  rows so the page works standalone). Exposed both on `DataLoader`.
+- `pricing.html`: loads PapaParse + `data-loader.js`, replaced the forced
+  "No package data" empty state with the real tree render, and added an async
+  boot that loads the package CSV, populates globals, then renders.
+- Pkg LF / sold / alloc use the row's hotel occupancy; margin = package price −
+  estimated total cost; booking pace from rate_of_sale vs target.
+- Updated the data-gap list (packages no longer a gap) and the docs.
+
+## 2026-06-10 — Future-only date window + working calendar/list date filter
+- Loader filters rows to `week_start` / `departure_date` >= `MIN_ACTIVE_DATE_ISO`
+  (`2026-05-01`) so only future-dated weeks load, and stamps the year into week
+  labels (`weekLabelWithYear`) since the data now spans 2024–2027.
+- Fixed the header **Select weeks** filter on flight.html, which wasn't filtering
+  the table: it took the week's reference date from `routes[0]` only, but routes
+  fly different week-sets in this data (ISL/MXB each have many routes flying ~4 of
+  83 weeks), so `routes[0]` was empty for most weeks and the filter was skipped.
+  Now it uses the first route that actually flies each week.
+- Calendar view: the date filter now narrows the week **columns** (was rendering
+  all ~83 weeks and only blanking out-of-range cells), keyed off each week's
+  original index; and filter changes now re-render the calendar (the handler
+  previously only re-rendered the list view).
+- Week picker shows the year and opens on the first loaded week.
+
 ## 2026-06-10 — Swap in the larger v_* mock exports + schema-normalization layer
 - Replaced the small mock CSVs with the larger Postgres-view exports (~80 MB:
   hotel ~232k rows, flight ~6k, curve ~218k) under the `v_*_pg.csv` names. These

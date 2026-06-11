@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="chart.local.js"></script>
   <script src="data.js"></script>
+  <script src="vendor/papaparse.min.js"></script>
+  <script src="data-loader.js"></script>
   <script src="filters.js"></script>
   <style>
     /* ── Flight category pills (OWN / RSK / 3RD) ─────────────── */
@@ -801,21 +803,14 @@ function renderPackagesTable() {
   const tbody = document.getElementById('packagesBody');
   const rows = [];
 
-  // ── DATA GAP: there is no package pricing CSV yet. ──────────────────
-  // The previous tree was rendered from the hardcoded PACKAGE_DATA in
-  // data.js (no CSV backing). Until a package view is sourced, show an
-  // honest empty state instead of fabricated package rows. This gap is
-  // also listed in the console data-gap report (DataLoader.reportDataGaps).
-  if (!window.__pkgGapLogged) {
-    window.__pkgGapLogged = true;
-    console.warn('[pricing] DATA GAP: no package pricing CSV — Packages tab blanked (empty state). See DataLoader.reportDataGaps() on the hotel/flight pages.');
+  // Empty state only when no package data is loaded (CSV failed / not connected).
+  if (!PACKAGE_DATA.length) {
+    tbody.innerHTML = `<tr><td colspan="16" style="padding:40px;text-align:center;color:var(--text-muted);">
+      No package data available — not yet connected to a data source.
+    </td></tr>`;
+    return;
   }
-  tbody.innerHTML = `<tr><td colspan="16" style="padding:40px;text-align:center;color:var(--text-muted);">
-    No package data available — not yet connected to a data source.
-  </td></tr>`;
-  return;
 
-  /* eslint-disable no-unreachable */
   const visibleDests = PACKAGE_DATA.filter(d => subtreeLeaves(d).length > 0);
   if (!visibleDests.length) {
     tbody.innerHTML = `<tr><td colspan="16" style="padding:28px;text-align:center;color:var(--text-muted);">No packages match the current filters.</td></tr>`;
@@ -1238,13 +1233,33 @@ document.addEventListener('click', (e) => {
 /* ══════════════════════════════════════════════════════════════════
    Init
    ══════════════════════════════════════════════════════════════════ */
-Filters.populateStandard({
-  onAnyChange: () => {
-    renderPackagesTable();
+function _initPricing() {
+  Filters.populateStandard({
+    onAnyChange: () => { renderPackagesTable(); }
+  });
+  // Region options come from the loaded package CSV.
+  if (window.__filterRegions && window.__filterRegions.length && Filters.setMultiSelectValues) {
+    Filters.setMultiSelectValues('fRegion', window.__filterRegions);
   }
-});
-renderPackagesHead();
-renderPackagesTable();
+  renderPackagesHead();
+  renderPackagesTable();
+}
+
+// Load ONLY the package CSV (not the hotel/flight exports), then render.
+if (typeof loadPackageData === 'function') {
+  loadPackageData()
+    .then(rows => {
+      window.__packageRows = rows;
+      const meta = DataLoader.applyPackagesToGlobals(rows);
+      window.__filterRegions = meta && meta.regions;
+      console.info(`[pricing] ${rows.length} package rows loaded into ${PACKAGE_DATA.length} destinations`);
+    })
+    .catch(err => console.warn('[pricing] package CSV load failed — rendering empty state:', err))
+    .finally(_initPricing);
+} else {
+  console.warn('[pricing] data-loader.js unavailable — rendering empty data.js contract.');
+  _initPricing();
+}
 </script>
 
 </body>

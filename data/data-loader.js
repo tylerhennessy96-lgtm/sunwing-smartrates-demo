@@ -9,6 +9,8 @@
 (function (global) {
   'use strict';
 
+  const MIN_ACTIVE_DATE_ISO = '2026-05-01';
+
   const HOTEL_CSV_CANDIDATES = [
     './v_hotel_pricing_pg.csv',              // nginx web root (data/ flattened)
     './data/v_hotel_pricing_pg.csv',         // repo-root served
@@ -23,6 +25,11 @@
     './v_flight_booking_curve_pg.csv',
     './data/v_flight_booking_curve_pg.csv',
     './application/data/v_flight_booking_curve_pg.csv',
+  ];
+  const PACKAGE_CSV_CANDIDATES = [
+    './v_package_pricing_pg.csv',
+    './data/v_package_pricing_pg.csv',
+    './application/data/v_package_pricing_pg.csv',
   ];
 
   // Columns that should be coerced to real booleans after parsing.
@@ -46,14 +53,38 @@
     const n = num(v);
     return n === null ? 0 : n / 100;
   }
-  function toMMDDYY(s) {
-    // "2026-07-05" → "07/05/26" (matches data.js _fmtDate so the existing
-    // week-picker / date-range filters parse it as a local date).
+  // Parse the two date formats the exports use — flight ships ISO
+  // "YYYY-MM-DD", hotel ships US "MM/DD/YYYY" (or "MM/DD/YY") — to a canonical
+  // ISO string. Anything unrecognised → '' so callers can treat it as undated.
+  function isoDate(s) {
     if (s === null || s === undefined || s === '') return '';
     const str = String(s).trim();
-    const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) return `${iso[2]}/${iso[3]}/${iso[1].slice(-2)}`;
-    return str; // already in some other format — leave as-is
+    let m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);            // ISO YYYY-MM-DD
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})/);    // US M/D/YYYY or M/D/YY
+    if (m) {
+      const yr = m[3].length === 2 ? `20${m[3]}` : m[3];
+      return `${yr}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+    }
+    return '';
+  }
+  function toMMDDYY(s) {
+    // → "07/05/26" (matches data.js _fmtDate so the week-picker / date-range
+    // filters parse it as a local date). Handles ISO and US inputs.
+    const iso = isoDate(s);
+    if (!iso) return (s === null || s === undefined) ? '' : String(s).trim();
+    const p = iso.split('-'); // [YYYY, MM, DD]
+    return `${p[1]}/${p[2]}/${p[0].slice(-2)}`;
+  }
+  function isOnOrAfterMinDate(s) {
+    const iso = isoDate(s);
+    return !iso || iso >= MIN_ACTIVE_DATE_ISO;
+  }
+  function weekLabelWithYear(label, weekStartIso) {
+    const year = isoDate(weekStartIso).slice(0, 4);
+    const base = label || (weekStartIso ? `Wk ${toMMDDYY(weekStartIso).slice(0, 5)}` : '');
+    if (!base || !year || /\b\d{4}\b/.test(base)) return base;
+    return `${base} ${year}`;
   }
   function hhmm(s) {
     if (!s) return '';
@@ -95,7 +126,7 @@
     return Array.from(seen.keys()).sort().map(ws => ({
       weekStartIso: ws,
       weekStart: toMMDDYY(ws),
-      weekLabel: seen.get(ws),
+      weekLabel: weekLabelWithYear(seen.get(ws), ws),
     }));
   }
 
@@ -212,17 +243,33 @@
     return clean;
   }
 
-  // Public: load + clean the CSVs, returning flat arrays of row objects.
-  async function loadData() {
-    const [hotelText, flightText, flightBookingCurveText] = await Promise.all([
-      fetchFirstOk(HOTEL_CSV_CANDIDATES, 'hotel pricing'),
-      fetchFirstOk(FLIGHT_CSV_CANDIDATES, 'flight pricing'),
-      fetchOptionalFirstOk(FLIGHT_BOOKING_CURVE_CSV_CANDIDATES, 'flight booking curve'),
-    ]);
-    const hotelData = parseCsv(hotelText).map(normalizeHotelRow);
-    const flightData = parseCsv(flightText).map(normalizeFlightRow);
+  // ── Per-dataset loaders (so a page fetches only what it renders) ──────────
+  async function loadHotelRows() {
+    const text = await fetchFirstOk(HOTEL_CSV_CANDIDATES, 'hotel pricing');
+    return parseCsv(text).map(normalizeHotelRow)
+      .filter(r => isOnOrAfterMinDate(r.week_start));
+  }
+  async function loadFlightRows() {
+    const text = await fetchFirstOk(FLIGHT_CSV_CANDIDATES, 'flight pricing');
+    return parseCsv(text).map(normalizeFlightRow)
+      .filter(r => isOnOrAfterMinDate(r.departure_date));
+  }
+  async function loadCurveRows() {
     // The booking-curve export keeps its original schema, so it needs no remap.
-    const flightBookingCurveData = flightBookingCurveText ? parseCsv(flightBookingCurveText) : [];
+    const text = await fetchOptionalFirstOk(FLIGHT_BOOKING_CURVE_CSV_CANDIDATES, 'flight booking curve');
+    return text ? parseCsv(text).filter(r => isOnOrAfterMinDate(r.departure_date)) : [];
+  }
+
+  // Public: load the requested CSVs (default: all). Pages pass flags so they
+  // fetch/parse only what they need — the flight page skips the 27 MB curve
+  // (lazy-loaded on demand) and the hotel page skips the flight + curve exports.
+  async function loadData(opts) {
+    opts = opts || {};
+    const [hotelData, flightData, flightBookingCurveData] = await Promise.all([
+      opts.hotel  === false ? Promise.resolve([]) : loadHotelRows(),
+      opts.flight === false ? Promise.resolve([]) : loadFlightRows(),
+      opts.curve  === false ? Promise.resolve([]) : loadCurveRows(),
+    ]);
     return { hotelData, flightData, flightBookingCurveData };
   }
 
@@ -235,7 +282,7 @@
     const adrDelta = num(r.adr_delta);
     return {
       id: String(r.inventory_id),
-      weekLabel: r.week_label,
+      weekLabel: weekLabelWithYear(r.week_label, r.week_start),
       weekStart: toMMDDYY(r.week_start),
       allocation: num(r.allocation) || 0,
       sold: num(r.sold) || 0,
@@ -386,7 +433,7 @@
       id: String(r.flight_date_id),
       departureDate: toMMDDYY(r.departure_date),
       departureTime: hhmm(r.departure_time),
-      weekLabel: r.week_label,
+      weekLabel: weekLabelWithYear(r.week_label, r.week_start),
       weekStart: toMMDDYY(r.week_start),
       capacity: num(r.capacity_total) || 0,
       sold: num(r.sold_total) || 0,
@@ -528,8 +575,9 @@
     if (typeof HOTEL_DATA !== 'undefined') swap(HOTEL_DATA, hotel.destinations);
     if (typeof FLIGHT_DATA !== 'undefined') swap(FLIGHT_DATA, flight.destinations);
     if (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined') swap(FLIGHT_BOOKING_CURVE_DATA, flightBookingCurveRows || []);
-    // Week index list — hotel & flight share the same weeks, so either works
-    // for the global CHECK_IN_WEEKS the hotel page iterates by index.
+    // Week index list for the shared header picker and hotel calendar. Flight
+    // calendar columns are derived from loaded FLIGHT_DATA because flight
+    // departures can start inside a week whose week_start predates the cutoff.
     if (typeof CHECK_IN_WEEKS !== 'undefined') {
       swap(CHECK_IN_WEEKS, (hotel.weeks.length ? hotel.weeks : flight.weeks)
         .map(w => ({ weekLabel: w.weekLabel, weekStart: w.weekStart })));
@@ -582,7 +630,6 @@
     'Hotel cost-change detail (old cost, new cost, change $/%, date received) — only a has_cost_change boolean, so the Cost Change Exceptions detail columns are blank',
     'Publish / audit change log (Publish Changes count, PENDING / pending-publish state) — no price-change-log columns to persist or count pending edits',
     'RM Copilot narrative — demand drivers, "why" explanations and price-elasticity projections are not in the CSV; the copilot states only CSV-derived figures and declines the rest',
-    'Packages tab (pricing.html) — there is no package pricing CSV; the table shows "No package data available"',
     'Package autopilot rules (flight.html rules drawer, PACKAGE_RULES) — no CSV source; the rules list renders empty',
     'Parameters config (autopilot rules, alerts, price/margin controls, LOS rules) — configuration, not pricing data; every section is now blanked to an empty state ("not yet connected to a data source")',
     'Competitor table (flight) — renders from CSV comp columns where present (comp1_fare / comp2_fare / cheapest_comp_fare / comp_delta); blank where those columns are empty',
@@ -638,14 +685,139 @@
     return { hotel: h, flight: f, flightBookingCurve: bc, featureGaps };
   }
 
+  // ── Packages: flat rows → nested PACKAGE_DATA tree ────────
+  // pricing.html renders a Destination → Week → Gateway → Package tree. The
+  // package export already bundles flight + hotel + package economics per row,
+  // so one row = one bookable package (unique package_id).
+  function buildPackageLeaf(r) {
+    const ros = num(r.rate_of_sale), rosT = num(r.rate_of_sale_target);
+    let pace = 'on track';
+    if (rosT && rosT > 0) {
+      const ratio = (ros || 0) / rosT;
+      pace = ratio >= 1 ? 'ahead' : ratio >= 0.8 ? 'on track' : 'behind';
+    } else if (ros != null) {
+      pace = ros > 0 ? 'ahead' : 'behind';
+    }
+    const price = num(r.current_package_price) || 0;
+    const cost = num(r.estimated_total_cost);
+    const totalCost = cost != null ? cost : (price - (num(r.current_margin) || 0));
+    const dur = num(r.duration) || 0;
+    return {
+      id: String(r.package_id),
+      destId: String(r.destination_id),
+      destination: r.destination_name,
+      region: r.region_name,
+      gateway: String(r.origin_code),
+      duration: dur,
+      packageName: r.meal_plan_name || r.service_type || 'Package',
+      flightNum: String(r.origin_code || ''),
+      flightRoute: `→ ${r.destination_id}`,
+      hotel: r.hotel_name,
+      roomCategory: r.room_category_name,
+      hotelStars: num(r.stars) || 0,
+      checkInWeek: r.week_label || `Wk ${toMMDDYY(r.week_start)}`,
+      checkInDate: toMMDDYY(r.week_start),
+      soldPackages: num(r.hotel_sold) || 0,
+      allocPackages: num(r.hotel_allocation) || 0,
+      currentPrice: price,
+      recPrice: num(r.rec_package_price) || 0,
+      totalCost: totalCost,
+      recMargin: num(r.rec_margin) || 0,
+      bookingPace: pace,
+    };
+  }
+
+  function buildPackageData(rows) {
+    const destinations = [];
+    const byDest = groupBy(rows, r => r.destination_id);
+    byDest.forEach((destRows, destId) => {
+      const first = destRows[0];
+      const byWeek = groupBy(destRows, r => r.week_start);
+      const weekKeys = Array.from(byWeek.keys())
+        .sort((a, b) => String(isoDate(a)).localeCompare(String(isoDate(b))));
+      const checkInWeeks = weekKeys.map((wkStart, wi) => {
+        const weekRows = byWeek.get(wkStart);
+        const wf = weekRows[0];
+        const byGw = groupBy(weekRows, r => r.origin_code);
+        const gateways = [];
+        byGw.forEach((gwRows, gw) => {
+          const durations = gwRows.map(buildPackageLeaf)
+            .sort((a, b) => a.duration - b.duration || String(a.hotel).localeCompare(String(b.hotel)));
+          gateways.push({ gateway: String(gw), gatewayCity: gwRows[0].origin_city || String(gw), durations });
+        });
+        gateways.sort((a, b) => a.gateway.localeCompare(b.gateway));
+        return {
+          idx: wi,
+          label: wf.week_label || `Wk ${toMMDDYY(wkStart)}`,
+          date: toMMDDYY(wkStart),
+          weekStartIso: isoDate(wkStart),
+          gateways,
+        };
+      });
+      destinations.push({
+        id: String(destId),
+        name: first.destination_name,
+        region: first.region_name,
+        destId: String(destId),
+        brand: first.brand_name,
+        revenueManager: modeNonNull(destRows.map(r => r.last_modified_by)) || '—',
+        checkInWeeks,
+      });
+    });
+    destinations.sort((a, b) => a.name.localeCompare(b.name));
+    return destinations;
+  }
+
+  // Load ONLY the package CSV (the packages page doesn't need the 80 MB
+  // hotel/flight/curve exports), date-filtered to the active window.
+  async function loadPackageData() {
+    const text = await fetchFirstOk(PACKAGE_CSV_CANDIDATES, 'package pricing');
+    return parseCsv(text).filter(r => isOnOrAfterMinDate(r.departure_date));
+  }
+
+  // Fill PACKAGE_DATA + the header-filter globals from package rows so the
+  // packages page works standalone (no hotel/flight load).
+  function applyPackagesToGlobals(packageRows) {
+    const destinations = buildPackageData(packageRows);
+    if (typeof PACKAGE_DATA !== 'undefined') swap(PACKAGE_DATA, destinations);
+
+    const brands = uniq(packageRows.map(r => r.brand_name).filter(Boolean));
+    const regions = uniq(packageRows.map(r => r.region_name).filter(Boolean));
+    const rms = uniq(packageRows.map(r => r.last_modified_by)
+      .filter(v => v !== null && v !== undefined && v !== '' && v !== 'NULL'));
+    if (typeof BRANDS !== 'undefined') swap(BRANDS, brands);
+    if (typeof REVENUE_MANAGERS !== 'undefined') swap(REVENUE_MANAGERS, ['All RMs', ...rms]);
+
+    const destMap = new Map();
+    packageRows.forEach(r => {
+      if (r.destination_id == null || destMap.has(r.destination_id)) return;
+      destMap.set(r.destination_id, {
+        id: String(r.destination_id), name: r.destination_name,
+        region: r.region_name, country: r.region_name,
+        brand: r.brand_name, revenueManager: r.last_modified_by || '—',
+      });
+    });
+    if (typeof DESTINATIONS !== 'undefined') {
+      swap(DESTINATIONS, Array.from(destMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
+    }
+    return { destinations, brands, regions, rms };
+  }
+
   // ── exports ───────────────────────────────────────────────
   global.loadData = loadData;
+  global.loadPackageData = loadPackageData;
   global.DataLoader = {
     loadData,
+    loadPackageData,
+    loadHotelRows,
+    loadFlightRows,
+    loadCurveRows,
     buildHotelData,
     buildFlightData,
+    buildPackageData,
     buildDestList,
     applyToGlobals,
+    applyPackagesToGlobals,
     reportDataGaps,
   };
 })(window);

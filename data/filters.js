@@ -147,7 +147,13 @@
     return m;
   }
   function fmtWeek(d) {
-    return `Wk ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+    return `Wk ${MONTHS[d.getMonth()]} ${d.getDate()} ${d.getFullYear()}`;
+  }
+  function parseMMDDYY(s) {
+    if (!s) return null;
+    const m = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+    if (!m) return null;
+    return new Date(2000 + Number(m[3]), Number(m[1]) - 1, Number(m[2]));
   }
   function isSameDay(a, b) {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -273,7 +279,7 @@
       } else if (!s.endWeek) {
         labelEl.textContent = fmtWeek(s.startWeek);
       } else {
-        labelEl.textContent = `${fmtWeek(s.startWeek)} – ${fmtWeek(s.endWeek)}`;
+        labelEl.textContent = `${fmtWeek(s.startWeek)} - ${fmtWeek(s.endWeek)}`;
       }
     }
     if (s.startWeek) wrap.classList.add('has-selection');
@@ -282,7 +288,7 @@
 
   F.initWeekPicker = function (wrapId, opts) {
     opts = opts || {};
-    const start = new Date();
+    const start = opts.initialDate ? new Date(opts.initialDate) : new Date();
     start.setDate(1);
     wpState[wrapId] = {
       viewMonth: start,
@@ -343,8 +349,12 @@
       onChange: fire,
     });
 
+    const initialWeek = (typeof CHECK_IN_WEEKS !== 'undefined' && CHECK_IN_WEEKS[0])
+      ? parseMMDDYY(CHECK_IN_WEEKS[0].weekStart)
+      : null;
     F.initWeekPicker('fDates', {
       defaultLabel: 'Select weeks',
+      initialDate: initialWeek,
       onChange: fire,
     });
   };

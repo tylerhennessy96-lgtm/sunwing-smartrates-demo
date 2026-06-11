@@ -49,10 +49,14 @@ Show how an RM team would review and action pricing:
 
 **Current state — CSV-driven:**
 
-- Three CSV exports live in `data/` (larger `v_*` view exports, ~80 MB total):
+- Four CSV exports live in `data/` (larger `v_*` view exports, ~100 MB total):
   - `v_hotel_pricing_pg.csv`  — ~232k rows, 36 columns
   - `v_flight_pricing_pg.csv` — ~6k rows, 52 columns
   - `v_flight_booking_curve_pg.csv` — ~218k rows, 12 columns
+  - `v_package_pricing_pg.csv` — ~29k rows, 62 columns (Packages tab; loaded
+    on its own by `pricing.html`). Note: package dates are ISO `YYYY-MM-DD`,
+    hotel dates are US `MM/DD/YYYY`, flight dates are ISO — the loader's
+    `isoDate` handles all.
   - These cover **2 destinations** but a wide time range (~184–314 weekly
     periods, 2024–2027) and many hotels/room categories; some rows are sparse
     (placeholder names, `$0` fares/ADR) — the UI shows them faithfully.
@@ -149,8 +153,10 @@ enumerated in the console gap report. Current gaps and partial-backed areas:
   only CSV-derived figures and declines the rest. When no pricing data is
   loaded at all (CSV failed / not connected), it says "No … pricing data is
   loaded … not connected to a data source" instead of implying all-clear.
-- **Packages data** — no package pricing CSV; Packages tab shows
-  "No package data available".
+- **Packages data** — now backed by `v_package_pricing_pg.csv` (~29k rows; one
+  row per bookable package, bundling flight + hotel + package economics). The
+  Packages tab (`pricing.html`) renders a Destination → Week → Gateway → Package
+  tree from it via `DataLoader.loadPackageData` / `applyPackagesToGlobals`.
 - **Package autopilot rules** (flight rules drawer) — no CSV source; renders empty.
 - **Parameters config** — configuration, not pricing data; **every section is
   blanked to an empty state** ("not yet connected to a data source").
@@ -158,12 +164,12 @@ enumerated in the console gap report. Current gaps and partial-backed areas:
 The KPI bars compute only from CSV columns and render blank when a source
 column is absent.
 
-**Note on the Packages and Parameters pages:** `pricing.html` and
-`parameters.html` do **not** load `data-loader.js`, so they have no CSV data at
-all — both pages are entirely gap/empty-state pages, and their header filter
-dropdowns (Brand/Region/Destination/RM) render empty. Only `hotel.html` and
-`flight.html` load the CSVs. (If a populated filter bar is wanted on the
-Packages/Parameters pages, add `data-loader.js` + the PapaParse script to them.)
+**Note on the Parameters page:** `parameters.html` does **not** load
+`data-loader.js`, so it has no CSV data — it is entirely a gap/empty-state page
+and its header filter dropdowns render empty. `pricing.html` (Packages) now
+loads `data-loader.js` + PapaParse and fetches **only** the package CSV (via
+`loadPackageData`, not the 80 MB hotel/flight exports), populating its filter
+bar from the package rows.
 
 ## Security posture
 
