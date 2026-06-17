@@ -30,6 +30,14 @@ test:coverage:
   rules:
     - when: never
 
+test:csv-contract:
+  stage: test
+  image: registry.gitlab.com/simon-kucher-engine/platform/platform-docker-images/alpine:3.21.3
+  before_script:
+    - apk add --no-cache python3
+  script:
+    - python3 scripts/validate_csv_contract.py
+
 container_scanning:
   stage: security
   variables:

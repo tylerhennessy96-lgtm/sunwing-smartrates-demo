@@ -79,7 +79,7 @@
       font-size: 12px;
       cursor: pointer;
       color: var(--text-secondary);
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       display: inline-flex;
       align-items: center;
       gap: 5px;
@@ -362,7 +362,7 @@
       border: 1px solid var(--border);
       background: #fff;
       border-radius: 6px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
@@ -440,7 +440,7 @@
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       color: var(--text-primary);
       overflow: hidden;
     }
@@ -532,7 +532,7 @@
     .re-btn {
       padding: 8px 18px;
       border-radius: 5px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12.5px;
       font-weight: 500;
       cursor: pointer;
@@ -554,7 +554,7 @@
       border: 1px solid #2d313b;
       border-radius: 8px;
       padding: 11px 18px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 13px;
       font-weight: 500;
       box-shadow: 0 10px 28px rgba(0,0,0,0.28);
@@ -593,7 +593,7 @@
       border-radius: 11px;
       background: transparent;
       color: #e91e8c;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 10.5px;
       font-weight: 600;
       cursor: pointer;
@@ -621,7 +621,7 @@
       z-index: 60;
       display: flex;
       flex-direction: column;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12.5px;
       overflow-y: auto;
     }
@@ -701,7 +701,7 @@
       border: 1px solid #c2185b;
       padding: 11px 20px 11px 18px;
       border-radius: 24px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -742,7 +742,7 @@
       display: flex;
       flex-direction: column;
       box-shadow: 0 12px 40px rgba(0,0,0,.42);
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       overflow: hidden;
     }
     .gcp.open {
@@ -939,7 +939,7 @@
       padding: 3px 6px;
       border: 1px solid var(--border);
       border-radius: 3px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-mono);
       font-size: 11.5px;
       text-align: right;
       outline: none;
@@ -950,7 +950,7 @@
     .chg-input::-webkit-outer-spin-button,
     .chg-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .chg-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232, 0, 125, 0.10); }
-    .chg-input::placeholder { color: var(--text-muted); font-weight: 400; font-family: 'Archivo', sans-serif; font-size: 10.5px; }
+    .chg-input::placeholder { color: var(--text-muted); font-weight: 400; font-family: var(--font-sans); font-size: 10.5px; }
     td.chg-cell.has-chg { background: rgba(232, 0, 125, 0.08); }
     td.chg-cell.has-chg .chg-input { border-color: rgba(232, 0, 125, 0.40); background: #fff; }
     .chg-input-wrap.chg-pos .chg-input { color: #047857; font-weight: 600; }
@@ -1235,8 +1235,8 @@
       <div style="display:flex;align-items:center;gap:12px;">
         <img src="engine_logo (2).png" style="height:28px;width:auto;display:block;" />
         <div style="display:flex;flex-direction:column;line-height:1;gap:2px;">
-          <span style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
-          <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
+          <span style="font-family:var(--font-sans);font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
+          <span style="font-family:var(--font-sans);font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
         </div>
       </div>
     </a>
@@ -1601,11 +1601,11 @@
         <div style="display:flex;gap:12px;">
           <div style="flex:1;">
             <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Expiry date</label>
-            <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;outline:none;" />
+            <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:var(--font-sans);font-size:13px;outline:none;" />
           </div>
           <div style="flex:1;">
             <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Created by</label>
-            <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
+            <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:var(--font-sans);font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
           </div>
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:10px;" id="notesCreatedAt">Created: —</div>
@@ -1634,24 +1634,39 @@ let   activeNoteKey  = null;
 // ── Header filter state (Brand / Region / Destination / Dates / RM) ──
 let headerFilters = { brand: [], region: [], destination: [], rm: [], dates: null };
 
+function parseAppDate(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (m) return new Date(2000 + Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function endOfSelectedWeek(d) {
+  const out = new Date(d);
+  out.setDate(out.getDate() + 6);
+  out.setHours(23, 59, 59, 999);
+  return out;
+}
+function weekOverlapsSelectedRange(weekStart, range) {
+  const wkStart = parseAppDate(weekStart);
+  if (!wkStart || !range || !range.start) return true;
+  wkStart.setHours(0, 0, 0, 0);
+  const wkEnd = new Date(wkStart);
+  wkEnd.setDate(wkEnd.getDate() + 6);
+  wkEnd.setHours(23, 59, 59, 999);
+  const rangeStart = new Date(range.start);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = endOfSelectedWeek(range.end || range.start);
+  return wkEnd.getTime() >= rangeStart.getTime() && wkStart.getTime() <= rangeEnd.getTime();
+}
+
 function passesHeaderFilters(dest, wkMeta) {
   const hf = headerFilters;
   if (hf.brand.length       && !hf.brand.includes(dest.brand)) return false;
   if (hf.region.length      && !hf.region.includes(dest.region)) return false;
   if (hf.destination.length && !hf.destination.includes(dest.name)) return false;
   if (hf.rm.length          && !hf.rm.includes(dest.revenueManager)) return false;
-  if (hf.dates && hf.dates.start) {
-    // Parse weekStart "MM/DD/YY" → Date
-    const parts = (wkMeta.weekStart || '').split('/').map(Number);
-    if (parts.length === 3) {
-      const wkDate = new Date(2000 + parts[2], parts[0] - 1, parts[1]);
-      wkDate.setHours(0, 0, 0, 0);
-      const lo = hf.dates.start.getTime();
-      const hi = (hf.dates.end || hf.dates.start).getTime();
-      const t = wkDate.getTime();
-      if (t < lo || t > hi) return false;
-    }
-  }
+  if (hf.dates && hf.dates.start) return weekOverlapsSelectedRange(wkMeta && wkMeta.weekStart, hf.dates);
   return true;
 }
 function headerFiltersActive() {
@@ -1879,8 +1894,18 @@ function aggCatsAtWeek(cats, weekIdx) {
 
 // ── Recommendations tree table render ──────────────────────
 let topSortDir = 'asc'; // 'asc' | 'desc' — applies to dest+week row ordering
+// The CSV exports carry thousands of destinations across the full date window,
+// so the dest+week row set can run into the hundreds of thousands. Render in
+// batches (like the Packages tab) so the page paints instead of locking up.
+const HOTEL_ROW_BATCH = 300;
+let hotelVisibleLimit = HOTEL_ROW_BATCH;
+function showMoreHotelRows() {
+  hotelVisibleLimit += HOTEL_ROW_BATCH;
+  renderRecsTable();
+}
 function toggleTopSort() {
   topSortDir = (topSortDir === 'asc') ? 'desc' : 'asc';
+  hotelVisibleLimit = HOTEL_ROW_BATCH;
   renderRecsHead();
   renderRecsTable();
 }
@@ -1935,6 +1960,7 @@ function renderRecsTable() {
   const tbody = document.getElementById('recsTableBody');
   const entries = [];
   let visibleLeaves = 0, totalLeaves = 0;
+  let matchedEntries = 0; // total dest+week rows that pass filters (may exceed what we render)
   const visibleDestSet = new Set();
   const totalDestCount = HOTEL_DATA.length;
 
@@ -1947,23 +1973,37 @@ function renderRecsTable() {
       const weekKey = `${dest.id}::${weekIdx}`;
       const weekOpen = expandedWeeks.has(weekKey);
 
-      // Determine which hotels & categories at this dest+week pass the advanced filters.
-      const visibleHotels = dest.hotels
-        .filter(h => passesHotelLevel(h, dest))
-        .map(h => {
-          const visibleCats = h.categories.filter(c => passesLeaf(c.checkInWeeks[weekIdx]));
-          return { hotel: h, cats: visibleCats };
-        })
-        .filter(x => x.cats.length > 0);
+      const advActive = advFiltersActive();
+      const underCap  = entries.length < hotelVisibleLimit;
 
-      // Tally totals for the row count bar
-      dest.hotels.forEach(h => h.categories.forEach(() => { totalLeaves++; }));
-      visibleHotels.forEach(x => x.cats.forEach(() => { visibleLeaves++; }));
+      // Total leaves for the count bar (cheap — no per-leaf iteration).
+      let destLeaves = 0;
+      dest.hotels.forEach(h => { destLeaves += h.categories.length; });
+      totalLeaves += destLeaves;
 
-      // Hide the dest+week row entirely when filters are active and nothing matches
-      if (!visibleHotels.length && advFiltersActive()) return;
+      // The advanced-filter match set is only needed when advanced filters are active
+      // or when we're actually going to render this row. Skipping it for capped rows in
+      // the common (no-adv-filter) case keeps this loop cheap over the large dest×week space.
+      let visibleHotels = null;
+      if (advActive || underCap) {
+        visibleHotels = dest.hotels
+          .filter(h => passesHotelLevel(h, dest))
+          .map(h => ({ hotel: h, cats: h.categories.filter(c => passesLeaf(c.checkInWeeks[weekIdx])) }))
+          .filter(x => x.cats.length > 0);
+      }
+
+      // Hide the dest+week row entirely when advanced filters are active and nothing matches.
+      if (advActive && !visibleHotels.length) return;
+
+      // visibleLeaves: with no advanced filters every leaf is visible; otherwise count matches.
+      if (advActive) visibleHotels.forEach(x => { visibleLeaves += x.cats.length; });
+      else visibleLeaves += destLeaves;
 
       visibleDestSet.add(dest.id);
+      matchedEntries++;
+      // Page cap: keep counting matches for the row bar, but stop building/rendering
+      // rows once we've filled the current batch — this is what keeps the tab responsive.
+      if (entries.length >= hotelVisibleLimit) return;
 
       // Aggregates use the visible (filtered) cats so summary numbers reflect the filter.
       // When no filters active this matches the full set anyway.
@@ -1973,8 +2013,10 @@ function renderRecsTable() {
       const dwAgg = aggCatsAtWeek(allCatsForAgg, weekIdx);
       const dwWeeks = allCatsForAgg.map(c => c.checkInWeeks[weekIdx]).filter(Boolean);
       const dwMargin = aggMargin(dwWeeks);
-      // "MM/DD" extracted from weekStart (which is "MM/DD/YY")
-      const shortDate = (wkMeta.weekStart || '').slice(0, 5);
+      // Use the per-week label the loader year-stamps (same source the flights
+      // tab uses) so the year shows and the format matches across tabs.
+      const weekDisplay = (dwWeeks[0] && dwWeeks[0].weekLabel)
+        || wkMeta.weekLabel || `Wk ${wkMeta.weekStart || ''}`;
 
       const entryRows = [];
       const entry = { weekIdx, forecastOcc: dwAgg.forecastOcc, rows: entryRows };
@@ -1986,10 +2028,10 @@ function renderRecsTable() {
           <td>
             <button class="expand-btn ${weekOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleWeek('${weekKey}')">${chevron(weekOpen)}</button>
             <span style="font-weight:600;">${dest.name}</span>
-            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- Wk ${shortDate}</span>
+            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- ${weekDisplay}</span>
             <div class="row-region">${regionBadge(dest.region)}</div>
           </td>
-          <td><span style="font-weight:500;">Wk ${shortDate}</span></td>
+          <td><span style="font-weight:500;">${weekDisplay}</span></td>
           <td class="text-right num">${dwAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${dwAgg.alloc.toLocaleString()}</td>
           <td class="text-right">${occPill(dwAgg.forecastOcc)}</td>
           <td class="text-right num">${fmtPct(dwAgg.currentOcc)}</td>
@@ -2138,6 +2180,12 @@ function renderRecsTable() {
   // Empty state when no destinations match the current filters
   if (visibleDestSet.size === 0 && (advFiltersActive() || headerFiltersActive())) {
     allRows.push('<tr><td colspan="18" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
+  } else if (matchedEntries > entries.length) {
+    const remaining = matchedEntries - entries.length;
+    allRows.push(`<tr><td colspan="18" style="text-align:center;color:var(--text-secondary);padding:14px 16px;">
+      Showing first ${entries.length.toLocaleString()} of ${matchedEntries.toLocaleString()} destination-week rows — narrow with the Region, Destination or week filters to see specific rows.
+      <button class="btn btn-ghost" style="margin-left:10px;" onclick="showMoreHotelRows()">Show ${Math.min(HOTEL_ROW_BATCH, remaining).toLocaleString()} more</button>
+    </td></tr>`);
   }
 
   tbody.innerHTML = allRows.join('');
@@ -2934,6 +2982,9 @@ function clearAdvFilters() {
   renderRecsTable();
 }
 function syncAdvBadge() {
+  // Advanced-filter changes all sync the badge immediately before re-rendering,
+  // so reset the row batch here to start filtered results from the first page.
+  hotelVisibleLimit = HOTEL_ROW_BATCH;
   const btn = document.getElementById('advTriggerBtn');
   const badge = document.getElementById('advTriggerBadge');
   const n = countActiveFilters();
@@ -3044,10 +3095,9 @@ function calOccClass(occ) {
 function renderCalendarHead() {
   const thead = document.getElementById('calHead');
   const weekCells = CHECK_IN_WEEKS.map(wk => {
-    const mmdd = (wk.weekStart || '').slice(0, 5);
     return `<th class="cal-wk-hd">
       <div class="cal-wk-lbl">${wk.weekLabel}</div>
-      <div class="cal-wk-sub">${mmdd}</div>
+      <div class="cal-wk-sub">${wk.weekStart || ''}</div>
     </th>`;
   }).join('');
   const arrow = topSortDir === 'asc' ? '↑' : '↓';
@@ -3090,7 +3140,7 @@ function renderCalendar() {
     // Apply header filter (dest-level)
     if (headerFiltersActive()) {
       // Use a representative week to skip non-matching dests by brand/region/dest/rm
-      if (!passesHeaderFilters(dest, CHECK_IN_WEEKS[0])) return;
+      if (!passesHeaderFilters(dest, { weekStart: null })) return;
     }
     const destOpen = calExpandedDests.has(dest.id);
 
@@ -3175,6 +3225,10 @@ function renderCalendar() {
     });
   });
 
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${CHECK_IN_WEEKS.length + 1}" style="text-align:center;color:var(--text-muted);padding:32px;">No hotels match the current filters</td></tr>`;
+    return;
+  }
   tbody.innerHTML = rows.join('');
 }
 
@@ -3459,6 +3513,7 @@ function _initApp() {
   Filters.populateStandard({
     onAnyChange: (active) => {
       headerFilters = active;
+      hotelVisibleLimit = HOTEL_ROW_BATCH;
       renderRecsTable();
     },
   });
@@ -3497,18 +3552,18 @@ function _initApp() {
     finish();
     return;
   }
-  loadData()
-    .then(({ hotelData, flightData, flightBookingCurveData }) => {
+  // The hotel page renders only HOTEL_DATA — skip the flight (2.7 MB) and
+  // booking-curve (27 MB) exports entirely.
+  loadData({ flight: false, curve: false })
+    .then(({ hotelData }) => {
       window.__hotelRows = hotelData;
-      window.__flightRows = flightData;
-      window.__flightBookingCurveRows = flightBookingCurveData;
-      const meta = DataLoader.applyToGlobals(hotelData, flightData, flightBookingCurveData);
+      const meta = DataLoader.applyToGlobals(hotelData, [], []);
       window.__filterRegions = meta && meta.regions;
       if (typeof HOTEL_BY_DEST !== 'undefined') {
         Object.keys(HOTEL_BY_DEST).forEach(k => delete HOTEL_BY_DEST[k]);
         HOTEL_DATA.forEach(h => { HOTEL_BY_DEST[h.id] = h; });
       }
-      DataLoader.reportDataGaps(hotelData, flightData, flightBookingCurveData);
+      DataLoader.reportDataGaps(hotelData, [], []);
     })
     .catch(err => {
       console.warn('[hotel] CSV load failed — rendering empty data.js contract:', err);
@@ -3533,7 +3588,7 @@ function _hotelRowContext(destId, weekIdx) {
 
   const costChangeCount = dwWeeks.filter(w => w.hasCostChange).length;
 
-  const wkLbl    = 'Wk ' + (wkMeta.weekStart || '').slice(0, 5);
+  const wkLbl    = wkMeta.weekLabel || `Wk ${wkMeta.weekStart || ''}`;
   const occPct   = Math.round((dwAgg.forecastOcc || 0) * 100);
   const curOccPct = Math.round((dwAgg.currentOcc || 0) * 100);
   const marginPct = dwMargin && dwMargin.marginPct != null ? Math.round(dwMargin.marginPct * 100) : null;

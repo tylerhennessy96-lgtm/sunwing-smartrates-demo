@@ -4,3 +4,7 @@
 
 # Local dev static server — convenience only, not part of the deployment.
 serve-demo.ps1
+
+# Local Python cache from validation scripts.
+__pycache__/
+*.pyc

@@ -5,8 +5,8 @@ RUN apk add --no-cache nginx \
   && chown -R nginx:nginx /srv/www /run/nginx /tmp/nginx /var/lib/nginx /var/log/nginx \
   && rm -f /etc/nginx/http.d/default.conf
 
-# Demo-only image: the static Sunwing files are baked directly into the container
-# to keep the runtime path as simple as possible for ECS behind ALB + Cognito.
+# CSV-only static demo image: the Sunwing files and committed CSV exports are
+# baked directly into the container and served by nginx.
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --chown=nginx:nginx data/ /srv/www/
 
