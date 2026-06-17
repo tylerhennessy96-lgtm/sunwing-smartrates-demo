@@ -20,7 +20,7 @@
     .flight-cat-risk       { background:rgba(245,166,35,0.14); color:#b45309; border-color:rgba(245,166,35,0.35); }
     .flight-cat-thirdparty { background:#f3f4f6; color:var(--text-secondary); border-color:var(--border); }
 
-    .ros-cell      { font-family:'JetBrains Mono',monospace; font-size:11.5px; }
+    .ros-cell      { font-family:var(--font-mono); font-size:11.5px; }
     .ros-ahead     { color:#047857; }
     .ros-behind    { color:var(--danger); }
 
@@ -92,7 +92,7 @@
       font-size: 12px;
       cursor: pointer;
       color: var(--text-secondary);
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       display: inline-flex;
       align-items: center;
       gap: 5px;
@@ -262,7 +262,7 @@
     }
     .cdp-close:hover { color: var(--text-primary); background: #f3f4f6; }
     .cdp-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-    .cdp-title .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .cdp-title .font-mono { font-family: var(--font-mono); }
     .cdp-sub   { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
     .cdp-meta  { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
     .cdp-section {
@@ -376,7 +376,7 @@
       border: 1px solid var(--border);
       background: #fff;
       border-radius: 6px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
@@ -484,7 +484,7 @@
       background: #f9fafb;
       border-radius: 3px;
       margin-top: 4px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-mono);
       font-size: 10.5px;
     }
     .rule-card .rc-foot {
@@ -548,7 +548,7 @@
       border: 1px solid var(--border);
       border-radius: 4px;
       background: #fff;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12.5px;
       color: var(--text-primary);
       box-sizing: border-box;
@@ -622,7 +622,7 @@
       border: 1px solid #e91e8c;
       padding: 7px 16px;
       border-radius: 4px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
@@ -666,7 +666,7 @@
       border-radius: 11px;
       background: transparent;
       color: #e91e8c;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 10.5px;
       font-weight: 600;
       cursor: pointer;
@@ -694,7 +694,7 @@
       z-index: 60;
       display: flex;
       flex-direction: column;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12.5px;
       overflow-y: auto;
     }
@@ -774,7 +774,7 @@
       border: 1px solid #c2185b;
       padding: 11px 20px 11px 18px;
       border-radius: 24px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -815,7 +815,7 @@
       display: flex;
       flex-direction: column;
       box-shadow: 0 12px 40px rgba(0,0,0,.42);
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       overflow: hidden;
     }
     .gcp.open {
@@ -1019,7 +1019,7 @@
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-      font-family: 'Inter', sans-serif;
+      font-family: var(--font-sans);
       color: var(--text-primary);
       overflow: hidden;
     }
@@ -1111,7 +1111,7 @@
     .re-btn {
       padding: 8px 18px;
       border-radius: 5px;
-      font-family: 'Inter', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12.5px;
       font-weight: 500;
       cursor: pointer;
@@ -1133,7 +1133,7 @@
       border: 1px solid #2d313b;
       border-radius: 8px;
       padding: 11px 18px;
-      font-family: 'Inter', sans-serif;
+      font-family: var(--font-sans);
       font-size: 13px;
       font-weight: 500;
       box-shadow: 0 10px 28px rgba(0,0,0,0.28);
@@ -1323,7 +1323,7 @@
       padding: 3px 6px;
       border: 1px solid var(--border);
       border-radius: 3px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-mono);
       font-size: 11.5px;
       text-align: right;
       outline: none;
@@ -1334,7 +1334,7 @@
     .chg-input::-webkit-outer-spin-button,
     .chg-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .chg-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232, 0, 125, 0.10); }
-    .chg-input::placeholder { color: var(--text-muted); font-weight: 400; font-family: 'Archivo', sans-serif; font-size: 10.5px; }
+    .chg-input::placeholder { color: var(--text-muted); font-weight: 400; font-family: var(--font-sans); font-size: 10.5px; }
     td.chg-cell.has-chg { background: rgba(232, 0, 125, 0.08); }
     td.chg-cell.has-chg .chg-input { border-color: rgba(232, 0, 125, 0.40); background: #fff; }
     .chg-input-wrap.chg-pos .chg-input { color: #047857; font-weight: 600; }
@@ -1528,8 +1528,8 @@
       <div style="display:flex;align-items:center;gap:12px;">
         <img src="engine_logo (2).png" style="height:28px;width:auto;display:block;" />
         <div style="display:flex;flex-direction:column;line-height:1;gap:2px;">
-          <span style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
-          <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
+          <span style="font-family:var(--font-sans);font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
+          <span style="font-family:var(--font-sans);font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
         </div>
       </div>
     </a>
@@ -1948,11 +1948,11 @@
         <div style="display:flex;gap:12px;">
           <div style="flex:1;">
             <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Expiry date</label>
-            <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;outline:none;" />
+            <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:var(--font-sans);font-size:13px;outline:none;" />
           </div>
           <div style="flex:1;">
             <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Created by</label>
-            <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
+            <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:var(--font-sans);font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
           </div>
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:10px;" id="notesCreatedAt">Created: —</div>

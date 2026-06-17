@@ -48,7 +48,7 @@
       background: #f3f4f6;
       color: var(--text-primary);
       border: 1px solid var(--border);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-mono);
     }
 
     /* ── Stacked cat/cls cell ────────────────────────────────── */
@@ -104,7 +104,7 @@
     .pkg-name .pkg-meta {
       font-size: 11px;
       color: var(--text-muted);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-mono);
     }
     .pkg-name .pkg-meta .pkg-meta-sep { color: var(--border-mid); margin: 0 5px; }
     .cost-change-icon {
@@ -207,7 +207,7 @@
       border: 1px solid var(--border);
       border-radius: 4px;
       font-size: 12px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       outline: none;
     }
     .prd-row input[type="number"]:focus { border-color: var(--accent); }
@@ -249,7 +249,7 @@
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       color: var(--text-primary);
       overflow: hidden;
     }
@@ -332,7 +332,7 @@
     .re-btn {
       padding: 8px 18px;
       border-radius: 5px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12.5px;
       font-weight: 500;
       cursor: pointer;
@@ -353,7 +353,7 @@
       border: 1px solid #2d313b;
       border-radius: 8px;
       padding: 11px 18px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 13px;
       font-weight: 500;
       box-shadow: 0 10px 28px rgba(0,0,0,0.28);
@@ -381,6 +381,36 @@
 
     /* ── Action icons (reuse .pkg-action-icons from styles.css) ─ */
     .pkg-action-icons button.locked { color: var(--accent); background: rgba(232, 0, 125, 0.10); }
+
+    /* ── Regular ("was") price under the editable price input ── */
+    .price-was {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      text-decoration: line-through;
+      font-family: var(--font-mono);
+      margin-top: 2px;
+    }
+
+    /* ── Book channel buttons (Revnet / WEB) ─────────────────── */
+    .book-btns {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .book-btns button {
+      font-family: var(--font-sans);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .2px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-mid);
+      background: #f9fafb;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color .12s, color .12s;
+    }
+    .book-btns button:hover { border-color: var(--accent); color: var(--accent); }
   </style>
 </head>
 <body>
@@ -392,8 +422,8 @@
       <div style="display:flex;align-items:center;gap:12px;">
         <img src="engine_logo (2).png" style="height:28px;width:auto;display:block;" />
         <div style="display:flex;flex-direction:column;line-height:1;gap:2px;">
-          <span style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
-          <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
+          <span style="font-family:var(--font-sans);font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
+          <span style="font-family:var(--font-sans);font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
         </div>
       </div>
     </a>
@@ -439,6 +469,27 @@
       </button>
       <div class="ms-dropdown"><div class="ms-options"></div></div>
     </div>
+    <div class="ms-wrap" id="fHotel">
+      <button class="ms-trigger" onclick="toggleFilter('fHotel')">
+        <span>All Hotels</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+    <div class="ms-wrap" id="fGateway">
+      <button class="ms-trigger" onclick="toggleFilter('fGateway')">
+        <span>All Gateways</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
+    <div class="ms-wrap" id="fNights">
+      <button class="ms-trigger" onclick="toggleFilter('fNights')">
+        <span>All Nights</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="ms-dropdown"><div class="ms-options"></div></div>
+    </div>
     <div class="ms-wrap" id="fDates">
       <button class="date-pill" onclick="toggleFilter('fDates')">
         <svg class="cal" width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -462,8 +513,9 @@
 
   <!-- ── Sub-tab Bar ── -->
   <div class="subtab-bar">
-    <a href="flight.html"  class="subtab">Flight Only</a>
-    <a href="hotel.html"   class="subtab">Hotel Only</a>
+    <!-- Flight Only / Hotel Only temporarily hidden while those tabs are in development -->
+    <!-- <a href="flight.html"  class="subtab">Flight Only</a> -->
+    <!-- <a href="hotel.html"   class="subtab">Hotel Only</a> -->
     <a href="pricing.html" class="subtab active">Packages</a>
     <div class="subtab-spacer"></div>
     <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
@@ -476,15 +528,11 @@
     </button>
   </div>
 
-  <!-- ── Sub-subtab Bar ── -->
-  <div class="subsubtab-bar" id="subsubtabBar" style="display:flex;align-items:center;">
-    <a class="subsubtab active" data-view="recs" onclick="switchView('recs')">New Recommendations</a>
-  </div>
 
   <!-- ── Main: Views ── -->
   <div class="main">
 
-    <!-- New Recommendations view (tree table) -->
+    <!-- Packages table view -->
     <div class="view" id="viewRecs">
       <div class="table-wrap">
         <table class="data-table" id="packagesTable">
@@ -574,11 +622,11 @@
       <div style="display:flex;gap:12px;">
         <div style="flex:1;">
           <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Expiry date</label>
-          <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;outline:none;" />
+          <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:var(--font-sans);font-size:13px;outline:none;" />
         </div>
         <div style="flex:1;">
           <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Created by</label>
-          <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:'Archivo',sans-serif;font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
+          <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:var(--font-sans);font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
         </div>
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:10px;" id="notesCreatedAt">Created: —</div>
@@ -646,18 +694,24 @@
 /* ══════════════════════════════════════════════════════════════════
    State
    ══════════════════════════════════════════════════════════════════ */
-const expandedDests    = new Set();  // destId
-const expandedWeeks    = new Set();  // destId::weekIdx
-const expandedGateways = new Set();  // destId::weekIdx::gateway
 const priceOverrides   = {};         // pkgId → price (user edits / accepted rec)
 const lockedPkgs       = new Set();  // pkgId (🔒 fixed)
 const acceptedRecs     = new Set();  // pkgId (rec was accepted)
 const pkgRules         = {};         // pkgId → { minPrice, maxPrice, minMargin, maxMargin, lock, flag, modifiedAt, modifiedBy }
 const notes            = {};         // pkgId → { text, expires, createdBy, createdAt }
 
-let activeView    = 'recs';
 let activeRuleKey = null;
 let activeNoteKey = null;
+let priceRevision = 0;
+let packageFilterKey = '';
+let visibleRowLimit = 250;
+
+const ROW_RENDER_BATCH = 250;
+const packageIndex = {
+  root: { _leaves: [] },
+  byId: new Map(),
+  destById: new Map(),
+};
 
 /* ══════════════════════════════════════════════════════════════════
    Helpers
@@ -691,6 +745,31 @@ function hotelClsBadge(cls) {
 }
 function durPill(d) {
   return `<span class="dur-pill">${d}N</span>`;
+}
+function weekShort(dateText) {
+  const s = String(dateText || '').trim();
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${Number(m[2])}-${months[Number(m[1]) - 1] || m[1]}`;
+  }
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${Number(m[3])}-${months[Number(m[2]) - 1] || m[2]}`;
+  }
+  return s;
+}
+// "2026-07-11" or "7/11/26" → "JUL 11" (matches the booking-results layout).
+function dayMon(dateText) {
+  const s = String(dateText || '').trim();
+  if (!s) return '';
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${months[Number(m[2]) - 1] || m[2]} ${Number(m[3])}`;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) return `${months[Number(m[1]) - 1] || m[1]} ${Number(m[2])}`;
+  return s;
 }
 const _STAR_SVG = '<svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 0.5 L7.55 4.05 L11.4 4.5 L8.5 7.15 L9.3 11 L6 9.05 L2.7 11 L3.5 7.15 L0.6 4.5 L4.45 4.05 Z"/></svg>';
 function starRating(stars) {
@@ -729,276 +808,266 @@ function deltaColor(delta) {
 /* ══════════════════════════════════════════════════════════════════
    Filter matching + tree walkers
    ══════════════════════════════════════════════════════════════════ */
+// Mirror the week picker's Monday-anchored weeks (filters.js getMonday) so a
+// package's Sunday week_start maps to the same Monday the calendar row selects.
+function mondayOf(isoOrDate) {
+  const d = isoOrDate instanceof Date ? new Date(isoOrDate) : new Date(String(isoOrDate) + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  const day = d.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + offset);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 function passesHeaderFilters(pkg) {
   if (typeof Filters === 'undefined' || !Filters.getActiveFilters) return true;
   const f = Filters.getActiveFilters();
-  const dest = DESTINATIONS.find(d => d.id === pkg.destId);
+  const dest = packageIndex.destById.get(String(pkg.destId));
   if (f.brand && f.brand.length && dest && !f.brand.includes(dest.brand)) return false;
   if (f.region && f.region.length && !f.region.includes(pkg.region)) return false;
   if (f.destination && f.destination.length && !f.destination.includes(pkg.destination)) return false;
   if (f.rm && f.rm.length && dest && !f.rm.includes(dest.revenueManager)) return false;
+  // Package-specific filters (not part of the shared filter bar contract).
+  const hotels = Filters.getSelected('fHotel');
+  if (hotels.length && !hotels.includes(pkg.hotel)) return false;
+  const gateways = Filters.getSelected('fGateway');
+  if (gateways.length && !gateways.includes(pkg.gatewayCity)) return false;
+  const nights = Filters.getSelected('fNights');
+  if (nights.length && !nights.includes(`${pkg.duration}N`)) return false;
+  // Week range — compare on the picker's Monday anchor so the Sunday-based
+  // package week_start lines up with the selected calendar weeks.
+  if (f.dates && f.dates.start) {
+    const wkMon = mondayOf(pkg.weekStartIso);
+    const lo = mondayOf(f.dates.start);
+    const hi = mondayOf(f.dates.end || f.dates.start);
+    if (!wkMon || !lo || !hi) return false;
+    const t = wkMon.getTime();
+    if (t < lo.getTime() || t > hi.getTime()) return false;
+  }
   return true;
 }
 
-// Return every leaf (single package) in PACKAGE_DATA that passes header filters.
-function allLeaves() {
-  const out = [];
-  PACKAGE_DATA.forEach(d => d.checkInWeeks.forEach(w => w.gateways.forEach(g =>
-    g.durations.forEach(p => { if (passesHeaderFilters(p)) out.push(p); })
-  )));
-  return out;
-}
-// Leaves below a subtree (dest / week / gateway).
-function subtreeLeaves(dest, week, gateway) {
-  const out = [];
-  const weeks = week ? [week] : dest.checkInWeeks;
-  weeks.forEach(w => {
-    const gws = gateway ? [gateway] : w.gateways;
-    gws.forEach(g => g.durations.forEach(p => { if (passesHeaderFilters(p)) out.push(p); }));
-  });
-  return out;
-}
+function rebuildPackageIndex() {
+  packageIndex.root = { _leaves: [] };
+  packageIndex.byId = new Map();
+  packageIndex.destById = new Map();
 
-/* ══════════════════════════════════════════════════════════════════
-   Packages table (tree)
-   ══════════════════════════════════════════════════════════════════ */
-function renderPackagesHead() {
-  document.getElementById('packagesHead').innerHTML = `
-    <tr>
-      <th style="min-width:360px;">Destination / Week / Gateway / Package</th>
-      <th style="width:110px;">Check-in</th>
-      <th style="width:62px;text-align:center;">Dur.</th>
-      <th style="width:92px;">Cat / Cls</th>
-      <th style="width:74px;">★</th>
-      <th class="text-right" style="width:100px;">Sold / Alloc</th>
-      <th class="text-right" style="width:72px;">Pkg LF</th>
-      <th class="text-right" style="width:100px;">Curr Price</th>
-      <th class="text-right" style="width:100px;">Rec Price</th>
-      <th class="text-right" style="width:76px;">Δ $</th>
-      <th class="text-right" style="width:100px;">Curr Margin</th>
-      <th class="text-right" style="width:100px;">Rec Margin</th>
-      <th class="text-right" style="width:76px;">Margin Δ</th>
-      <th class="text-right" style="width:72px;">Margin %</th>
-      <th style="width:96px;">Pace</th>
-      <th style="width:110px;">Actions</th>
-    </tr>
-  `;
-}
+  DESTINATIONS.forEach(d => packageIndex.destById.set(String(d.id), d));
 
-// Aggregate helpers
-function _aggPrices(leaves) {
-  if (!leaves.length) return null;
-  const sold   = sum(leaves, 'soldPackages');
-  const alloc  = sum(leaves, 'allocPackages');
-  const lf     = alloc > 0 ? sold / alloc : 0;
-  const cp     = avg(leaves, p => getEffectivePrice(p));
-  const rp     = avg(leaves, 'recPrice');
-  const cm     = avg(leaves, p => getEffectiveMargin(p));
-  const rm     = avg(leaves, 'recMargin');
-  const mPct   = cp > 0 ? cm / cp : 0;
-  return { sold, alloc, lf, cp, rp, dp: rp - cp, cm, rm, dm: rm - cm, mPct };
-}
-
-function renderPackagesTable() {
-  const tbody = document.getElementById('packagesBody');
-  const rows = [];
-
-  // Empty state only when no package data is loaded (CSV failed / not connected).
-  if (!PACKAGE_DATA.length) {
-    tbody.innerHTML = `<tr><td colspan="16" style="padding:40px;text-align:center;color:var(--text-muted);">
-      No package data available — not yet connected to a data source.
-    </td></tr>`;
-    return;
-  }
-
-  const visibleDests = PACKAGE_DATA.filter(d => subtreeLeaves(d).length > 0);
-  if (!visibleDests.length) {
-    tbody.innerHTML = `<tr><td colspan="16" style="padding:28px;text-align:center;color:var(--text-muted);">No packages match the current filters.</td></tr>`;
-    return;
-  }
-
-  visibleDests.forEach(dest => {
-    const destLeaves = subtreeLeaves(dest);
-    const destOpen   = expandedDests.has(dest.id);
-    const a = _aggPrices(destLeaves);
-
-    // ── Level 1: Destination ──
-    rows.push(`
-      <tr class="row-property" onclick="toggleDest('${dest.id}')">
-        <td>
-          <button class="expand-btn ${destOpen?'open':''}" onclick="event.stopPropagation();toggleDest('${dest.id}')">${chevron(destOpen)}</button>
-          ${dest.name}
-          <span class="region-badge ${regionClass(dest.region)}" style="margin-left:8px;">${dest.region}</span>
-          <span style="color:var(--text-muted);font-weight:400;margin-left:8px;font-size:11.5px;">${destLeaves.length} packages</span>
-        </td>
-        <td></td><td></td><td></td><td></td>
-        <td class="text-right num">${a.sold} / ${a.alloc}</td>
-        <td class="text-right num">${fmtPct(a.lf)}</td>
-        <td class="text-right num">${fmt$(a.cp)}</td>
-        <td class="text-right num" style="color:var(--accent);">${fmt$(a.rp)}</td>
-        <td class="text-right num ${deltaColor(a.dp)}">${a.dp>=0?'+':''}${fmt$(a.dp)}</td>
-        <td class="text-right num">${fmt$(a.cm)}</td>
-        <td></td>
-        <td></td>
-        <td class="text-right num">${fmtPct(a.mPct)}</td>
-        <td></td>
-        <td>
-          <div class="pkg-action-icons">
-            <button title="View destination snapshot" onclick="event.stopPropagation();">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="8" width="2.5" height="6"/><rect x="6.75" y="4" width="2.5" height="10"/><rect x="11.5" y="2" width="2.5" height="12"/></svg>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `);
-
-    if (!destOpen) return;
-
-    // ── Level 2: Check-in weeks ──
+  // Flatten the nested CSV structure (dest → week → gateway → durations) into a
+  // single ordered list of package leaves — the table is now one row per package.
+  PACKAGE_DATA.forEach(dest => {
+    dest._leaves = [];
     dest.checkInWeeks.forEach(wk => {
-      const wkLeaves = subtreeLeaves(dest, wk);
-      if (!wkLeaves.length) return;
-      const wkKey  = `${dest.id}::${wk.idx}`;
-      const wkOpen = expandedWeeks.has(wkKey);
-      const w = _aggPrices(wkLeaves);
-
-      rows.push(`
-        <tr class="row-week clickable" onclick="toggleWeek('${wkKey}')">
-          <td>
-            <button class="expand-btn ${wkOpen?'open':''}" onclick="event.stopPropagation();toggleWeek('${wkKey}')">${chevron(wkOpen)}</button>
-            <span style="font-weight:500;">${wk.label}</span>
-            <span style="color:var(--text-muted);font-weight:400;margin-left:6px;font-size:11px;font-family:'JetBrains Mono',monospace;">${wk.date}</span>
-            <span style="color:var(--text-muted);font-weight:400;margin-left:8px;font-size:11px;">${wkLeaves.length} packages</span>
-          </td>
-          <td></td><td></td><td></td><td></td>
-          <td class="text-right num">${w.sold} / ${w.alloc}</td>
-          <td class="text-right num">${fmtPct(w.lf)}</td>
-          <td class="text-right num">${fmt$(w.cp)}</td>
-          <td class="text-right num" style="color:var(--accent);">${fmt$(w.rp)}</td>
-          <td class="text-right num ${deltaColor(w.dp)}">${w.dp>=0?'+':''}${fmt$(w.dp)}</td>
-          <td class="text-right num">${fmt$(w.cm)}</td>
-          <td></td><td></td><td></td><td></td><td></td>
-        </tr>
-      `);
-
-      if (!wkOpen) return;
-
-      // ── Level 3: Gateways for this week ──
       wk.gateways.forEach(gw => {
-        const gwLeaves = gw.durations.filter(passesHeaderFilters);
-        if (!gwLeaves.length) return;
-        const gwKey  = `${dest.id}::${wk.idx}::${gw.gateway}`;
-        const gwOpen = expandedGateways.has(gwKey);
-        const g = _aggPrices(gwLeaves);
-
-        rows.push(`
-          <tr class="row-bedtype clickable" onclick="toggleGateway('${gwKey}')">
-            <td>
-              <button class="expand-btn ${gwOpen?'open':''}" onclick="event.stopPropagation();toggleGateway('${gwKey}')">${chevron(gwOpen)}</button>
-              ${gw.gatewayCity} · <span style="font-family:'JetBrains Mono',monospace;color:var(--text-secondary);font-size:11.5px;">${gw.gateway}</span>
-              <span style="color:var(--text-muted);font-weight:400;margin-left:8px;font-size:11px;">${gwLeaves.length} duration${gwLeaves.length === 1 ? '' : 's'}</span>
-            </td>
-            <td></td><td></td><td></td><td></td>
-            <td class="text-right num">${g.sold} / ${g.alloc}</td>
-            <td class="text-right num">${fmtPct(g.lf)}</td>
-            <td class="text-right num">${fmt$(g.cp)}</td>
-            <td class="text-right num" style="color:var(--accent);">${fmt$(g.rp)}</td>
-            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-          </tr>
-        `);
-
-        if (!gwOpen) return;
-
-        // ── Level 4: Duration leaves ──
-        gwLeaves.forEach(p => {
-          const currP  = getEffectivePrice(p);
-          const currM  = getEffectiveMargin(p);
-          const deltaP = p.recPrice - currP;
-          const deltaM = p.recMargin - currM;
-          const marginPct = currP > 0 ? currM / currP : 0;
-          const lfLeaf = p.allocPackages > 0 ? p.soldPackages / p.allocPackages : 0;
-          const recAccepted = acceptedRecs.has(p.id);
-          const isLocked = lockedPkgs.has(p.id);
-          const hasNote  = !!notes[p.id];
-
-          rows.push(`
-            <tr class="row-unit">
-              <td>
-                <div class="pkg-name">
-                  <span class="pkg-title">
-                    ${durPill(p.duration)}
-                    <span style="margin-left:6px;">${p.packageName}</span>
-                  </span>
-                  <span class="pkg-meta">
-                    <span>${p.flightNum}</span><span class="pkg-meta-sep">·</span><span>${p.flightRoute}</span><span class="pkg-meta-sep">·</span><span>${p.hotel}</span><span class="pkg-meta-sep">·</span><span>${p.roomCategory}</span>
-                  </span>
-                </div>
-              </td>
-              <td>
-                <div style="line-height:1.25;">
-                  <div style="font-size:12px;">${p.checkInWeek}</div>
-                  <div style="font-size:10.5px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${p.checkInDate}</div>
-                </div>
-              </td>
-              <td style="text-align:center;">${durPill(p.duration)}</td>
-              <td></td>
-              <td>${starRating(p.hotelStars)}</td>
-              <td class="text-right num">${p.soldPackages} / ${p.allocPackages}</td>
-              <td class="text-right num">${fmtPct(lfLeaf)}</td>
-              <td class="text-right">
-                <input class="price-input" type="number" step="1" value="${Math.round(currP)}"
-                       onclick="event.stopPropagation()"
-                       onchange="updatePrice('${p.id}', this.value)"
-                       ${isLocked ? 'disabled' : ''} />
-              </td>
-              <td class="text-right">
-                <span class="rec-click ${recAccepted?'accepted':''}"
-                      onclick="event.stopPropagation();${recAccepted?'':`acceptRec('${p.id}')`}">
-                  ${fmt$(p.recPrice)}
-                </span>
-              </td>
-              <td class="text-right num ${deltaColor(deltaP)}">${deltaP>=0?'+':''}${fmt$(deltaP)}</td>
-              <td class="text-right num">${fmt$(currM)}</td>
-              <td class="text-right num" style="color:var(--accent);">${fmt$(p.recMargin)}</td>
-              <td class="text-right num ${deltaColor(deltaM)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
-              <td class="text-right num">${fmtPct(marginPct)}</td>
-              <td>${paceBadge(p.bookingPace)}</td>
-              <td>
-                <div class="pkg-action-icons">
-                  <button title="Notes" class="${hasNote?'locked':''}" onclick="event.stopPropagation();openNotesModal('${p.id}')">
-                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 2h7l3 3v9H3z"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/><line x1="5" y1="12" x2="9" y2="12"/></svg>
-                  </button>
-                  <button title="${isLocked?'Unlock price':'Lock price'}" class="${isLocked?'locked':''}" onclick="event.stopPropagation();toggleLock('${p.id}')">
-                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6">
-                      <rect x="3.5" y="7" width="9" height="6.5" rx="1"/>
-                      <path d="M5.5 7V4.5a2.5 2.5 0 015 0V7"/>
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          `);
+        gw.durations.forEach(pkg => {
+          pkg.gatewayCity = pkg.gatewayCity || gw.gatewayCity || pkg.gateway;
+          pkg.weekLabel = pkg.weekLabel || wk.label || pkg.checkInWeek;
+          pkg.weekDate = pkg.weekDate || wk.date || pkg.checkInDate;
+          pkg.weekStartIso = pkg.weekStartIso || wk.weekStartIso;
+          packageIndex.byId.set(pkg.id, pkg);
+          dest._leaves.push(pkg);
+          packageIndex.root._leaves.push(pkg);
         });
       });
     });
   });
 
-  tbody.innerHTML = rows.join('');
+  packageFilterKey = '';
+  visibleRowLimit = ROW_RENDER_BATCH;
+}
+
+function currentFilterKey() {
+  if (typeof Filters === 'undefined' || !Filters.getActiveFilters) return '{}';
+  const f = Filters.getActiveFilters();
+  return JSON.stringify({
+    brand: (f.brand || []).slice().sort(),
+    region: (f.region || []).slice().sort(),
+    destination: (f.destination || []).slice().sort(),
+    rm: (f.rm || []).slice().sort(),
+    hotel: Filters.getSelected('fHotel').slice().sort(),
+    gateway: Filters.getSelected('fGateway').slice().sort(),
+    nights: Filters.getSelected('fNights').slice().sort(),
+    dates: f.dates && f.dates.start
+      ? [f.dates.start.getTime(), (f.dates.end || f.dates.start).getTime()]
+      : null,
+  });
+}
+
+function currentRenderKey() {
+  return `${currentFilterKey()}::${priceRevision}`;
+}
+
+function clearNodeCacheForFilterChange(nextFilterKey) {
+  if (nextFilterKey === packageFilterKey) return;
+  packageFilterKey = nextFilterKey;
+  visibleRowLimit = ROW_RENDER_BATCH;
+}
+
+function filteredLeavesFor(node) {
+  const key = currentFilterKey();
+  if (node._filteredKey === key) return node._filteredLeaves;
+  const leaves = (node._leaves || []).filter(passesHeaderFilters);
+  node._filteredKey = key;
+  node._filteredLeaves = leaves;
+  return leaves;
+}
+
+// Return every leaf (single package) in PACKAGE_DATA that passes header filters.
+function allLeaves() {
+  return filteredLeavesFor(packageIndex.root);
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Expand / collapse
+   Packages table (flat — one row per package)
+
+   NOTE: Flight #, Time dep./arr. and Bagg. columns are intentionally
+   blank — the package CSV export carries no per-flight schedule or
+   baggage data, so we show the columns but never fabricate values.
    ══════════════════════════════════════════════════════════════════ */
-function toggleDest(id) {
-  expandedDests.has(id) ? expandedDests.delete(id) : expandedDests.add(id);
-  renderPackagesTable();
+const COLSPAN = 20;
+function renderPackagesHead() {
+  document.getElementById('packagesHead').innerHTML = `
+    <tr>
+      <th style="min-width:120px;">Destination</th>
+      <th style="min-width:220px;">Hotel</th>
+      <th style="width:46px;text-align:center;">Nt</th>
+      <th style="width:104px;">Dates</th>
+      <th style="min-width:150px;">Gateway</th>
+      <th style="width:78px;">Flight #</th>
+      <th class="text-right" style="width:72px;" title="Sold same time last year — no CSV column yet">Sold STLY</th>
+      <th class="text-right" style="width:70px;">Sold</th>
+      <th class="text-right" style="width:70px;" title="Outbound flight forecast load factor">Out Fcst</th>
+      <th class="text-right" style="width:70px;" title="Return flight forecast load factor">Ret Fcst</th>
+      <th class="text-right" style="width:70px;" title="Hotel forecast — no CSV column yet">Hotel Fcst</th>
+      <th class="text-right" style="width:64px;" title="Pickup pax, trailing 7 days">Pickup 7d</th>
+      <th class="text-right" style="width:64px;" title="Pickup pax, trailing 14 days">Pickup 14d</th>
+      <th class="text-right" style="width:118px;">Price</th>
+      <th class="text-right" style="width:104px;">Rec Price</th>
+      <th class="text-right" style="width:72px;">Δ $</th>
+      <th class="text-right" style="width:96px;">Curr Margin</th>
+      <th class="text-right" style="width:96px;">Rec Margin</th>
+      <th class="text-right" style="width:72px;">Margin Δ</th>
+      <th style="width:90px;">Pace</th>
+    </tr>
+  `;
 }
-function toggleWeek(key) {
-  expandedWeeks.has(key) ? expandedWeeks.delete(key) : expandedWeeks.add(key);
-  renderPackagesTable();
+
+const BLANK_CELL = '<td style="text-align:center;color:var(--border-mid);">—</td>';
+function renderPackagesTable() {
+  const tbody = document.getElementById('packagesBody');
+  clearNodeCacheForFilterChange(currentFilterKey());
+
+  // Empty state only when no package data is loaded (CSV failed / not connected).
+  if (!PACKAGE_DATA.length) {
+    tbody.innerHTML = `<tr><td colspan="${COLSPAN}" style="padding:40px;text-align:center;color:var(--text-muted);">
+      No package data available — not yet connected to a data source.
+    </td></tr>`;
+    return;
+  }
+
+  const leaves = allLeaves();
+  if (!leaves.length) {
+    tbody.innerHTML = `<tr><td colspan="${COLSPAN}" style="padding:28px;text-align:center;color:var(--text-muted);">No packages match the current filters.</td></tr>`;
+    return;
+  }
+
+  const rendered = leaves.slice(0, visibleRowLimit);
+  const rows = rendered.map(p => {
+    const currP  = getEffectivePrice(p);
+    const currM  = getEffectiveMargin(p);
+    const deltaP = p.recPrice - currP;
+    const deltaM = p.recMargin - currM;
+    const recAccepted = acceptedRecs.has(p.id);
+    const isLocked = lockedPkgs.has(p.id);
+    const showWas  = p.regularPrice > currP;
+
+    return `
+      <tr class="row-unit">
+        <td>
+          <div style="line-height:1.25;">
+            <div>
+              ${p.hasCostChange ? `<span class="cost-change-icon" title="Cost change since last evaluation" style="margin-right:5px;">&#9888;</span>` : ''}
+              <span style="font-weight:500;">${p.destination}</span>
+            </div>
+            <div style="margin-top:3px;"><span class="region-badge ${regionClass(p.region)}">${p.region}</span></div>
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;flex-direction:column;gap:2px;line-height:1.25;">
+            <span style="font-weight:600;">${p.hotel}</span>
+            ${starRating(p.hotelStars)}
+            <div style="font-size:11px;color:var(--text-secondary);">
+              ${p.roomCategory || '—'}${p.mealPlan ? ` <span style="color:var(--text-muted);">· ${p.mealPlan}</span>` : ''}
+            </div>
+          </div>
+        </td>
+        <td style="text-align:center;">${durPill(p.duration)}</td>
+        <td>
+          <div style="line-height:1.3;font-family:var(--font-mono);font-size:11px;">
+            <div>${dayMon(p.departureDate) || '—'}</div>
+            <div style="color:var(--text-muted);">${dayMon(p.returnDate) || ''}</div>
+          </div>
+        </td>
+        <td>
+          <div style="line-height:1.25;">
+            <div style="font-size:12px;">${p.gatewayCity}</div>
+            <div style="font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);">${p.gateway}</div>
+          </div>
+        </td>
+        ${BLANK_CELL}
+        <td class="text-right num" style="color:var(--border-mid);">—</td>
+        <td class="text-right num">${p.soldPackages}</td>
+        <td class="text-right num">${p.outboundForecastLf == null ? '—' : fmtPct(p.outboundForecastLf)}</td>
+        <td class="text-right num">${p.returnForecastLf == null ? '—' : fmtPct(p.returnForecastLf)}</td>
+        <td class="text-right num" style="color:var(--border-mid);">—</td>
+        <td class="text-right num">${p.pickupPax7d == null ? '—' : p.pickupPax7d}</td>
+        <td class="text-right num">${p.pickupPax14d == null ? '—' : p.pickupPax14d}</td>
+        <td class="text-right">
+          <input class="price-input" type="number" step="1" value="${Math.round(currP)}"
+                 onclick="event.stopPropagation()"
+                 onchange="updatePrice('${p.id}', this.value)"
+                 ${isLocked ? 'disabled' : ''} />
+          ${showWas ? `<div class="price-was">${fmt$(p.regularPrice)}</div>` : ''}
+        </td>
+        <td class="text-right">
+          <span class="rec-click ${recAccepted?'accepted':''}"
+                onclick="event.stopPropagation();${recAccepted?'':`acceptRec('${p.id}')`}">
+            ${fmt$(p.recPrice)}
+          </span>
+        </td>
+        <td class="text-right num ${deltaColor(deltaP)}">${deltaP>=0?'+':''}${fmt$(deltaP)}</td>
+        <td class="text-right">
+          <input class="price-input" type="number" step="1" value="${Math.round(currM)}"
+                 onclick="event.stopPropagation()"
+                 onchange="updateMargin('${p.id}', this.value)"
+                 ${isLocked ? 'disabled' : ''} />
+        </td>
+        <td class="text-right num" style="color:var(--accent);">${fmt$(p.recMargin)}</td>
+        <td class="text-right num ${deltaColor(deltaM)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
+        <td>${paceBadge(p.bookingPace)}</td>
+      </tr>
+    `;
+  });
+
+  if (leaves.length > rendered.length) {
+    const nextCount = Math.min(leaves.length, rendered.length + ROW_RENDER_BATCH);
+    rows.push(`
+      <tr>
+        <td colspan="${COLSPAN}" style="padding:14px 16px;text-align:center;color:var(--text-secondary);">
+          Showing ${rendered.length.toLocaleString()} of ${leaves.length.toLocaleString()} packages.
+          <button class="btn btn-ghost" style="margin-left:10px;" onclick="showMorePackages()">Show next ${(nextCount - rendered.length).toLocaleString()}</button>
+        </td>
+      </tr>
+    `);
+  }
+
+  tbody.innerHTML = rows.join('');
 }
-function toggleGateway(key) {
-  expandedGateways.has(key) ? expandedGateways.delete(key) : expandedGateways.add(key);
+
+function showMorePackages() {
+  visibleRowLimit += ROW_RENDER_BATCH;
   renderPackagesTable();
 }
 
@@ -1010,13 +1079,27 @@ function updatePrice(pkgId, value) {
   if (isNaN(v)) return;
   priceOverrides[pkgId] = v;
   acceptedRecs.delete(pkgId);
+  priceRevision++;
+  renderPackagesTable();
+}
+// Price and margin are linked by margin = price - totalCost. Price is the single
+// source of truth (priceOverrides), so a margin edit back-solves the price.
+function updateMargin(pkgId, value) {
+  const v = Number(value);
+  if (isNaN(v)) return;
+  const p = packageIndex.byId.get(pkgId);
+  if (!p) return;
+  priceOverrides[pkgId] = v + p.totalCost;
+  acceptedRecs.delete(pkgId);
+  priceRevision++;
   renderPackagesTable();
 }
 function acceptRec(pkgId) {
-  const p = allLeaves().find(x => x.id === pkgId);
+  const p = packageIndex.byId.get(pkgId);
   if (!p) return;
   priceOverrides[pkgId] = p.recPrice;
   acceptedRecs.add(pkgId);
+  priceRevision++;
   renderPackagesTable();
 }
 function toggleLock(pkgId) {
@@ -1029,7 +1112,7 @@ function toggleLock(pkgId) {
    ══════════════════════════════════════════════════════════════════ */
 function openPkgRules(pkgId) {
   activeRuleKey = pkgId;
-  const p = allLeaves().find(x => x.id === pkgId);
+  const p = packageIndex.byId.get(pkgId);
   if (!p) return;
   document.getElementById('prdSub').textContent = `${p.packageName} · ${p.gateway} → ${p.destId}`;
   const existing = pkgRules[pkgId] || {};
@@ -1076,7 +1159,7 @@ function savePkgRules() {
    ══════════════════════════════════════════════════════════════════ */
 function openNotesModal(pkgId) {
   activeNoteKey = pkgId;
-  const p = allLeaves().find(x => x.id === pkgId);
+  const p = packageIndex.byId.get(pkgId);
   document.getElementById('notesModalSub').textContent = p ? `${p.packageName} · ${p.checkInWeek}` : pkgId;
   const existing = notes[pkgId];
   document.getElementById('notesText').value       = existing ? existing.text : '';
@@ -1109,15 +1192,6 @@ function deleteNote() {
   delete notes[activeNoteKey];
   closeNotesModal();
   renderPackagesTable();
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   View switching (only one view now — kept for defensive compat)
-   ══════════════════════════════════════════════════════════════════ */
-function switchView(view) {
-  activeView = view;
-  document.querySelectorAll('.subsubtab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
-  document.getElementById('viewRecs').classList.toggle('hidden', view !== 'recs');
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1194,6 +1268,15 @@ function confirmRunEvaluation() {
   }, 2500);
 }
 
+function bookVia(channel) {
+  const toast = document.getElementById('reToast');
+  const text  = document.getElementById('reToastText');
+  toast.classList.add('success');
+  text.textContent = `✓ Opening ${channel} booking channel…`;
+  toast.classList.add('shown');
+  setTimeout(() => { toast.classList.remove('shown'); toast.classList.remove('success'); }, 2000);
+}
+
 function publishChanges() {
   const n = Object.keys(priceOverrides).length;
   const toast = document.getElementById('reToast');
@@ -1234,15 +1317,34 @@ document.addEventListener('click', (e) => {
    Init
    ══════════════════════════════════════════════════════════════════ */
 function _initPricing() {
+  rebuildPackageIndex();
   Filters.populateStandard({
-    onAnyChange: () => { renderPackagesTable(); }
+    onAnyChange: () => {
+      visibleRowLimit = ROW_RENDER_BATCH;
+      renderPackagesTable();
+    }
   });
   // Region options come from the loaded package CSV.
   if (window.__filterRegions && window.__filterRegions.length && Filters.setMultiSelectValues) {
     Filters.setMultiSelectValues('fRegion', window.__filterRegions);
   }
+  _initPackageFilters();
   renderPackagesHead();
   renderPackagesTable();
+}
+
+// Hotel / Gateway / Nights filters are package-specific — their option lists are
+// derived from the loaded package leaves rather than the shared filter contract.
+function _initPackageFilters() {
+  const leaves = packageIndex.root._leaves || [];
+  const reRender = () => { visibleRowLimit = ROW_RENDER_BATCH; renderPackagesTable(); };
+  const uniq = (arr) => Array.from(new Set(arr.filter(v => v != null && v !== '')));
+  const hotels   = uniq(leaves.map(p => p.hotel)).sort();
+  const gateways = uniq(leaves.map(p => p.gatewayCity)).sort();
+  const nights   = uniq(leaves.map(p => p.duration)).sort((a, b) => a - b).map(d => `${d}N`);
+  Filters.initMultiSelect('fHotel',   hotels,   { defaultLabel: 'All Hotels',   onChange: reRender });
+  Filters.initMultiSelect('fGateway', gateways, { defaultLabel: 'All Gateways', onChange: reRender });
+  Filters.initMultiSelect('fNights',  nights,   { defaultLabel: 'All Nights',   onChange: reRender });
 }
 
 // Load ONLY the package CSV (not the hotel/flight exports), then render.

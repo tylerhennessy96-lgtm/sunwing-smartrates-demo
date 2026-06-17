@@ -12,6 +12,125 @@ Format:
 
 ---
 
+## 2026-06-17 — Packages tab: columns, filters, editable margin, system fonts
+- Packages table reshaped around the larger `v_package_pricing_pg.csv` export:
+  surfaced flight forecast LF (`outbound`/`return`) and pickup pax (7d/14d)
+  columns; added blank `Sold STLY` and `Hotel Fcst` columns (no backing column
+  yet — honest em-dash placeholders); changed `Sold / Alloc` to `Sold`; removed
+  the TO, Time dep./arr., Bagg., Pkg LF, Ret LF, RT LF, and Margin % columns.
+- Room type moved out of its own `Room Desc` column to a sub-line under the
+  Hotel cell; the region badge now stacks under the destination name.
+- Price and margin are both editable and linked via `margin = price - totalCost`
+  (price stays the single source of truth, so they can't drift).
+- Added Hotel / Gateway / Nights header filters (derived from the loaded CSV);
+  fixed the "Select weeks" date filter, which was a no-op on packages — it now
+  matches on the picker's Monday anchor (package `week_start` is Sunday-based).
+- Hid the Flight Only / Hotel Only subtabs while those tabs are in development;
+  removed the single-item "New Recommendations" sub-subtab and its dead code.
+- Replaced the unloaded named fonts (`Archivo`/`Inter`/`JetBrains Mono`, which
+  silently fell back to differing generics) with `--font-sans` / `--font-mono`
+  system-font CSS variables across all pages — consistent, no downloads.
+- Added `scripts/validate_csv_contract.py` static data-contract check.
+- Why: adapt the UI to the richer package export, make pricing/margin directly
+  adjustable, give RMs hotel/gateway/nights/week filtering, and standardize
+  typography without any external font dependency.
+
+## 2026-06-16 — Make the frontend read any CSV date range
+- `data-loader.js` no longer clamps loaded rows to a hard-coded Jul–Sep 2026
+  window. `ACTIVE_START_DATE_ISO` / `ACTIVE_END_DATE_ISO` are now optional
+  (default `null` = unbounded); `isWithinActiveDateWindow` keeps every row when
+  no window is set, and still clamps if either bound is configured.
+- Everything downstream already adapts to the data: week columns
+  (`CHECK_IN_WEEKS`) and the "Select weeks" picker are derived from the loaded
+  rows, and pages only apply a date filter once a range is actually selected
+  (no selection = show all). So a wider (or narrower) export just works.
+- `scripts/validate_csv_contract.py` mirrors this: `START_DATE` / `END_DATE`
+  default to `None`, so the contract accepts any range while still checking
+  required columns, non-empty rows, and parseable dates.
+
+## 2026-06-16 — Re-trim swapped-in realistic CSV exports
+- New, more realistic mock exports replaced all four `data/v_*.csv` files (full
+  62/52/36/12-column schemas again, spanning 2024–2027). Re-ran the trim:
+  - Columns → per-file used set (same keep-lists as before; schemas matched):
+    package 62→31, hotel 36→28, flight 52→44, curve 12 (unchanged).
+  - Rows → trimmed to the Jul 1–Sep 30 2026 demo window (the loader already
+    filters to this at runtime), matching the approved-window process:
+    hotel 232,408→19,618, flight 6,037→413, curve 218,662→4,719,
+    package 29,095→19,580. Combined size ~71MB → ~11MB.
+- `validate_csv_contract.py` passes; date ranges sit inside the window.
+- (Renamed the duplicate-download `v_package_pricing_pg 1.csv` back to
+  `v_package_pricing_pg.csv` so the loader finds it.)
+
+## 2026-06-16 — Fix Hotel tab freeze on the larger CSV exports
+- The Hotel recommendations table built one row per destination × check-in week
+  for the whole dataset at once. With the larger export (11,775 destinations ×
+  92 distinct week_starts ≈ 1.08M rows) the single `innerHTML` assignment locked
+  the tab so it never painted.
+- `renderRecsTable` now renders in batches of 300 dest-week rows with a "Show
+  more" control (mirrors the Packages tab), resetting to the first page on
+  header-filter, advanced-filter, and sort changes. The row-count bar still
+  reflects the true total matched.
+- Also skipped the per-row advanced-filter match allocation for rows beyond the
+  page cap when no advanced filters are active, so the count pass stays cheap
+  across the large dest×week space.
+- Not caused by the column trim below — row/destination counts are unchanged;
+  this was a pre-existing scale regression from swapping in the larger exports.
+
+## 2026-06-16 — Trim CSV exports to per-file used columns
+- Reduced each `data/v_*.csv` export to only the columns its page/loader
+  actually reads (derived from `data-loader.js` builders, including the
+  dynamic `_${eco|biz}` cabin keys):
+  - `v_package_pricing_pg.csv`: 62 → 31 cols (14.5 MB → 8.4 MB) — dropped unused
+    economics/keys (air fares, est. hotel/air cost, flight_*/hotel_occ, ADRs,
+    supplier cost, beds:seats, classification, room_category_id, *_code, locks).
+  - `v_hotel_pricing_pg.csv`: 36 → 28 cols (6.3 MB → 4.8 MB).
+  - `v_flight_pricing_pg.csv`: 52 → 44 cols — dropped total_beds/total_seats,
+    *_lf_biz, region_id/brand_id, lock_reason/until.
+  - `v_flight_booking_curve_pg.csv`: unchanged (all 12 cols used).
+  - Common drops: `region_id`, `brand_id`, `lock_reason`, `lock_until`
+    (names used; values never read — region_name/brand_name carry the data).
+- Updated `scripts/validate_csv_contract.py` required-column lists for the
+  flight and package contracts to match the trimmed schema (CI stays green).
+- Why: the CSVs are the runtime data source; carrying columns nothing renders
+  inflated payloads (esp. the package export) with no benefit.
+
+## 2026-06-15 — Flatten Packages tab to a single flat table
+- Replaced the 4-level accordion (Destination → Hotel → Gateway → Week →
+  package) on the Packages tab (`data/pricing.html`) with one flat row per
+  package, modeled on the tour-operator booking-results layout:
+  Destination (with an inline ⚠ cost-change indicator), Hotel (+stars),
+  Room Desc, Nt, TO, Dates (dep/return), Gateway,
+  Flight #, Time dep./arr., Bagg., Sold/Alloc, LF, Price (editable, with the
+  regular "was" price struck through below), Rec Price, Δ$, margins, Margin %,
+  Pace, and a Book (Revnet/WEB) + Notes/Lock actions cell.
+- Removed the tree machinery (expand sets, toggle handlers, per-node
+  aggregation rows); pagination is now row-based ("Show next 250 packages").
+- Extended the package leaf in `data/data-loader.js` with `tourOperator`,
+  `departureDate`, `returnDate`, `mealPlan`, `regularPrice`, and `hasCostChange`
+  from existing CSV columns.
+- Flight #, Time dep./arr., and Bagg. columns render as blank ("—") cells —
+  the package CSV carries no per-flight schedule or baggage data, so nothing is
+  fabricated.
+- Why: requested simpler, scannable package layout matching the shared
+  booking-results reference; the accordion was no longer needed.
+
+## 2026-06-15 - Pivot to CSV-only static delivery
+- Scrapped the API/backend delivery path for this app. Runtime data now comes
+  solely from the committed CSV exports in `data/`; there is no frontend
+  dependency on FastAPI, Postgres, DB credentials, or runtime secrets.
+- Trimmed all CSVs to the approved demo window, July 1, 2026 through
+  September 30, 2026 inclusive, and updated `data-loader.js` to enforce that
+  window at runtime.
+- Added `scripts/validate_csv_contract.py` and a GitLab
+  `test:csv-contract` job to validate required CSV files, required columns,
+  row counts, and date-window compliance.
+- Replaced the generic README and refreshed `CONTEXT.md` around the static
+  CSV-only operating model.
+- Removed the obsolete in-repo FastAPI scaffold from `application/backend/`.
+- Optimized the Packages tab renderer with cached package tree leaves and
+  aggregates plus batched destination rendering, so the page no longer draws
+  every destination row up front.
+
 ## 2026-06-11 — Load-performance: per-page CSVs, lazy curve, gzip (no data changes)
 - Loader split into per-dataset loaders (`loadHotelRows` / `loadFlightRows` /
   `loadCurveRows`); `loadData(opts)` now fetches only the requested files.
@@ -147,8 +266,8 @@ Format:
 - Updated the loader candidate lists (`data-loader.js`), the `data.js` contract
   comments, and CONTEXT.md to the new names; verified all three serve 200 and
   no `mock_v_`/`_mapped` references remain.
-- Why: align the static exports with the real view names ahead of the FastAPI +
-  Postgres backend, so the integration boundary reads cleanly.
+- Why: align the static exports with the source view names, so the CSV contract
+  reads cleanly.
 
 ## 2026-06-10 — Fix chart canvas not filling its container (320px lock)
 - `chart.local.js` now sizes each canvas to its PARENT wrapper
@@ -282,5 +401,5 @@ Format:
   `HOTEL_DATA` / `FLIGHT_DATA` structures the pages render from; also rebuilds
   the header-filter lists. `data.js` demoted to a fallback used only if the CSV
   load fails.
-- Why: drive the UI from real (view-shaped) data instead of hardcoded seed data,
-  as the bridge toward the planned FastAPI + Postgres backend.
+- Why: drive the UI from real view-shaped CSV data instead of hardcoded seed
+  data.

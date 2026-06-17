@@ -14,7 +14,7 @@
       padding: 10px 20px; background: var(--surface);
       border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-    .page-title       { font-family: 'Archivo', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+    .page-title       { font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
     .page-title-sub   { font-size: 11.5px; color: var(--text-muted); font-weight: 400; }
 
     /* ── Two-panel layout: sidebar + content ─────────────── */
@@ -49,7 +49,7 @@
       background: none;
       border: none;
       cursor: pointer;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 10.5px;
       font-weight: 700;
       letter-spacing: .5px;
@@ -72,7 +72,7 @@
     .param-nav-item {
       display: block;
       padding: 6px 14px 6px 38px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 13px;
       color: var(--text-primary);
       cursor: pointer;
@@ -90,7 +90,7 @@
 
     /* Content panel typography */
     .section-title {
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 17px;
       font-weight: 600;
       color: var(--text-primary);
@@ -121,7 +121,7 @@
     table.params-table {
       border-collapse: separate;
       border-spacing: 0;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12px;
       width: max-content;
       min-width: 100%;
@@ -260,7 +260,7 @@
       display: inline-flex;
       align-items: center;
       gap: 2px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-mono);
       font-size: 12px;
     }
     .val-wrap input[type="number"] {
@@ -269,7 +269,7 @@
       border: 1px solid transparent;
       border-radius: 3px;
       background: transparent;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-mono);
       font-size: 12px;
       color: var(--text-primary);
       text-align: right;
@@ -288,7 +288,7 @@
       border: 1px solid transparent;
       border-radius: 3px;
       background: transparent;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 11.5px;
       font-weight: 500;
       color: var(--text-primary);
@@ -347,7 +347,7 @@
     .save-fab button {
       padding: 8px 18px;
       border-radius: 5px;
-      font-family: 'Archivo', sans-serif;
+      font-family: var(--font-sans);
       font-size: 12.5px;
       font-weight: 500;
       cursor: pointer;
@@ -371,8 +371,8 @@
       <div style="display:flex;align-items:center;gap:12px;">
         <img src="engine_logo (2).png" style="height:28px;width:auto;display:block;" />
         <div style="display:flex;flex-direction:column;line-height:1;gap:2px;">
-          <span style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
-          <span style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
+          <span style="font-family:var(--font-sans);font-size:13px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">DYNAMICA</span>
+          <span style="font-family:var(--font-sans);font-size:10px;font-weight:400;letter-spacing:0.5px;color:rgba(255,255,255,0.6);">SmartRates</span>
         </div>
       </div>
     </a>

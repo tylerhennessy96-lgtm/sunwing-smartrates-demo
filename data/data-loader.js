@@ -1,7 +1,7 @@
 // ── Sunwing RMS — real-data loader ──────────────────────────
-// Loads the database-view CSV exports and reshapes them into the globals the
-// dashboards render from. data.js stays in place only as an empty global
-// contract; if the required pricing CSVs fail, the UI renders empty states.
+// Loads the static CSV exports and reshapes them into the globals the dashboards
+// render from. data.js stays in place only as an empty global contract; if the
+// required pricing CSVs fail, the UI renders empty states.
 //
 // Served layout note: the Dockerfile copies `data/` to the nginx web root,
 // so hotel.html / flight.html and the CSVs are siblings at runtime. We try a
@@ -9,7 +9,13 @@
 (function (global) {
   'use strict';
 
-  const MIN_ACTIVE_DATE_ISO = '2026-05-01';
+  // Optional demo date window. Leave both null to read whatever date range the
+  // CSV exports contain — the dashboards derive their week columns and the week
+  // picker from the loaded rows, so a wider (or narrower) range just works.
+  // Set one or both to an ISO date (e.g. '2026-07-01') to clamp the loaded rows
+  // to a fixed window — used previously to pin the demo to a single quarter.
+  const ACTIVE_START_DATE_ISO = null;
+  const ACTIVE_END_DATE_ISO = null;
 
   const HOTEL_CSV_CANDIDATES = [
     './v_hotel_pricing_pg.csv',              // nginx web root (data/ flattened)
@@ -76,9 +82,14 @@
     const p = iso.split('-'); // [YYYY, MM, DD]
     return `${p[1]}/${p[2]}/${p[0].slice(-2)}`;
   }
-  function isOnOrAfterMinDate(s) {
+  function isWithinActiveDateWindow(s) {
+    // Unbounded when no window is configured — read every row the CSV contains.
+    if (!ACTIVE_START_DATE_ISO && !ACTIVE_END_DATE_ISO) return true;
     const iso = isoDate(s);
-    return !iso || iso >= MIN_ACTIVE_DATE_ISO;
+    if (!iso) return true; // keep undated rows
+    if (ACTIVE_START_DATE_ISO && iso < ACTIVE_START_DATE_ISO) return false;
+    if (ACTIVE_END_DATE_ISO && iso > ACTIVE_END_DATE_ISO) return false;
+    return true;
   }
   function weekLabelWithYear(label, weekStartIso) {
     const year = isoDate(weekStartIso).slice(0, 4);
@@ -131,7 +142,7 @@
   }
 
   // ── Schema normalization (Postgres view export → loader contract) ─────────
-  // The mock CSV exports mirror the live `v_*` views, whose column names/units
+  // The CSV exports mirror the source `v_*` views, whose column names/units
   // drifted from the contract the loader + pages were written against. These map
   // the new names and DERIVE the columns the export dropped, so the rest of the
   // app (and the KPI/alert logic) is unchanged. Both functions are written to be
@@ -247,17 +258,17 @@
   async function loadHotelRows() {
     const text = await fetchFirstOk(HOTEL_CSV_CANDIDATES, 'hotel pricing');
     return parseCsv(text).map(normalizeHotelRow)
-      .filter(r => isOnOrAfterMinDate(r.week_start));
+      .filter(r => isWithinActiveDateWindow(r.week_start));
   }
   async function loadFlightRows() {
     const text = await fetchFirstOk(FLIGHT_CSV_CANDIDATES, 'flight pricing');
     return parseCsv(text).map(normalizeFlightRow)
-      .filter(r => isOnOrAfterMinDate(r.departure_date));
+      .filter(r => isWithinActiveDateWindow(r.departure_date));
   }
   async function loadCurveRows() {
     // The booking-curve export keeps its original schema, so it needs no remap.
     const text = await fetchOptionalFirstOk(FLIGHT_BOOKING_CURVE_CSV_CANDIDATES, 'flight booking curve');
-    return text ? parseCsv(text).filter(r => isOnOrAfterMinDate(r.departure_date)) : [];
+    return text ? parseCsv(text).filter(r => isWithinActiveDateWindow(r.departure_date)) : [];
   }
 
   // Public: load the requested CSVs (default: all). Pages pass flags so they
@@ -577,7 +588,7 @@
     if (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined') swap(FLIGHT_BOOKING_CURVE_DATA, flightBookingCurveRows || []);
     // Week index list for the shared header picker and hotel calendar. Flight
     // calendar columns are derived from loaded FLIGHT_DATA because flight
-    // departures can start inside a week whose week_start predates the cutoff.
+    // departures can start inside a week whose week_start predates the window.
     if (typeof CHECK_IN_WEEKS !== 'undefined') {
       swap(CHECK_IN_WEEKS, (hotel.weeks.length ? hotel.weeks : flight.weeks)
         .map(w => ({ weekLabel: w.weekLabel, weekStart: w.weekStart })));
@@ -708,10 +719,16 @@
       destination: r.destination_name,
       region: r.region_name,
       gateway: String(r.origin_code),
+      gatewayCity: r.origin_city || String(r.origin_code),
       duration: dur,
       packageName: r.meal_plan_name || r.service_type || 'Package',
+      mealPlan: r.meal_plan_name || r.service_type || '',
+      tourOperator: r.tour_operator_code || '',
+      departureDate: r.departure_date || '',
+      returnDate: r.return_date || '',
       flightNum: String(r.origin_code || ''),
       flightRoute: `→ ${r.destination_id}`,
+      hotelId: String(r.hotel_id || r.hotel_name || ''),
       hotel: r.hotel_name,
       roomCategory: r.room_category_name,
       hotelStars: num(r.stars) || 0,
@@ -720,10 +737,20 @@
       soldPackages: num(r.hotel_sold) || 0,
       allocPackages: num(r.hotel_allocation) || 0,
       currentPrice: price,
+      regularPrice: num(r.regular_price) || 0,
       recPrice: num(r.rec_package_price) || 0,
       totalCost: totalCost,
       recMargin: num(r.rec_margin) || 0,
       bookingPace: pace,
+      hasCostChange: r.has_cost_change === 't' || r.has_cost_change === true || r.has_cost_change === 'true',
+      // Flight load factors (0–1 fractions in the export) + recent pickup pax.
+      returnFlightLf: num(r.return_flight_lf),
+      roundtripFlightLf: num(r.roundtrip_flight_lf),
+      outboundForecastLf: num(r.outbound_flight_forecast_lf),
+      returnForecastLf: num(r.return_flight_forecast_lf),
+      roundtripForecastLf: num(r.roundtrip_flight_forecast_lf),
+      pickupPax7d: num(r.pickup_pax_7d),
+      pickupPax14d: num(r.pickup_pax_14d),
     };
   }
 
@@ -772,7 +799,7 @@
   // hotel/flight/curve exports), date-filtered to the active window.
   async function loadPackageData() {
     const text = await fetchFirstOk(PACKAGE_CSV_CANDIDATES, 'package pricing');
-    return parseCsv(text).filter(r => isOnOrAfterMinDate(r.departure_date));
+    return parseCsv(text).filter(r => isWithinActiveDateWindow(r.departure_date));
   }
 
   // Fill PACKAGE_DATA + the header-filter globals from package rows so the
