@@ -1049,11 +1049,11 @@ function renderPackagesHead() {
       <th style="width:46px;text-align:center;">Nt</th>
       <th style="width:104px;">Dates</th>
       <th style="min-width:150px;">Gateway</th>
-      <th class="text-right" style="width:72px;" title="Room nights — same time last year (no CSV column yet)">Sold STLY</th>
+      <th class="text-right" style="width:72px;" title="Room nights — target, same time last year">Sold STLY</th>
       <th class="text-right" style="width:70px;" title="Room nights">Sold</th>
       <th class="text-right" style="width:70px;" title="Outbound flight forecast load factor">Out Fcst</th>
       <th class="text-right" style="width:70px;" title="Return flight forecast load factor">Ret Fcst</th>
-      <th class="text-right" style="width:70px;" title="Hotel forecast — no CSV column yet">Hotel Fcst</th>
+      <th class="text-right" style="width:70px;" title="Hotel forecast — final room nights">Hotel Fcst</th>
       <th class="text-right" style="width:64px;" title="Hotel pickup pax, trailing 7 days (hotel figure, not flight)">Pickup 7d</th>
       <th class="text-right" style="width:64px;" title="Hotel pickup pax, trailing 14 days (hotel figure, not flight)">Pickup 14d</th>
       <th class="text-right" style="width:118px;">Prices From</th>
@@ -1093,7 +1093,10 @@ function metricCells(p, opts) {
   const deltaM = p.recMargin - currM;
   const isLocked = lockedPkgs.has(p.id);
   const fcst = (v) => `<td class="text-right num">${v == null ? '—' : fmtPct(v)}</td>`;
-  const soldCell = opts.sold == null ? BLANK_NUM : `<td class="text-right num">${opts.sold}</td>`;
+  const numCell = (v) => (v == null ? BLANK_NUM : `<td class="text-right num">${Math.round(v).toLocaleString()}</td>`);
+  const soldCell = numCell(opts.sold);
+  const stlyCell = numCell(opts.stly);
+  const hotelFcstCell = numCell(opts.hotelFcst);
   const priceCell = editable
     ? `<td class="text-right">
          <span class="price-edit"><span class="price-edit-sym">$</span><input class="price-input" type="number" step="1" value="${Math.round(currP)}"
@@ -1111,11 +1114,11 @@ function metricCells(p, opts) {
          onclick="event.stopPropagation();${acceptedRecs.has(p.id) ? '' : `acceptRec('${p.id}')`}">${fmt$(p.recPrice)}</span></td>`
     : `<td class="text-right num" style="color:var(--accent);">${fmt$(p.recPrice)}</td>`;
   return `
-    ${BLANK_NUM}
+    ${stlyCell}
     ${soldCell}
     ${fcst(p.outboundForecastLf)}
     ${fcst(p.returnForecastLf)}
-    ${BLANK_NUM}
+    ${hotelFcstCell}
     <td class="text-right num">${p.pickupPax7d == null ? '—' : p.pickupPax7d}</td>
     <td class="text-right num">${p.pickupPax14d == null ? '—' : p.pickupPax14d}</td>
     ${priceCell}
@@ -1134,6 +1137,8 @@ function offeringRow(o) {
   const open = expandedOfferings.has(o.key);
   const multi = o.rooms.length > 1;
   const totalSold = o.rooms.reduce((s, r) => s + (r.soldPackages || 0), 0);
+  const totalStly = o.rooms.reduce((s, r) => s + (r.soldStly || 0), 0);
+  const totalHotelFcst = o.rooms.reduce((s, r) => s + (r.hotelForecast || 0), 0);
   return `
     <tr class="row-unit pkg-parent" onclick="openBookingPanel('${o.key}')">
       <td>
@@ -1169,7 +1174,7 @@ function offeringRow(o) {
           <div style="font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);">${p.gateway}</div>
         </div>
       </td>
-      ${metricCells(p, { editable: true, sold: totalSold })}
+      ${metricCells(p, { editable: true, sold: totalSold, stly: totalStly, hotelFcst: totalHotelFcst })}
     </tr>
   `;
 }
