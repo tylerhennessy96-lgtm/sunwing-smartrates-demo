@@ -12,6 +12,19 @@ Format:
 
 ---
 
+## 2026-06-18 — Wire packages loader to the new CSV schema
+- Re-pointed `data-loader.js` to the renamed package columns so the table
+  populates again: Sold → `hotel_current_booked_room_nights`, Out/Ret Fcst →
+  `*_forecast_final_lf`. Lit up the previously-blank Sold STLY
+  (`hotel_target_same_time_last_year_room_nights`) and Hotel Fcst
+  (`hotel_forecast_final_room_nights`) columns from data.
+- The three room-night columns (Sold / Sold STLY / Hotel Fcst) sum across room
+  classes at the offering parent and stay blank at room-class child rows.
+- Removed dead loader fields (`allocPackages`, `returnFlightLf`,
+  `roundtripFlightLf`, `roundtripForecastLf`) left over from removed columns.
+- Why: the refreshed package export renamed/added columns; the loader was still
+  reading the old names, leaving those columns empty.
+
 ## 2026-06-18 — Packages-only mock data refresh
 - Swapped in new mock data: refreshed `v_package_pricing_pg.csv` and rebuilt the
   compact `curves_*.json` from new raw booking-curve exports (curve join coverage

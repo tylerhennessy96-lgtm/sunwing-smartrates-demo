@@ -734,8 +734,11 @@
       hotelStars: num(r.stars) || 0,
       checkInWeek: r.week_label || `Wk ${toMMDDYY(r.week_start)}`,
       checkInDate: toMMDDYY(r.week_start),
-      soldPackages: num(r.hotel_sold) || 0,
-      allocPackages: num(r.hotel_allocation) || 0,
+      // Room-night metrics (hotel-level, split per room class) — summed to the
+      // offering total at the parent row; blank at room-class level.
+      soldPackages: num(r.hotel_current_booked_room_nights) || 0,
+      soldStly: num(r.hotel_target_same_time_last_year_room_nights) || 0,
+      hotelForecast: num(r.hotel_forecast_final_room_nights) || 0,
       currentPrice: price,
       regularPrice: num(r.regular_price) || 0,
       recPrice: num(r.rec_package_price) || 0,
@@ -743,12 +746,9 @@
       recMargin: num(r.rec_margin) || 0,
       bookingPace: pace,
       hasCostChange: r.has_cost_change === 't' || r.has_cost_change === true || r.has_cost_change === 'true',
-      // Flight load factors (0–1 fractions in the export) + recent pickup pax.
-      returnFlightLf: num(r.return_flight_lf),
-      roundtripFlightLf: num(r.roundtrip_flight_lf),
-      outboundForecastLf: num(r.outbound_flight_forecast_lf),
-      returnForecastLf: num(r.return_flight_forecast_lf),
-      roundtripForecastLf: num(r.roundtrip_flight_forecast_lf),
+      // Forecast final flight load factors (0–1 fractions) + recent pickup pax.
+      outboundForecastLf: num(r.outbound_flight_forecast_final_lf),
+      returnForecastLf: num(r.return_flight_forecast_final_lf),
       pickupPax7d: num(r.pickup_pax_7d),
       pickupPax14d: num(r.pickup_pax_14d),
     };
