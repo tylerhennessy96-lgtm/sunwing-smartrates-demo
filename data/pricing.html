@@ -145,6 +145,75 @@
     .rec-click:hover { background: rgba(232, 0, 125, 0.10); }
     .rec-click.accepted { color: var(--text-muted); font-weight: 500; text-decoration: line-through; cursor: default; }
 
+    /* ── Accordion rows (offering parent / room-type child) ──── */
+    tr.pkg-parent { cursor: pointer; }
+    tr.pkg-child > td { background: var(--row-alt); }
+    tr.pkg-child:hover > td { background: var(--row-hover); }
+
+    /* ── Booking-curve panel (dark, slides up from the bottom) ── */
+    /* Mirrors the Flight tab's analytics panel: dark gradient sheet that
+       slides up over a dim backdrop, with the charts stacked vertically. */
+    .bp-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 12, 16, 0.55);
+      z-index: 60;
+    }
+    .bp-backdrop.open { display: block; }
+    .booking-panel {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      max-height: 82vh;
+      background: linear-gradient(180deg, #1e2128 0%, #23262f 100%);
+      border-top: 1px solid var(--nav-border);
+      box-shadow: 0 -10px 30px rgba(0,0,0,0.45);
+      z-index: 65;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform .28s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+    .booking-panel.open { transform: translateY(0); }
+    .booking-panel .bp-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--nav-border);
+      flex-shrink: 0;
+    }
+    .booking-panel .bp-title { font-size: 14px; font-weight: 600; color: #fff; }
+    .booking-panel .bp-sub   { font-size: 11.5px; color: #9ca3af; margin-top: 3px; line-height: 1.5; }
+    .booking-panel .bp-sub strong { color: #e5e7eb; font-weight: 600; }
+    .booking-panel .bp-close {
+      margin-left: auto;
+      background: none; border: none; cursor: pointer;
+      color: #9ca3af; padding: 6px; border-radius: 4px;
+      display: inline-flex; flex-shrink: 0;
+    }
+    .booking-panel .bp-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .booking-panel .bp-body { padding: 14px 20px 18px; overflow-y: auto; }
+    /* Three charts stacked on one shared time axis */
+    .bp-charts { display: flex; flex-direction: column; gap: 10px; }
+    .bp-chart-title { font-size: 11px; font-weight: 600; color: #e5e7eb; margin-bottom: 4px; }
+    .bp-chart-wrap { position: relative; width: 100%; height: 130px; }
+    .bp-nodata {
+      height: 130px;
+      border: 1px dashed #3d4150;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; text-align: center;
+      padding: 0 16px; color: #6b7280; font-size: 12px; background: rgba(255,255,255,0.02);
+    }
+    .bp-legend { display: flex; gap: 16px; margin-bottom: 10px; font-size: 11px; color: #9ca3af; }
+    .bp-legend .bp-li { display: inline-flex; align-items: center; gap: 6px; }
+    .bp-k { width: 16px; height: 0; border-top-width: 2px; border-top-style: solid; display: inline-block; }
+    .bp-k-actual   { border-top-color: #e91e8c; }
+    .bp-k-target   { border-top-color: #9ca3af; border-top-style: dashed; }
+    .bp-k-forecast { border-top-color: #9ca3af; border-top-style: dotted; }
+    .bp-xaxis-label { text-align: center; font-size: 10.5px; color: #6b7280; margin-top: 4px; }
+
     /* ── Package Rules drawer (separate from adv-drawer) ─────── */
     .pkg-rules-drawer {
       position: fixed;
@@ -383,12 +452,16 @@
     .pkg-action-icons button.locked { color: var(--accent); background: rgba(232, 0, 125, 0.10); }
 
     /* ── Regular ("was") price under the editable price input ── */
-    .price-was {
-      font-size: 10.5px;
+    /* "$" adornment beside the editable price / margin inputs */
+    .price-edit {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+    }
+    .price-edit-sym {
       color: var(--text-muted);
-      text-decoration: line-through;
-      font-family: var(--font-mono);
-      margin-top: 2px;
+      font-size: 11px;
     }
 
     /* ── Book channel buttons (Revnet / WEB) ─────────────────── */
@@ -545,6 +618,42 @@
   </div><!-- /.main -->
 
 </div><!-- /.app -->
+
+<!-- ── Booking-Curve Panel (parent-row click; slides up from bottom) ── -->
+<div class="bp-backdrop" id="bpBackdrop" onclick="closeBookingPanel()"></div>
+<aside class="booking-panel" id="bookingPanel" aria-hidden="true">
+  <div class="bp-header">
+    <div>
+      <div class="bp-title">Booking Curves</div>
+      <div class="bp-sub" id="bpSub">—</div>
+    </div>
+    <button class="bp-close" type="button" aria-label="Close" onclick="closeBookingPanel()">
+      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+    </button>
+  </div>
+  <div class="bp-body">
+    <div class="bp-legend">
+      <span class="bp-li"><span class="bp-k bp-k-actual"></span>Actual</span>
+      <span class="bp-li"><span class="bp-k bp-k-target"></span>Target</span>
+      <span class="bp-li"><span class="bp-k bp-k-forecast"></span>Forecast</span>
+    </div>
+    <div class="bp-charts">
+      <div class="bp-chart">
+        <div class="bp-chart-title">Outbound flight — load factor</div>
+        <div class="bp-chart-wrap"><canvas id="bpChartOutbound"></canvas></div>
+      </div>
+      <div class="bp-chart">
+        <div class="bp-chart-title">Inbound flight — load factor</div>
+        <div class="bp-chart-wrap"><canvas id="bpChartInbound"></canvas></div>
+      </div>
+      <div class="bp-chart">
+        <div class="bp-chart-title">Hotel — cumulative room nights (% of peak)</div>
+        <div class="bp-chart-wrap"><canvas id="bpChartHotel"></canvas></div>
+      </div>
+      <div class="bp-xaxis-label">Days before departure (→ departure)</div>
+    </div>
+  </div>
+</aside>
 
 <!-- ── Per-Package Rules Drawer ── -->
 <div class="adv-backdrop" id="prdBackdrop" onclick="closePkgRules()"></div>
@@ -705,6 +814,8 @@ let activeNoteKey = null;
 let priceRevision = 0;
 let packageFilterKey = '';
 let visibleRowLimit = 250;
+const expandedOfferings = new Set();   // offering keys currently expanded
+let currentOfferings = new Map();      // key → offering (rebuilt each render)
 
 const ROW_RENDER_BATCH = 250;
 const packageIndex = {
@@ -920,13 +1031,16 @@ function allLeaves() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Packages table (flat — one row per package)
+   Packages table (accordion — parent = hotel offering, child = room type)
 
-   NOTE: Flight #, Time dep./arr. and Bagg. columns are intentionally
-   blank — the package CSV export carries no per-flight schedule or
-   baggage data, so we show the columns but never fabricate values.
+   Each parent row is one offering (hotel × gateway × duration × week).
+   Expanding reveals its room type(s) as sub-rows. Clicking a parent row
+   (anywhere but the chevron / inputs) opens the booking-curve panel.
+
+   NOTE: the Flight # column is intentionally blank — the package CSV
+   carries no per-flight schedule data, so we never fabricate a value.
    ══════════════════════════════════════════════════════════════════ */
-const COLSPAN = 20;
+const COLSPAN = 19;
 function renderPackagesHead() {
   document.getElementById('packagesHead').innerHTML = `
     <tr>
@@ -935,16 +1049,15 @@ function renderPackagesHead() {
       <th style="width:46px;text-align:center;">Nt</th>
       <th style="width:104px;">Dates</th>
       <th style="min-width:150px;">Gateway</th>
-      <th style="width:78px;">Flight #</th>
-      <th class="text-right" style="width:72px;" title="Sold same time last year — no CSV column yet">Sold STLY</th>
-      <th class="text-right" style="width:70px;">Sold</th>
+      <th class="text-right" style="width:72px;" title="Room nights — same time last year (no CSV column yet)">Sold STLY</th>
+      <th class="text-right" style="width:70px;" title="Room nights">Sold</th>
       <th class="text-right" style="width:70px;" title="Outbound flight forecast load factor">Out Fcst</th>
       <th class="text-right" style="width:70px;" title="Return flight forecast load factor">Ret Fcst</th>
       <th class="text-right" style="width:70px;" title="Hotel forecast — no CSV column yet">Hotel Fcst</th>
-      <th class="text-right" style="width:64px;" title="Pickup pax, trailing 7 days">Pickup 7d</th>
-      <th class="text-right" style="width:64px;" title="Pickup pax, trailing 14 days">Pickup 14d</th>
-      <th class="text-right" style="width:118px;">Price</th>
-      <th class="text-right" style="width:104px;">Rec Price</th>
+      <th class="text-right" style="width:64px;" title="Hotel pickup pax, trailing 7 days (hotel figure, not flight)">Pickup 7d</th>
+      <th class="text-right" style="width:64px;" title="Hotel pickup pax, trailing 14 days (hotel figure, not flight)">Pickup 14d</th>
+      <th class="text-right" style="width:118px;">Prices From</th>
+      <th class="text-right" style="width:104px;">Rec. From Price</th>
       <th class="text-right" style="width:72px;">Δ $</th>
       <th class="text-right" style="width:96px;">Curr Margin</th>
       <th class="text-right" style="width:96px;">Rec Margin</th>
@@ -954,7 +1067,128 @@ function renderPackagesHead() {
   `;
 }
 
-const BLANK_CELL = '<td style="text-align:center;color:var(--border-mid);">—</td>';
+const BLANK_NUM = '<td class="text-right num" style="color:var(--border-mid);">—</td>';
+
+// Group filtered leaves into offerings (hotel × gateway × duration × week).
+// Room types become the child rows under each offering. Insertion order is
+// preserved so offerings follow the existing dest → week → gateway ordering.
+function buildOfferings(leaves) {
+  const map = new Map();
+  for (const p of leaves) {
+    const key = `${p.destId}|${p.hotelId}|${p.gateway}|${p.duration}|${p.departureDate}`;
+    let o = map.get(key);
+    if (!o) { o = { key, rep: p, rooms: [] }; map.set(key, o); }
+    o.rooms.push(p);
+  }
+  return Array.from(map.values());
+}
+
+// The trailing 14 metric cells, shared by parent (editable) and child (read-only).
+// opts.sold: number → shown in the Sold cell; null → blank (no room-class sold).
+function metricCells(p, opts) {
+  const editable = !!opts.editable;
+  const currP  = getEffectivePrice(p);
+  const currM  = getEffectiveMargin(p);
+  const deltaP = p.recPrice - currP;
+  const deltaM = p.recMargin - currM;
+  const isLocked = lockedPkgs.has(p.id);
+  const fcst = (v) => `<td class="text-right num">${v == null ? '—' : fmtPct(v)}</td>`;
+  const soldCell = opts.sold == null ? BLANK_NUM : `<td class="text-right num">${opts.sold}</td>`;
+  const priceCell = editable
+    ? `<td class="text-right">
+         <span class="price-edit"><span class="price-edit-sym">$</span><input class="price-input" type="number" step="1" value="${Math.round(currP)}"
+                onclick="event.stopPropagation()" onchange="updatePrice('${p.id}', this.value)" ${isLocked ? 'disabled' : ''} /></span>
+       </td>`
+    : `<td class="text-right num">${fmt$(currP)}</td>`;
+  const marginCell = editable
+    ? `<td class="text-right">
+         <span class="price-edit"><span class="price-edit-sym">$</span><input class="price-input" type="number" step="1" value="${Math.round(currM)}"
+                onclick="event.stopPropagation()" onchange="updateMargin('${p.id}', this.value)" ${isLocked ? 'disabled' : ''} /></span>
+       </td>`
+    : `<td class="text-right num">${fmt$(currM)}</td>`;
+  const recCell = editable
+    ? `<td class="text-right"><span class="rec-click ${acceptedRecs.has(p.id) ? 'accepted' : ''}"
+         onclick="event.stopPropagation();${acceptedRecs.has(p.id) ? '' : `acceptRec('${p.id}')`}">${fmt$(p.recPrice)}</span></td>`
+    : `<td class="text-right num" style="color:var(--accent);">${fmt$(p.recPrice)}</td>`;
+  return `
+    ${BLANK_NUM}
+    ${soldCell}
+    ${fcst(p.outboundForecastLf)}
+    ${fcst(p.returnForecastLf)}
+    ${BLANK_NUM}
+    <td class="text-right num">${p.pickupPax7d == null ? '—' : p.pickupPax7d}</td>
+    <td class="text-right num">${p.pickupPax14d == null ? '—' : p.pickupPax14d}</td>
+    ${priceCell}
+    ${recCell}
+    <td class="text-right num ${deltaColor(deltaP)}">${deltaP>=0?'+':''}${fmt$(deltaP)}</td>
+    ${marginCell}
+    <td class="text-right num" style="color:var(--accent);">${fmt$(p.recMargin)}</td>
+    <td class="text-right num ${deltaColor(deltaM)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
+    <td>${paceBadge(p.bookingPace)}</td>
+  `;
+}
+
+// Parent (offering) row — editable, opens the booking panel on click.
+function offeringRow(o) {
+  const p = o.rep;
+  const open = expandedOfferings.has(o.key);
+  const multi = o.rooms.length > 1;
+  const totalSold = o.rooms.reduce((s, r) => s + (r.soldPackages || 0), 0);
+  return `
+    <tr class="row-unit pkg-parent" onclick="openBookingPanel('${o.key}')">
+      <td>
+        <div style="display:flex;align-items:flex-start;gap:6px;">
+          <button class="expand-btn ${open ? 'open' : ''}" title="Show room types"
+                  onclick="event.stopPropagation();toggleOffering('${o.key}')">${chevron(open)}</button>
+          <div style="line-height:1.25;">
+            <div>
+              ${p.hasCostChange ? `<span class="cost-change-icon" title="Cost change since last evaluation" style="margin-right:5px;">&#9888;</span>` : ''}
+              <span style="font-weight:500;">${p.destination}</span>
+            </div>
+            <div style="margin-top:3px;"><span class="region-badge ${regionClass(p.region)}">${p.region}</span></div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:2px;line-height:1.25;">
+          <span style="font-weight:600;">${p.hotel}</span>
+          ${starRating(p.hotelStars)}
+          ${multi ? `<span style="font-size:10.5px;color:var(--text-muted);">${o.rooms.length} room types</span>` : ''}
+        </div>
+      </td>
+      <td style="text-align:center;">${durPill(p.duration)}</td>
+      <td>
+        <div style="line-height:1.3;font-family:var(--font-mono);font-size:11px;">
+          <div>${dayMon(p.departureDate) || '—'}</div>
+          <div style="color:var(--text-muted);">${dayMon(p.returnDate) || ''}</div>
+        </div>
+      </td>
+      <td>
+        <div style="line-height:1.25;">
+          <div style="font-size:12px;">${p.gatewayCity}</div>
+          <div style="font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);">${p.gateway}</div>
+        </div>
+      </td>
+      ${metricCells(p, { editable: true, sold: totalSold })}
+    </tr>
+  `;
+}
+
+// Child (room type) row — read-only detail. Blank room desc if none.
+function roomRow(room) {
+  const desc = room.roomCategory
+    ? `${room.roomCategory}${room.mealPlan ? ` <span style="color:var(--text-muted);">· ${room.mealPlan}</span>` : ''}`
+    : '<span style="color:var(--border-mid);">— no room type —</span>';
+  return `
+    <tr class="pkg-child">
+      <td></td>
+      <td style="padding-left:28px;"><span style="font-size:11.5px;color:var(--text-secondary);">${desc}</span></td>
+      <td></td><td></td><td></td>
+      ${metricCells(room, { editable: false, sold: null })}
+    </tr>
+  `;
+}
+
 function renderPackagesTable() {
   const tbody = document.getElementById('packagesBody');
   clearNodeCacheForFilterChange(currentFilterKey());
@@ -973,90 +1207,21 @@ function renderPackagesTable() {
     return;
   }
 
-  const rendered = leaves.slice(0, visibleRowLimit);
-  const rows = rendered.map(p => {
-    const currP  = getEffectivePrice(p);
-    const currM  = getEffectiveMargin(p);
-    const deltaP = p.recPrice - currP;
-    const deltaM = p.recMargin - currM;
-    const recAccepted = acceptedRecs.has(p.id);
-    const isLocked = lockedPkgs.has(p.id);
-    const showWas  = p.regularPrice > currP;
-
-    return `
-      <tr class="row-unit">
-        <td>
-          <div style="line-height:1.25;">
-            <div>
-              ${p.hasCostChange ? `<span class="cost-change-icon" title="Cost change since last evaluation" style="margin-right:5px;">&#9888;</span>` : ''}
-              <span style="font-weight:500;">${p.destination}</span>
-            </div>
-            <div style="margin-top:3px;"><span class="region-badge ${regionClass(p.region)}">${p.region}</span></div>
-          </div>
-        </td>
-        <td>
-          <div style="display:flex;flex-direction:column;gap:2px;line-height:1.25;">
-            <span style="font-weight:600;">${p.hotel}</span>
-            ${starRating(p.hotelStars)}
-            <div style="font-size:11px;color:var(--text-secondary);">
-              ${p.roomCategory || '—'}${p.mealPlan ? ` <span style="color:var(--text-muted);">· ${p.mealPlan}</span>` : ''}
-            </div>
-          </div>
-        </td>
-        <td style="text-align:center;">${durPill(p.duration)}</td>
-        <td>
-          <div style="line-height:1.3;font-family:var(--font-mono);font-size:11px;">
-            <div>${dayMon(p.departureDate) || '—'}</div>
-            <div style="color:var(--text-muted);">${dayMon(p.returnDate) || ''}</div>
-          </div>
-        </td>
-        <td>
-          <div style="line-height:1.25;">
-            <div style="font-size:12px;">${p.gatewayCity}</div>
-            <div style="font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);">${p.gateway}</div>
-          </div>
-        </td>
-        ${BLANK_CELL}
-        <td class="text-right num" style="color:var(--border-mid);">—</td>
-        <td class="text-right num">${p.soldPackages}</td>
-        <td class="text-right num">${p.outboundForecastLf == null ? '—' : fmtPct(p.outboundForecastLf)}</td>
-        <td class="text-right num">${p.returnForecastLf == null ? '—' : fmtPct(p.returnForecastLf)}</td>
-        <td class="text-right num" style="color:var(--border-mid);">—</td>
-        <td class="text-right num">${p.pickupPax7d == null ? '—' : p.pickupPax7d}</td>
-        <td class="text-right num">${p.pickupPax14d == null ? '—' : p.pickupPax14d}</td>
-        <td class="text-right">
-          <input class="price-input" type="number" step="1" value="${Math.round(currP)}"
-                 onclick="event.stopPropagation()"
-                 onchange="updatePrice('${p.id}', this.value)"
-                 ${isLocked ? 'disabled' : ''} />
-          ${showWas ? `<div class="price-was">${fmt$(p.regularPrice)}</div>` : ''}
-        </td>
-        <td class="text-right">
-          <span class="rec-click ${recAccepted?'accepted':''}"
-                onclick="event.stopPropagation();${recAccepted?'':`acceptRec('${p.id}')`}">
-            ${fmt$(p.recPrice)}
-          </span>
-        </td>
-        <td class="text-right num ${deltaColor(deltaP)}">${deltaP>=0?'+':''}${fmt$(deltaP)}</td>
-        <td class="text-right">
-          <input class="price-input" type="number" step="1" value="${Math.round(currM)}"
-                 onclick="event.stopPropagation()"
-                 onchange="updateMargin('${p.id}', this.value)"
-                 ${isLocked ? 'disabled' : ''} />
-        </td>
-        <td class="text-right num" style="color:var(--accent);">${fmt$(p.recMargin)}</td>
-        <td class="text-right num ${deltaColor(deltaM)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
-        <td>${paceBadge(p.bookingPace)}</td>
-      </tr>
-    `;
+  const offerings = buildOfferings(leaves);
+  currentOfferings = new Map(offerings.map(o => [o.key, o]));
+  const rendered = offerings.slice(0, visibleRowLimit);
+  const rows = [];
+  rendered.forEach(o => {
+    rows.push(offeringRow(o));
+    if (expandedOfferings.has(o.key)) o.rooms.forEach(room => rows.push(roomRow(room)));
   });
 
-  if (leaves.length > rendered.length) {
-    const nextCount = Math.min(leaves.length, rendered.length + ROW_RENDER_BATCH);
+  if (offerings.length > rendered.length) {
+    const nextCount = Math.min(offerings.length, rendered.length + ROW_RENDER_BATCH);
     rows.push(`
       <tr>
         <td colspan="${COLSPAN}" style="padding:14px 16px;text-align:center;color:var(--text-secondary);">
-          Showing ${rendered.length.toLocaleString()} of ${leaves.length.toLocaleString()} packages.
+          Showing ${rendered.length.toLocaleString()} of ${offerings.length.toLocaleString()} hotel offerings.
           <button class="btn btn-ghost" style="margin-left:10px;" onclick="showMorePackages()">Show next ${(nextCount - rendered.length).toLocaleString()}</button>
         </td>
       </tr>
@@ -1064,6 +1229,106 @@ function renderPackagesTable() {
   }
 
   tbody.innerHTML = rows.join('');
+}
+
+function toggleOffering(key) {
+  if (expandedOfferings.has(key)) expandedOfferings.delete(key);
+  else expandedOfferings.add(key);
+  renderPackagesTable();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Booking-curve panel (parent-row click) — placeholder charts for now
+   ══════════════════════════════════════════════════════════════════ */
+// Compact booking-curve data (built by scripts/build_booking_curves.py from the
+// large raw exports). Loaded once on first panel open, then cached.
+let _curveData = null, _curveLoading = null;
+let bpCharts = [];
+
+function loadCurveData() {
+  if (_curveData) return Promise.resolve(_curveData);
+  if (_curveLoading) return _curveLoading;
+  const get = (f) => fetch(f).then(r => r.ok ? r.json() : {});
+  _curveLoading = Promise.all([
+    get('curves_outbound.json'), get('curves_inbound.json'), get('curves_hotel.json'),
+  ]).then(([outbound, inbound, hotel]) => (_curveData = { outbound, inbound, hotel }))
+    .catch(err => {
+      console.warn('[pricing] booking-curve data failed to load:', err);
+      return (_curveData = { outbound: {}, inbound: {}, hotel: {} });
+    });
+  return _curveLoading;
+}
+
+function destroyBpCharts() {
+  bpCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
+  bpCharts = [];
+}
+
+// Render one stacked chart (ACTUAL solid / TARGET dashed / FORECAST dotted),
+// or an honest "no data" note when this offering has no matching curve.
+function renderCurve(canvasId, series, xMax) {
+  const canvas = document.getElementById(canvasId);
+  const wrap = canvas.parentNode;
+  const oldNote = wrap.querySelector('.bp-nodata');
+  if (oldNote) oldNote.remove();
+  if (!series || !series.ACTUAL || !series.ACTUAL.length) {
+    canvas.style.display = 'none';
+    const note = document.createElement('div');
+    note.className = 'bp-nodata';
+    note.textContent = 'No booking-curve data for this offering';
+    wrap.appendChild(note);
+    return;
+  }
+  canvas.style.display = '';
+  const xs = new Set();
+  ['ACTUAL', 'TARGET', 'FORECAST'].forEach(t => (series[t] || []).forEach(pt => xs.add(pt[0])));
+  const labels = Array.from(xs).sort((a, b) => a - b);
+  const line = (t, color, dash) => {
+    const m = new Map((series[t] || []).map(pt => [pt[0], pt[1]]));
+    return { data: labels.map(x => m.has(x) ? m.get(x) : null), borderColor: color, borderDash: dash, borderWidth: 2 };
+  };
+  bpCharts.push(new Chart(canvas, {
+    data: { labels, datasets: [
+      line('ACTUAL', '#e91e8c', []),
+      line('TARGET', '#9ca3af', [6, 4]),
+      line('FORECAST', '#9ca3af', [2, 3]),
+    ] },
+    options: { scales: {
+      x: { min: 0, max: xMax, reverse: true, grid: { color: '#2a2d35' }, ticks: { color: '#9ca3af' } },
+      y: { min: 0, max: 1, grid: { color: '#2a2d35' }, ticks: { callback: (v) => Math.round(v * 100) + '%' } },
+    } },
+  }));
+}
+
+function openBookingPanel(key) {
+  const o = currentOfferings.get(key);
+  if (!o) return;
+  const p = o.rep;
+  document.getElementById('bpSub').innerHTML =
+    `<strong>${p.hotel}</strong> · ${p.gatewayCity} (${p.gateway}) → ${p.destination}`
+    + `<br>${dayMon(p.departureDate)} – ${dayMon(p.returnDate)} · ${p.duration}N`;
+  document.getElementById('bookingPanel').classList.add('open');
+  document.getElementById('bpBackdrop').classList.add('open');
+  loadCurveData().then(cd => {
+    if (!document.getElementById('bookingPanel').classList.contains('open')) return;  // closed already
+    const ob = cd.outbound[`${p.gateway}|${p.destId}|${p.departureDate}|${p.duration}`];
+    const ib = cd.inbound[`${p.gateway}|${p.destId}|${p.returnDate}|${p.duration}`];
+    const ht = cd.hotel[`${p.destId}|${p.weekStartIso}|${p.duration}`];
+    // One shared x-axis (days) across all three stacked charts.
+    let xMax = 0;
+    [ob, ib, ht].forEach(s => s && Object.values(s).forEach(arr => arr.forEach(pt => { if (pt[0] > xMax) xMax = pt[0]; })));
+    if (!xMax) xMax = 200;
+    destroyBpCharts();
+    renderCurve('bpChartOutbound', ob, xMax);
+    renderCurve('bpChartInbound', ib, xMax);
+    renderCurve('bpChartHotel', ht, xMax);
+  });
+}
+
+function closeBookingPanel() {
+  document.getElementById('bookingPanel').classList.remove('open');
+  document.getElementById('bpBackdrop').classList.remove('open');
+  destroyBpCharts();
 }
 
 function showMorePackages() {
