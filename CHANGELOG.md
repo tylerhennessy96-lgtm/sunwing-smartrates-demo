@@ -12,6 +12,37 @@ Format:
 
 ---
 
+## 2026-06-18 — Packages-only mock data refresh
+- Swapped in new mock data: refreshed `v_package_pricing_pg.csv` and rebuilt the
+  compact `curves_*.json` from new raw booking-curve exports (curve join coverage
+  ~99% outbound/inbound, ~94% hotel).
+- Removed the hotel/flight pricing CSVs and the per-flight booking-curve export
+  (the active demo is Packages-only; those tabs are hidden/in development) and
+  trimmed the CSV contract validator to the package export.
+- Why: the demo now runs entirely off the package export + aggregated booking
+  curves; the other exports were unused dead weight.
+
+## 2026-06-18 — Packages accordion + booking-curve panel
+- Packages table is now an accordion: parent rows are hotel offerings (sum of
+  room nights sold shown at parent; blank at room-class level), expanding to
+  room-type sub-rows. Removed the Flight # column; "Price"/"Rec Price" became
+  "Prices From"/"Rec. From Price"; dropped the struck-through "was" price and
+  added a `$` to the editable Price/Margin inputs; Sold/Pickup tooltips clarified
+  (room nights; pickup is a hotel figure, not flight).
+- Clicking a parent row opens a booking-curve panel that slides up from the
+  bottom (dark, Flight-tab style) with three charts (outbound / inbound flight,
+  hotel) stacked on a shared days-to-departure x-axis.
+- Booking-curve data: `scripts/build_booking_curves.py` aggregates the large raw
+  per-package exports (~420 MB, git-ignored) into compact `curves_*.json` (~0.5 MB
+  total) keyed by flight / hotel-week; the panel lazy-loads and renders them with
+  `chart.local.js`. Offerings without a matching curve show an honest empty state.
+- Default Pricing landing is the Packages page (nav-tab now points to
+  `pricing.html` on the flight/hotel/parameters pages).
+- Dropped `v_flight_booking_curve_pg.csv` from the CSV contract validator (the
+  per-flight curve export was removed in favour of the aggregated curves).
+- Why: make the packages view explorable down to room type and surface booking
+  curves per offering without shipping hundreds of MB of raw data.
+
 ## 2026-06-17 — Packages tab: columns, filters, editable margin, system fonts
 - Packages table reshaped around the larger `v_package_pricing_pg.csv` export:
   surfaced flight forecast LF (`outbound`/`return`) and pickup pax (7d/14d)

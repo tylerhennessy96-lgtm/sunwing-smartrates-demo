@@ -8,3 +8,10 @@ serve-demo.ps1
 # Local Python cache from validation scripts.
 __pycache__/
 *.pyc
+
+# Raw per-package booking-curve exports (~420 MB) are NOT committed — they are
+# pre-processed by scripts/build_booking_curves.py into the small committed
+# curves_*.json the app actually loads. Keep the raw files out of the repo/image.
+data/outbound_booking_curve.csv
+data/inbound_booking_curve.csv
+data/hotel_booking_curve.csv
