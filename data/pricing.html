@@ -212,6 +212,7 @@
     .bp-k-actual   { border-top-color: #e91e8c; }
     .bp-k-target   { border-top-color: #9ca3af; border-top-style: dashed; }
     .bp-k-forecast { border-top-color: #9ca3af; border-top-style: dotted; }
+    .bp-k-today    { border-top-color: #ffffff; border-top-style: dashed; }
     .bp-xaxis-label { text-align: center; font-size: 10.5px; color: #6b7280; margin-top: 4px; }
 
     /* ── Package Rules drawer (separate from adv-drawer) ─────── */
@@ -586,9 +587,8 @@
 
   <!-- ── Sub-tab Bar ── -->
   <div class="subtab-bar">
-    <!-- Flight Only / Hotel Only temporarily hidden while those tabs are in development -->
-    <!-- <a href="flight.html"  class="subtab">Flight Only</a> -->
-    <!-- <a href="hotel.html"   class="subtab">Hotel Only</a> -->
+    <a href="flight.html"  class="subtab">Flight Only</a>
+    <a href="hotel.html"   class="subtab">Hotel Only</a>
     <a href="pricing.html" class="subtab active">Packages</a>
     <div class="subtab-spacer"></div>
     <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
@@ -636,6 +636,7 @@
       <span class="bp-li"><span class="bp-k bp-k-actual"></span>Actual</span>
       <span class="bp-li"><span class="bp-k bp-k-target"></span>Target</span>
       <span class="bp-li"><span class="bp-k bp-k-forecast"></span>Forecast</span>
+      <span class="bp-li"><span class="bp-k bp-k-today"></span>Today</span>
     </div>
     <div class="bp-charts">
       <div class="bp-chart">
@@ -1269,9 +1270,37 @@ function destroyBpCharts() {
   bpCharts = [];
 }
 
+const BP_DAY_MS = 24 * 60 * 60 * 1000;
+const BP_DEMO_TODAY_ISO = '2026-06-01';
+function daysUntilDeparture(dateText) {
+  const m = String(dateText || '').trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return null;
+  const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const tm = BP_DEMO_TODAY_ISO.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const today = Date.UTC(Number(tm[1]), Number(tm[2]) - 1, Number(tm[3]));
+  return Math.max(0, Math.round((target - today) / BP_DAY_MS));
+}
+
+function curveValueAt(map, day) {
+  const days = Array.from(map.keys()).sort((a, b) => b - a);
+  if (!days.length || !Number.isFinite(day)) return null;
+  if (day >= days[0]) return map.get(days[0]);
+  if (day <= days[days.length - 1]) return map.get(days[days.length - 1]);
+  for (let i = 0; i < days.length - 1; i++) {
+    const hi = days[i], lo = days[i + 1];
+    if (day <= hi && day >= lo) {
+      const hiVal = map.get(hi), loVal = map.get(lo);
+      if (hiVal == null || loVal == null) return null;
+      const t = (hi - day) / (hi - lo);
+      return hiVal + ((loVal - hiVal) * t);
+    }
+  }
+  return null;
+}
+
 // Render one stacked chart (ACTUAL solid / TARGET dashed / FORECAST dotted),
 // or an honest "no data" note when this offering has no matching curve.
-function renderCurve(canvasId, series, xMax) {
+function renderCurve(canvasId, series, xMax, todayDtc) {
   const canvas = document.getElementById(canvasId);
   const wrap = canvas.parentNode;
   const oldNote = wrap.querySelector('.bp-nodata');
@@ -1285,23 +1314,61 @@ function renderCurve(canvasId, series, xMax) {
     return;
   }
   canvas.style.display = '';
+  const clampPct = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : null;
+  };
+  const visibleAt = (type, x) => (
+    !Number.isFinite(todayDtc) ||
+    type === 'TARGET' ||
+    (type === 'ACTUAL' && x >= todayDtc) ||
+    (type === 'FORECAST' && x <= todayDtc)
+  );
+  const rawMaps = {};
+  ['ACTUAL', 'TARGET', 'FORECAST'].forEach(t => {
+    rawMaps[t] = new Map();
+    (series[t] || []).forEach(pt => {
+      const x = Number(pt[0]);
+      const y = clampPct(pt[1]);
+      if (Number.isFinite(x) && y != null) rawMaps[t].set(x, y);
+    });
+  });
   const xs = new Set();
-  ['ACTUAL', 'TARGET', 'FORECAST'].forEach(t => (series[t] || []).forEach(pt => xs.add(pt[0])));
+  Object.values(rawMaps).forEach(m => m.forEach((_, x) => xs.add(x)));
+  if (Number.isFinite(todayDtc)) xs.add(todayDtc);
   const labels = Array.from(xs).sort((a, b) => a - b);
   const line = (t, color, dash) => {
-    const m = new Map((series[t] || []).map(pt => [pt[0], pt[1]]));
-    return { data: labels.map(x => m.has(x) ? m.get(x) : null), borderColor: color, borderDash: dash, borderWidth: 2 };
+    const m = rawMaps[t];
+    return {
+      data: labels.map(x => visibleAt(t, x) ? curveValueAt(m, x) : null),
+      borderColor: color,
+      borderDash: dash,
+      borderWidth: 2,
+    };
   };
+  const plugins = Number.isFinite(todayDtc)
+    ? { todayMarker: {
+        x: todayDtc,
+        label: 'Today',
+        shadeSide: 'future',
+        shadeColor: 'rgba(255, 255, 255, 0.045)',
+        color: '#ffffff',
+        labelColor: '#ffffff',
+      } }
+    : {};
   bpCharts.push(new Chart(canvas, {
     data: { labels, datasets: [
       line('ACTUAL', '#e91e8c', []),
       line('TARGET', '#9ca3af', [6, 4]),
       line('FORECAST', '#9ca3af', [2, 3]),
     ] },
-    options: { scales: {
-      x: { min: 0, max: xMax, reverse: true, grid: { color: '#2a2d35' }, ticks: { color: '#9ca3af' } },
-      y: { min: 0, max: 1, grid: { color: '#2a2d35' }, ticks: { callback: (v) => Math.round(v * 100) + '%' } },
-    } },
+    options: {
+      plugins,
+      scales: {
+        x: { min: 0, max: xMax, reverse: true, grid: { color: '#2a2d35' }, ticks: { color: '#9ca3af' } },
+        y: { min: 0, max: 1, grid: { color: '#2a2d35' }, ticks: { callback: (v) => Math.round(v * 100) + '%' } },
+      },
+    },
   }));
 }
 
@@ -1319,14 +1386,16 @@ function openBookingPanel(key) {
     const ob = cd.outbound[`${p.gateway}|${p.destId}|${p.departureDate}|${p.duration}`];
     const ib = cd.inbound[`${p.gateway}|${p.destId}|${p.returnDate}|${p.duration}`];
     const ht = cd.hotel[`${p.destId}|${p.weekStartIso}|${p.duration}`];
+    const todayDtc = daysUntilDeparture(p.departureDate);
     // One shared x-axis (days) across all three stacked charts.
     let xMax = 0;
     [ob, ib, ht].forEach(s => s && Object.values(s).forEach(arr => arr.forEach(pt => { if (pt[0] > xMax) xMax = pt[0]; })));
+    if (Number.isFinite(todayDtc) && todayDtc > xMax) xMax = todayDtc;
     if (!xMax) xMax = 200;
     destroyBpCharts();
-    renderCurve('bpChartOutbound', ob, xMax);
-    renderCurve('bpChartInbound', ib, xMax);
-    renderCurve('bpChartHotel', ht, xMax);
+    renderCurve('bpChartOutbound', ob, xMax, todayDtc);
+    renderCurve('bpChartInbound', ib, xMax, todayDtc);
+    renderCurve('bpChartHotel', ht, xMax, todayDtc);
   });
 }
 

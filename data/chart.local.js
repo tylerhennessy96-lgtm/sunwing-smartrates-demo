@@ -105,6 +105,8 @@
 
     var options = this.config.options || {};
     var scales = options.scales || {};
+    var plugins = options.plugins || {};
+    var todayMarker = plugins.todayMarker || null;
     var xScale = scales.x || {};
     var yScale = scales.y || {};
     var data = this.config.data || {};
@@ -142,6 +144,14 @@
     function projectY(value) {
       var ratio = (value - yMin) / Math.max(1, yMax - yMin);
       return plot.top + plot.height - (ratio * plot.height);
+    }
+
+    var markerX = null;
+    if (todayMarker && todayMarker.display !== false) {
+      var markerValue = Number(todayMarker.x);
+      if (Number.isFinite(markerValue) && markerValue >= xMin && markerValue <= xMax) {
+        markerX = projectX(markerValue);
+      }
     }
 
     function tickValues(axisLabels, min, max, count) {
@@ -182,6 +192,25 @@
     var yTicks = tickValues(null, yMin, yMax, 5);
 
     ctx.font = "10px sans-serif";
+
+    if (markerX != null && todayMarker.shade !== false) {
+      var shadeSide = todayMarker.shadeSide || "past";
+      var shadeStart;
+      var shadeEnd;
+      if (shadeSide === "future") {
+        shadeStart = xScale.reverse ? markerX : plot.left;
+        shadeEnd = xScale.reverse ? plot.left + plot.width : markerX;
+      } else {
+        shadeStart = xScale.reverse ? plot.left : markerX;
+        shadeEnd = xScale.reverse ? markerX : plot.left + plot.width;
+      }
+      var shadeLeft = Math.max(plot.left, Math.min(shadeStart, shadeEnd));
+      var shadeRight = Math.min(plot.left + plot.width, Math.max(shadeStart, shadeEnd));
+      if (shadeRight > shadeLeft) {
+        ctx.fillStyle = todayMarker.shadeColor || "rgba(233,30,140,0.07)";
+        ctx.fillRect(shadeLeft, plot.top, shadeRight - shadeLeft, plot.height);
+      }
+    }
 
     yTicks.forEach(function (tick) {
       var y = projectY(tick);
@@ -285,6 +314,31 @@
         dashed(ctx, []);
       });
     });
+
+    if (markerX != null) {
+      ctx.save();
+      dashed(ctx, todayMarker.lineDash || [3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(markerX, plot.top);
+      ctx.lineTo(markerX, plot.top + plot.height);
+      ctx.strokeStyle = todayMarker.color || "#ffffff";
+      ctx.lineWidth = todayMarker.lineWidth || 1.5;
+      ctx.stroke();
+      dashed(ctx, []);
+
+      var markerLabel = todayMarker.label === false ? "" : (todayMarker.label || "Today");
+      if (markerLabel) {
+        ctx.font = "10px sans-serif";
+        var labelText = String(markerLabel);
+        var labelWidth = ctx.measureText(labelText).width;
+        var labelX = markerX + 5;
+        if (labelX + labelWidth > plot.left + plot.width) labelX = markerX - labelWidth - 5;
+        if (labelX < plot.left) labelX = plot.left;
+        ctx.fillStyle = todayMarker.labelColor || todayMarker.color || "#ffffff";
+        ctx.fillText(labelText, labelX, plot.top + 10);
+      }
+      ctx.restore();
+    }
 
     var xTitle = xScale.title && xScale.title.display ? xScale.title.text : "";
     if (xTitle) {
