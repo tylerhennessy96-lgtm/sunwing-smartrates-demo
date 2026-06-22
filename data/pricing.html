@@ -465,6 +465,84 @@
       font-size: 11px;
     }
 
+    /* Compact package table */
+    .packages-table-wrap { overflow-x: auto; }
+    table.data-table.packages-table {
+      table-layout: fixed;
+      width: 100%;
+      min-width: 1420px;
+    }
+    table.data-table.packages-table th:first-child,
+    table.data-table.packages-table td:first-child { min-width: 0; }
+    table.data-table.packages-table thead th {
+      box-sizing: border-box;
+      padding: 6px 7px;
+      white-space: normal;
+      line-height: 1.08;
+      letter-spacing: 0;
+      vertical-align: bottom;
+    }
+    table.data-table.packages-table tbody td {
+      box-sizing: border-box;
+      padding: 6px 7px;
+      font-size: 12px;
+    }
+    .pkg-sort-btn {
+      width: 100%;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-transform: inherit;
+      letter-spacing: 0;
+      line-height: 1.08;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-align: left;
+    }
+    .pkg-sort-btn.right {
+      justify-content: flex-end;
+      text-align: right;
+    }
+    .pkg-sort-btn:hover .pkg-th-label,
+    th.sorted .pkg-th-label { color: var(--text-primary); }
+    .pkg-th-label { min-width: 0; }
+    .pkg-sort-icon {
+      flex: 0 0 9px;
+      width: 9px;
+      height: 12px;
+      opacity: .28;
+    }
+    th.sorted .pkg-sort-icon { opacity: 1; }
+    .pkg-sort-icon path { fill: var(--text-muted); }
+    th.sorted .pkg-sort-icon .sort-active { fill: var(--accent); }
+    .pkg-destination-cell,
+    .pkg-hotel-cell { white-space: normal; }
+    .pkg-destination-name,
+    .pkg-hotel-name {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .pkg-gateway-cell { min-width: 0; }
+    .pkg-gateway-city,
+    .pkg-gateway-code {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    table.data-table.packages-table .price-input {
+      width: 64px;
+      height: 24px;
+      padding: 2px 5px;
+      font-size: 11.5px;
+    }
+
     /* ── Book channel buttons (Revnet / WEB) ─────────────────── */
     .book-btns {
       display: inline-flex;
@@ -607,8 +685,8 @@
 
     <!-- Packages table view -->
     <div class="view" id="viewRecs">
-      <div class="table-wrap">
-        <table class="data-table" id="packagesTable">
+      <div class="table-wrap packages-table-wrap">
+        <table class="data-table packages-table" id="packagesTable">
           <thead id="packagesHead"></thead>
           <tbody id="packagesBody"></tbody>
         </table>
@@ -817,6 +895,7 @@ let packageFilterKey = '';
 let visibleRowLimit = 250;
 const expandedOfferings = new Set();   // offering keys currently expanded
 let currentOfferings = new Map();      // key → offering (rebuilt each render)
+let packageSort = { key: null, dir: 'asc' };
 
 const ROW_RENDER_BATCH = 250;
 const packageIndex = {
@@ -1042,30 +1121,124 @@ function allLeaves() {
    carries no per-flight schedule data, so we never fabricate a value.
    ══════════════════════════════════════════════════════════════════ */
 const COLSPAN = 19;
+const PACKAGE_SORTERS = {
+  destination: { type: 'text', value: o => o.rep.destination },
+  hotel: { type: 'text', value: o => o.rep.hotel },
+  nights: { type: 'number', value: o => o.rep.duration },
+  dates: { type: 'date', value: o => packageDateValue(o.rep.departureDate) },
+  gateway: { type: 'text', value: o => o.rep.gatewayCity || o.rep.gateway },
+  soldStly: { type: 'number', value: o => sum(o.rooms, 'soldStly') },
+  sold: { type: 'number', value: o => sum(o.rooms, 'soldPackages') },
+  outboundForecast: { type: 'number', value: o => o.rep.outboundForecastLf },
+  returnForecast: { type: 'number', value: o => o.rep.returnForecastLf },
+  hotelForecast: { type: 'number', value: o => sum(o.rooms, 'hotelForecast') },
+  pickup7d: { type: 'number', value: o => o.rep.pickupPax7d },
+  pickup14d: { type: 'number', value: o => o.rep.pickupPax14d },
+  price: { type: 'number', value: o => getEffectivePrice(o.rep) },
+  recPrice: { type: 'number', value: o => o.rep.recPrice },
+  priceDelta: { type: 'number', value: o => o.rep.recPrice - getEffectivePrice(o.rep) },
+  currMargin: { type: 'number', value: o => getEffectiveMargin(o.rep) },
+  recMargin: { type: 'number', value: o => o.rep.recMargin },
+  marginDelta: { type: 'number', value: o => o.rep.recMargin - getEffectiveMargin(o.rep) },
+  pace: { type: 'number', value: o => ({ behind: 0, 'on track': 1, ahead: 2 }[o.rep.bookingPace] ?? 1) },
+};
+
+function packageDateValue(dateText) {
+  const s = String(dateText || '').trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    const year = Number(m[3].length === 2 ? `20${m[3]}` : m[3]);
+    return Date.UTC(year, Number(m[1]) - 1, Number(m[2]));
+  }
+  return null;
+}
+
+function packageSortIcon(key) {
+  const active = packageSort.key === key;
+  const up = active && packageSort.dir === 'asc' ? 'sort-active' : '';
+  const down = active && packageSort.dir === 'desc' ? 'sort-active' : '';
+  return `<svg class="pkg-sort-icon" viewBox="0 0 10 12" aria-hidden="true">
+    <path class="${up}" d="M5 1 L8.2 4.6 H1.8 Z"></path>
+    <path class="${down}" d="M5 11 L1.8 7.4 H8.2 Z"></path>
+  </svg>`;
+}
+
+function packageHeaderCell(key, label, opts = {}) {
+  const active = packageSort.key === key;
+  const dirClass = active ? ` sorted sorted-${packageSort.dir}` : '';
+  const cls = `${opts.className || ''}${dirClass}`.trim();
+  const classAttr = cls ? ` class="${cls}"` : '';
+  const style = opts.width ? ` style="width:${opts.width};"` : '';
+  const title = opts.title || label.replace(/<br\s*\/?>/g, ' ');
+  const aria = active ? (packageSort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
+  const alignClass = opts.align === 'right' ? ' right' : '';
+  return `<th${classAttr}${style} title="${title}" aria-sort="${aria}">
+    <button type="button" class="pkg-sort-btn${alignClass}" onclick="sortPackages('${key}')">
+      <span class="pkg-th-label">${label}</span>${packageSortIcon(key)}
+    </button>
+  </th>`;
+}
 function renderPackagesHead() {
   document.getElementById('packagesHead').innerHTML = `
     <tr>
-      <th style="min-width:120px;">Destination</th>
-      <th style="min-width:220px;">Hotel</th>
-      <th style="width:46px;text-align:center;">Nt</th>
-      <th style="width:104px;">Dates</th>
-      <th style="min-width:150px;">Gateway</th>
-      <th class="text-right" style="width:72px;" title="Room nights — target, same time last year">Sold STLY</th>
-      <th class="text-right" style="width:70px;" title="Room nights">Sold</th>
-      <th class="text-right" style="width:70px;" title="Outbound flight forecast load factor">Out Fcst</th>
-      <th class="text-right" style="width:70px;" title="Return flight forecast load factor">Ret Fcst</th>
-      <th class="text-right" style="width:70px;" title="Hotel forecast — final room nights">Hotel Fcst</th>
-      <th class="text-right" style="width:64px;" title="Hotel pickup pax, trailing 7 days (hotel figure, not flight)">Pickup 7d</th>
-      <th class="text-right" style="width:64px;" title="Hotel pickup pax, trailing 14 days (hotel figure, not flight)">Pickup 14d</th>
-      <th class="text-right" style="width:118px;">Prices From</th>
-      <th class="text-right" style="width:104px;">Rec. From Price</th>
-      <th class="text-right" style="width:72px;">Δ $</th>
-      <th class="text-right" style="width:96px;">Curr Margin</th>
-      <th class="text-right" style="width:96px;">Rec Margin</th>
-      <th class="text-right" style="width:72px;">Margin Δ</th>
-      <th style="width:90px;">Pace</th>
+      ${packageHeaderCell('destination', 'Destination', { width: '138px' })}
+      ${packageHeaderCell('hotel', 'Hotel', { width: '210px' })}
+      ${packageHeaderCell('nights', 'Nt', { width: '38px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('dates', 'Dates', { width: '74px' })}
+      ${packageHeaderCell('gateway', 'Gateway', { width: '96px' })}
+      ${packageHeaderCell('soldStly', 'Sold<br>STLY', { width: '50px', className: 'text-right', align: 'right', title: 'Room nights - target, same time last year' })}
+      ${packageHeaderCell('sold', 'Sold', { width: '50px', className: 'text-right', align: 'right', title: 'Room nights' })}
+      ${packageHeaderCell('outboundForecast', 'Out<br>Fcst', { width: '52px', className: 'text-right', align: 'right', title: 'Outbound flight forecast load factor' })}
+      ${packageHeaderCell('returnForecast', 'Ret<br>Fcst', { width: '52px', className: 'text-right', align: 'right', title: 'Return flight forecast load factor' })}
+      ${packageHeaderCell('hotelForecast', 'Hotel<br>Fcst', { width: '58px', className: 'text-right', align: 'right', title: 'Hotel forecast - final room nights' })}
+      ${packageHeaderCell('pickup7d', 'Pick<br>7d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 7 days' })}
+      ${packageHeaderCell('pickup14d', 'Pick<br>14d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 14 days' })}
+      ${packageHeaderCell('price', 'Price<br>From', { width: '76px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('recPrice', 'Rec.<br>Price', { width: '76px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('priceDelta', 'Delta<br>$', { width: '54px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('currMargin', 'Curr<br>Margin', { width: '72px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('recMargin', 'Rec<br>Margin', { width: '72px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('marginDelta', 'Margin<br>Delta', { width: '58px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('pace', 'Pace', { width: '70px' })}
     </tr>
   `;
+}
+
+function sortPackages(key) {
+  packageSort = {
+    key,
+    dir: packageSort.key === key && packageSort.dir === 'asc' ? 'desc' : 'asc',
+  };
+  visibleRowLimit = ROW_RENDER_BATCH;
+  renderPackagesHead();
+  renderPackagesTable();
+}
+
+function comparePackageSortValues(a, b, type) {
+  const emptyA = a == null || a === '';
+  const emptyB = b == null || b === '';
+  if (emptyA || emptyB) {
+    if (emptyA && emptyB) return 0;
+    return emptyA ? 1 : -1;
+  }
+  if (type === 'number' || type === 'date') return Number(a) - Number(b);
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function sortedOfferings(offerings) {
+  const sorter = PACKAGE_SORTERS[packageSort.key];
+  if (!sorter) return offerings;
+  const dir = packageSort.dir === 'desc' ? -1 : 1;
+  return offerings
+    .map((offering, idx) => ({ offering, idx }))
+    .sort((a, b) => {
+      const cmp = comparePackageSortValues(sorter.value(a.offering), sorter.value(b.offering), sorter.type);
+      return cmp ? cmp * dir : a.idx - b.idx;
+    })
+    .map(x => x.offering);
 }
 
 const BLANK_NUM = '<td class="text-right num" style="color:var(--border-mid);">—</td>';
@@ -1142,22 +1315,22 @@ function offeringRow(o) {
   const totalHotelFcst = o.rooms.reduce((s, r) => s + (r.hotelForecast || 0), 0);
   return `
     <tr class="row-unit pkg-parent" onclick="openBookingPanel('${o.key}')">
-      <td>
+      <td class="pkg-destination-cell">
         <div style="display:flex;align-items:flex-start;gap:6px;">
           <button class="expand-btn ${open ? 'open' : ''}" title="Show room types"
                   onclick="event.stopPropagation();toggleOffering('${o.key}')">${chevron(open)}</button>
           <div style="line-height:1.25;">
             <div>
               ${p.hasCostChange ? `<span class="cost-change-icon" title="Cost change since last evaluation" style="margin-right:5px;">&#9888;</span>` : ''}
-              <span style="font-weight:500;">${p.destination}</span>
+              <span class="pkg-destination-name" style="font-weight:500;">${p.destination}</span>
             </div>
             <div style="margin-top:3px;"><span class="region-badge ${regionClass(p.region)}">${p.region}</span></div>
           </div>
         </div>
       </td>
-      <td>
+      <td class="pkg-hotel-cell">
         <div style="display:flex;flex-direction:column;gap:2px;line-height:1.25;">
-          <span style="font-weight:600;">${p.hotel}</span>
+          <span class="pkg-hotel-name" style="font-weight:600;">${p.hotel}</span>
           ${starRating(p.hotelStars)}
           ${multi ? `<span style="font-size:10.5px;color:var(--text-muted);">${o.rooms.length} room types</span>` : ''}
         </div>
@@ -1169,10 +1342,10 @@ function offeringRow(o) {
           <div style="color:var(--text-muted);">${dayMon(p.returnDate) || ''}</div>
         </div>
       </td>
-      <td>
+      <td class="pkg-gateway-cell">
         <div style="line-height:1.25;">
-          <div style="font-size:12px;">${p.gatewayCity}</div>
-          <div style="font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);">${p.gateway}</div>
+          <div class="pkg-gateway-city" style="font-size:12px;">${p.gatewayCity}</div>
+          <div class="pkg-gateway-code" style="font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);">${p.gateway}</div>
         </div>
       </td>
       ${metricCells(p, { editable: true, sold: totalSold, stly: totalStly, hotelFcst: totalHotelFcst })}
@@ -1213,7 +1386,7 @@ function renderPackagesTable() {
     return;
   }
 
-  const offerings = buildOfferings(leaves);
+  const offerings = sortedOfferings(buildOfferings(leaves));
   currentOfferings = new Map(offerings.map(o => [o.key, o]));
   const rendered = offerings.slice(0, visibleRowLimit);
   const rows = [];
