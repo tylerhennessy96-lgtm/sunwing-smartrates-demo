@@ -1490,8 +1490,24 @@ function packageNodeDefaultCompare(a, b) {
 }
 
 function packageNodeSortValue(node, sorter) {
+  if (!sorter) return node.sortValue;
+
+  // Text/date sorters are backed by a representative package for the group.
+  // This keeps Gateway/Destination/Dates/Hotel/Room sorting active at every
+  // visible accordion level rather than only at one exact hierarchy level.
+  if (sorter.groupType) {
+    return node.rep ? sorter.value(node.rep) : node.sortValue;
+  }
+
+  // Numeric package headers display aggregated values on group rows. Sort those
+  // same rows by the same aggregated metric, and sort leaf room rows by their
+  // package-level metric. The previous implementation only sorted room siblings,
+  // so clicking most numeric package headers appeared to do nothing.
   if (node.type === 'room') return sorter.value(node.rep);
-  return node.rep ? sorter.value(node.rep) : node.sortValue;
+  const metrics = packageAggregatedMetrics(node);
+  return metrics && Object.prototype.hasOwnProperty.call(metrics, packageSort.key)
+    ? metrics[packageSort.key]
+    : (node.rep ? sorter.value(node.rep) : node.sortValue);
 }
 
 function sortPackageNodes(nodes) {
@@ -1499,9 +1515,7 @@ function sortPackageNodes(nodes) {
   const dir = packageSort.dir === 'desc' ? -1 : 1;
   nodes.sort((a, b) => {
     let cmp = 0;
-    const activeGroup = sorter && sorter.groupType === a.type && sorter.groupType === b.type;
-    const activeLeaf = sorter && !sorter.groupType && a.type === 'room' && b.type === 'room';
-    if (activeGroup || activeLeaf) {
+    if (sorter) {
       cmp = comparePackageSortValues(packageNodeSortValue(a, sorter), packageNodeSortValue(b, sorter), sorter.type) * dir;
     }
     return cmp || packageNodeDefaultCompare(a, b);
@@ -1597,6 +1611,7 @@ function packageLeafMetrics(pkg) {
     pickup7d: pkg.pickupPax7d,
     pickup14d: pkg.pickupPax14d,
     price: getEffectivePrice(pkg),
+    priceChange: getPackagePriceChange(pkg),
     recPrice: pkg.recPrice,
     priceDelta: pkg.recPrice - getEffectivePrice(pkg),
     currMargin: getEffectiveMargin(pkg),
@@ -1632,6 +1647,7 @@ function packageAggregatedMetrics(node) {
     pickup7d: aggregateMetricValues(childMetrics, 'pickup7d', 'sum'),
     pickup14d: aggregateMetricValues(childMetrics, 'pickup14d', 'sum'),
     price: aggregateMetricValues(childMetrics, 'price', 'min'),
+    priceChange: aggregateMetricValues(childMetrics, 'priceChange', 'avg'),
     recPrice: aggregateMetricValues(childMetrics, 'recPrice', 'min'),
     priceDelta: aggregateMetricValues(childMetrics, 'priceDelta', 'min'),
     currMargin: aggregateMetricValues(childMetrics, 'currMargin', 'avg'),
