@@ -1,14 +1,15 @@
 # Dynamica SmartRates - Project Context
 
 Living context document. Keep this current so any teammate or future session can
-get oriented quickly. Verified against the codebase on 2026-06-15.
+get oriented quickly. Verified against the codebase on 2026-06-24.
 
 ## Project
 
 **Dynamica SmartRates** is a revenue management demo built by Simon-Kucher for
 Sunwing. It demonstrates pricing recommendations, alerts, competitor
-positioning, package economics, and RM Copilot interactions across flights,
-hotels, and packages.
+positioning, package economics, and RM Copilot interactions. The current active
+workflow is the Packages pricing tab; Flight and Hotel pages remain in the
+static bundle but are not the primary data-refresh path.
 
 Branding note: the nav bar shows **DYNAMICA / SmartRates**. Page titles may
 still mention Sunwing RMS because this is the Sunwing deployment.
@@ -37,28 +38,31 @@ reshapes them into the global objects consumed by the pages.
 
 ## Data Contract
 
-Required CSV files:
+Required committed runtime data:
 
 | File | Primary date field | Purpose |
 | --- | --- | --- |
-| `data/v_hotel_pricing_pg.csv` | `week_start` | Hotel pricing |
-| `data/v_flight_pricing_pg.csv` | `departure_date` | Flight pricing |
-| `data/v_flight_booking_curve_pg.csv` | `departure_date` | Flight booking curves |
 | `data/v_package_pricing_pg.csv` | `departure_date` | Package pricing |
+| `data/curves_outbound.json` | generated | Outbound booking curves |
+| `data/curves_inbound.json` | generated | Inbound booking curves |
+| `data/curves_hotel.json` | generated | Hotel booking curves |
 
-Committed demo window: **2026-07-01 through 2026-09-30 inclusive**.
+Current committed package export: **29,095 rows**.
 
-Current row counts after trimming:
+Raw booking-curve exports are local build inputs and are intentionally ignored
+because they are too large for the static image/repo:
 
-| File | Rows |
-| --- | ---: |
-| `v_hotel_pricing_pg.csv` | 19,450 |
-| `v_flight_pricing_pg.csv` | 384 |
-| `v_flight_booking_curve_pg.csv` | 4,679 |
-| `v_package_pricing_pg.csv` | 19,639 |
+| File | Status |
+| --- | --- |
+| `data/outbound_booking_curve.csv` | ignored raw source |
+| `data/inbound_booking_curve.csv` | ignored raw source |
+| `data/hotel_booking_curve.csv` | ignored raw source |
 
-`data/data-loader.js` also enforces the same active date window at runtime, so a
-wider accidental export will not render outside the approved period.
+Rebuild the committed compact curve JSON after raw curve CSV changes:
+
+```powershell
+python .\scripts\build_booking_curves.py
+```
 
 Run the contract validator before committing data changes:
 
@@ -66,12 +70,12 @@ Run the contract validator before committing data changes:
 python .\scripts\validate_csv_contract.py
 ```
 
-The validator checks required files, required columns, non-empty row counts, and
-the date window.
+The validator checks required package columns, non-empty row counts, and
+parseable package dates.
 
 ## Serving Layout
 
-`data/` is the web root in both local and container environments:
+`data/` is the web root in container/`serve-demo.ps1` environments:
 
 - Docker: `Dockerfile` copies `data/` to `/srv/www/`, nginx listens on `8080`.
 - Local: `serve-demo.ps1` serves `data/` at `http://localhost:8099/`.
@@ -84,6 +88,9 @@ http://localhost:8099/hotel.html
 http://localhost:8099/pricing.html
 ```
 
+If using a simple `python -m http.server` from the repository root instead,
+open `http://127.0.0.1:8000/data/pricing.html`.
+
 Opening pages via `file://` will not work because the browser must fetch CSVs.
 
 ## Key Pages
@@ -92,7 +99,7 @@ Opening pages via `file://` will not work because the browser must fetch CSVs.
 | --- | --- |
 | `data/flight.html` | Flight pricing recs, load factor, competitor fares, RM Copilot |
 | `data/hotel.html` | Hotel pricing recs, occupancy, cost-change flags, RM Copilot |
-| `data/pricing.html` | Package pricing tree |
+| `data/pricing.html` | Package pricing accordion, bulk overrides, booking curves |
 | `data/parameters.html` | Configuration empty states for unconnected settings |
 | `data/index.html` | Entry point |
 
@@ -105,11 +112,11 @@ The demo reports only values that exist in the committed CSVs. Anything without
 CSV backing is blanked, rendered as an empty state, or called out by the RM
 Copilot. Known gaps include:
 
-- Persistent notes/comments.
+- Persistent package notes/comments.
 - Publish, approval, and audit history.
 - Historical fare/ADR time series.
 - Detailed cost-change history beyond the CSV flag.
-- Package autopilot rules.
+- Package autopilot/rule execution.
 - Demand-driver and price-elasticity narratives.
 
 `data/data.js` remains an empty-globals contract. `data/data-loader.js` fills the

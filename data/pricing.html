@@ -48,7 +48,7 @@
       background: #f3f4f6;
       color: var(--text-primary);
       border: 1px solid var(--border);
-      font-family: var(--font-mono);
+      font-family: var(--font-sans);
     }
 
     /* ── Stacked cat/cls cell ────────────────────────────────── */
@@ -104,7 +104,7 @@
     .pkg-name .pkg-meta {
       font-size: 11px;
       color: var(--text-muted);
-      font-family: var(--font-mono);
+      font-family: var(--font-sans);
     }
     .pkg-name .pkg-meta .pkg-meta-sep { color: var(--border-mid); margin: 0 5px; }
     .cost-change-icon {
@@ -133,22 +133,81 @@
     /* ── View switching ──────────────────────────────────────── */
     .view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
-    /* ── Rec-price clickable hint ────────────────────────────── */
-    .rec-click {
+    /* ── Package recommendation / hierarchy rows ─────────────── */
+    .pkg-rec-value {
       color: var(--accent);
       font-weight: 600;
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 4px;
-      transition: background .12s;
+      display: inline-flex;
+      padding: 2px 0;
     }
-    .rec-click:hover { background: rgba(232, 0, 125, 0.10); }
-    .rec-click.accepted { color: var(--text-muted); font-weight: 500; text-decoration: line-through; cursor: default; }
+    .pkg-rec-value.accepted { color: var(--text-muted); text-decoration: line-through; }
+    .pkg-rec-value.rejected { color: var(--danger); text-decoration: line-through; }
 
-    /* ── Accordion rows (offering parent / room-type child) ──── */
-    tr.pkg-parent { cursor: pointer; }
-    tr.pkg-child > td { background: var(--row-alt); }
-    tr.pkg-child:hover > td { background: var(--row-hover); }
+    tr.pkg-group { cursor: pointer; }
+    tr.pkg-group > td,
+    tr.pkg-room-row > td {
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    tr.pkg-group:hover > td,
+    tr.pkg-room-row:hover > td { background: var(--row-hover) !important; }
+    tr.pkg-level-1 > td {
+      background: #fff;
+      font-weight: 600;
+      height: 42px;
+    }
+    tr.pkg-level-2 > td {
+      background: #fafbfc;
+      height: 38px;
+    }
+    tr.pkg-room-row > td {
+      background: #fff;
+      height: 34px;
+    }
+    tr.pkg-room-row:hover > td { cursor: pointer; }
+    .pkg-empty-cell { color: var(--border-mid); }
+    .pkg-h-cell { white-space: normal; }
+    .pkg-h-label { display:flex; align-items:flex-start; gap:6px; min-width:0; }
+    .pkg-h-copy { min-width:0; line-height:1.22; }
+    .pkg-h-title {
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+      color: var(--text-primary);
+    }
+    .pkg-h-sub {
+      margin-top:2px;
+      font-size:10.5px;
+      color:var(--text-muted);
+      font-weight:400;
+      font-family:var(--font-sans);
+    }
+    tr.pkg-level-2 .pkg-h-cell:nth-child(-n+2) .pkg-h-title,
+    tr.pkg-room-row .pkg-h-cell:nth-child(-n+2) .pkg-h-title {
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    tr.pkg-level-2 .pkg-level-cell-2 { padding-left: 18px !important; }
+    .pkg-room-cell { padding-left:34px !important; }
+    .pkg-placeholder {
+      color: var(--border-mid);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    table.data-table.packages-table .expand-btn {
+      width: 14px;
+      height: 14px;
+      margin: 1px 6px 0 0;
+      color: var(--text-muted);
+      flex: 0 0 auto;
+    }
+    table.data-table.packages-table .expand-btn:hover { color: var(--accent); }
+    table.data-table.packages-table .expand-btn svg {
+      width: 12px;
+      height: 12px;
+    }
 
     /* ── Booking-curve panel (dark, slides up from the bottom) ── */
     /* Mirrors the Flight tab's analytics panel: dark gradient sheet that
@@ -464,23 +523,90 @@
       color: var(--text-muted);
       font-size: 11px;
     }
+    .cur-pink { color: var(--accent) !important; font-weight: 600; }
+    .pkg-change-cell { padding-left: 5px !important; padding-right: 5px !important; }
+    .pkg-change-pair {
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      width: 100%;
+      min-width: 118px;
+    }
+    .pkg-change-wrap {
+      height: 28px;
+      border: 1px solid var(--border-mid);
+      border-radius: 5px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+    .pkg-change-wrap.disabled {
+      opacity: .48;
+      background: #f3f4f6;
+    }
+    .pkg-change-input {
+      width: 100%;
+      min-width: 0;
+      height: 26px;
+      border: 0;
+      background: transparent;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-primary);
+      text-align: right;
+      padding: 2px 5px;
+      outline: none;
+    }
+    .pkg-change-input:disabled { color: var(--text-muted); }
+    .pkg-change-prefix,
+    .pkg-change-suffix {
+      flex: 0 0 auto;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 0 5px;
+    }
+    .pkg-actions-cell { text-align: center; }
+    .pkg-actions-cell .pkg-action-icons {
+      justify-content: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .pkg-action-icons button.accepted,
+    .pkg-action-icons button.rejected,
+    .pkg-action-icons button.has-note {
+      color: var(--accent);
+      background: rgba(232, 0, 125, 0.08);
+    }
 
     /* Compact package table */
     .packages-table-wrap { overflow-x: auto; }
     table.data-table.packages-table {
       table-layout: fixed;
       width: 100%;
-      min-width: 1420px;
+      min-width: 1280px;
+      font-family: var(--font-sans);
+    }
+    table.data-table.packages-table th,
+    table.data-table.packages-table td,
+    table.data-table.packages-table button,
+    table.data-table.packages-table input,
+    table.data-table.packages-table select {
+      font-family: var(--font-sans);
     }
     table.data-table.packages-table th:first-child,
     table.data-table.packages-table td:first-child { min-width: 0; }
     table.data-table.packages-table thead th {
       box-sizing: border-box;
-      padding: 6px 7px;
+      padding: 8px 8px;
       white-space: normal;
       line-height: 1.08;
-      letter-spacing: 0;
-      vertical-align: bottom;
+      letter-spacing: .02em;
+      vertical-align: middle;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
     }
     table.data-table.packages-table tbody td {
       box-sizing: border-box;
@@ -813,11 +939,11 @@
           <input type="date" id="notesExpiry" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:var(--font-sans);font-size:13px;outline:none;" />
         </div>
         <div style="flex:1;">
-          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Created by</label>
+          <label style="display:block;font-size:11.5px;font-weight:500;color:var(--text-secondary);margin-bottom:4px;">Entered by</label>
           <input type="text" id="notesCreatedBy" readonly value="Sarah Chen" style="width:100%;padding:8px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-family:var(--font-sans);font-size:13px;background:#f9fafb;color:var(--text-secondary);outline:none;" />
         </div>
       </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:10px;" id="notesCreatedAt">Created: —</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:10px;" id="notesCreatedAt">Entered: —</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="notesDeleteBtn" onclick="deleteNote()" style="margin-right:auto;display:none;color:var(--danger);border-color:rgba(224,82,82,0.3);">Delete</button>
@@ -885,6 +1011,7 @@
 const priceOverrides   = {};         // pkgId → price (user edits / accepted rec)
 const lockedPkgs       = new Set();  // pkgId (🔒 fixed)
 const acceptedRecs     = new Set();  // pkgId (rec was accepted)
+const rejectedRecs     = new Set();  // pkgId (rec was rejected)
 const pkgRules         = {};         // pkgId → { minPrice, maxPrice, minMargin, maxMargin, lock, flag, modifiedAt, modifiedBy }
 const notes            = {};         // pkgId → { text, expires, createdBy, createdAt }
 
@@ -895,6 +1022,7 @@ let packageFilterKey = '';
 let visibleRowLimit = 250;
 const expandedOfferings = new Set();   // offering keys currently expanded
 let currentOfferings = new Map();      // key → offering (rebuilt each render)
+let currentPackageGroups = new Map();  // key → accordion group (rebuilt each render)
 let packageSort = { key: null, dir: 'asc' };
 
 const ROW_RENDER_BATCH = 250;
@@ -983,6 +1111,15 @@ function paceBadge(pace) {
   const b = map[pace] || map['on track'];
   return `<span class="pace-badge ${b.cls}">${b.label}</span>`;
 }
+function paceRank(pace) {
+  return { behind: 0, 'on track': 1, ahead: 2 }[String(pace || '').toLowerCase()] ?? 1;
+}
+function paceFromRank(rank) {
+  if (rank == null) return null;
+  if (rank <= 0) return 'behind';
+  if (rank >= 2) return 'ahead';
+  return 'on track';
+}
 function getEffectivePrice(pkg) {
   if (priceOverrides[pkg.id] != null) return priceOverrides[pkg.id];
   return pkg.currentPrice;
@@ -990,10 +1127,28 @@ function getEffectivePrice(pkg) {
 function getEffectiveMargin(pkg) {
   return getEffectivePrice(pkg) - pkg.totalCost;
 }
+function getPackagePriceChange(pkg) {
+  return getEffectivePrice(pkg) - pkg.currentPrice;
+}
+function getPackagePriceChangePct(pkg) {
+  return pkg.currentPrice > 0 ? (getPackagePriceChange(pkg) / pkg.currentPrice) * 100 : 0;
+}
 function deltaColor(delta) {
   if (delta > 0) return 'delta-pos';
   if (delta < 0) return 'delta-neg';
   return 'text-muted';
+}
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch]));
+}
+function jsArg(value) {
+  return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1111,36 +1266,39 @@ function allLeaves() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Packages table (accordion — parent = hotel offering, child = room type)
+   Packages table (accordion: Itinerary -> Hotel -> Room)
 
-   Each parent row is one offering (hotel × gateway × duration × week).
-   Expanding reveals its room type(s) as sub-rows. Clicking a parent row
-   (anywhere but the chevron / inputs) opens the booking-curve panel.
+   Group rows show placeholder metrics where higher-level aggregations are not
+   available yet, but their price-change/action controls apply to every
+   descendant package that is not locked. Room rows open the booking curves.
 
    NOTE: the Flight # column is intentionally blank — the package CSV
    carries no per-flight schedule data, so we never fabricate a value.
    ══════════════════════════════════════════════════════════════════ */
-const COLSPAN = 19;
+const PACKAGE_GROUP_COLS = 3;
+const PACKAGE_METRIC_COLS = 16;
+const COLSPAN = PACKAGE_GROUP_COLS + PACKAGE_METRIC_COLS;
 const PACKAGE_SORTERS = {
-  destination: { type: 'text', value: o => o.rep.destination },
-  hotel: { type: 'text', value: o => o.rep.hotel },
-  nights: { type: 'number', value: o => o.rep.duration },
-  dates: { type: 'date', value: o => packageDateValue(o.rep.departureDate) },
-  gateway: { type: 'text', value: o => o.rep.gatewayCity || o.rep.gateway },
-  soldStly: { type: 'number', value: o => sum(o.rooms, 'soldStly') },
-  sold: { type: 'number', value: o => sum(o.rooms, 'soldPackages') },
-  outboundForecast: { type: 'number', value: o => o.rep.outboundForecastLf },
-  returnForecast: { type: 'number', value: o => o.rep.returnForecastLf },
-  hotelForecast: { type: 'number', value: o => sum(o.rooms, 'hotelForecast') },
-  pickup7d: { type: 'number', value: o => o.rep.pickupPax7d },
-  pickup14d: { type: 'number', value: o => o.rep.pickupPax14d },
-  price: { type: 'number', value: o => getEffectivePrice(o.rep) },
-  recPrice: { type: 'number', value: o => o.rep.recPrice },
-  priceDelta: { type: 'number', value: o => o.rep.recPrice - getEffectivePrice(o.rep) },
-  currMargin: { type: 'number', value: o => getEffectiveMargin(o.rep) },
-  recMargin: { type: 'number', value: o => o.rep.recMargin },
-  marginDelta: { type: 'number', value: o => o.rep.recMargin - getEffectiveMargin(o.rep) },
-  pace: { type: 'number', value: o => ({ behind: 0, 'on track': 1, ahead: 2 }[o.rep.bookingPace] ?? 1) },
+  gateway: { type: 'text', groupType: 'itinerary', value: p => p.gatewayCity || p.gateway },
+  destination: { type: 'text', groupType: 'itinerary', value: p => p.destination },
+  dates: { type: 'date', groupType: 'itinerary', value: p => packageDateValue(p.departureDate) },
+  hotel: { type: 'text', groupType: 'hotel', value: p => p.hotel },
+  room: { type: 'text', groupType: 'room', value: p => packageRoomLabel(p) },
+  soldStly: { type: 'number', value: p => p.soldStly },
+  sold: { type: 'number', value: p => p.soldPackages },
+  outboundForecast: { type: 'number', value: p => p.outboundForecastLf },
+  returnForecast: { type: 'number', value: p => p.returnForecastLf },
+  hotelForecast: { type: 'number', value: p => p.hotelForecast },
+  pickup7d: { type: 'number', value: p => p.pickupPax7d },
+  pickup14d: { type: 'number', value: p => p.pickupPax14d },
+  price: { type: 'number', value: p => getEffectivePrice(p) },
+  priceChange: { type: 'number', value: p => getPackagePriceChange(p) },
+  recPrice: { type: 'number', value: p => p.recPrice },
+  priceDelta: { type: 'number', value: p => p.recPrice - getEffectivePrice(p) },
+  currMargin: { type: 'number', value: p => getEffectiveMargin(p) },
+  recMargin: { type: 'number', value: p => p.recMargin },
+  marginDelta: { type: 'number', value: p => p.recMargin - getEffectiveMargin(p) },
+  pace: { type: 'number', value: p => ({ behind: 0, 'on track': 1, ahead: 2 }[p.bookingPace] ?? 1) },
 };
 
 function packageDateValue(dateText) {
@@ -1184,11 +1342,9 @@ function packageHeaderCell(key, label, opts = {}) {
 function renderPackagesHead() {
   document.getElementById('packagesHead').innerHTML = `
     <tr>
-      ${packageHeaderCell('destination', 'Destination', { width: '138px' })}
-      ${packageHeaderCell('hotel', 'Hotel', { width: '210px' })}
-      ${packageHeaderCell('nights', 'Nt', { width: '38px', className: 'text-right', align: 'right' })}
-      ${packageHeaderCell('dates', 'Dates', { width: '74px' })}
-      ${packageHeaderCell('gateway', 'Gateway', { width: '96px' })}
+      ${packageHeaderCell('gateway', 'Gateway', { width: '92px' })}
+      ${packageHeaderCell('destination', 'Destination', { width: '118px' })}
+      ${packageHeaderCell('dates', 'Dates', { width: '220px', title: 'Dates / Hotel / Room Category' })}
       ${packageHeaderCell('soldStly', 'Sold<br>STLY', { width: '50px', className: 'text-right', align: 'right', title: 'Room nights - target, same time last year' })}
       ${packageHeaderCell('sold', 'Sold', { width: '50px', className: 'text-right', align: 'right', title: 'Room nights' })}
       ${packageHeaderCell('outboundForecast', 'Out<br>Fcst', { width: '52px', className: 'text-right', align: 'right', title: 'Outbound flight forecast load factor' })}
@@ -1197,12 +1353,14 @@ function renderPackagesHead() {
       ${packageHeaderCell('pickup7d', 'Pick<br>7d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 7 days' })}
       ${packageHeaderCell('pickup14d', 'Pick<br>14d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 14 days' })}
       ${packageHeaderCell('price', 'Price<br>From', { width: '76px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('priceChange', 'Price Change<br>(% / abs.)', { width: '132px', title: 'Price Change (% / abs.)' })}
       ${packageHeaderCell('recPrice', 'Rec.<br>Price', { width: '76px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('priceDelta', 'Delta<br>$', { width: '54px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('currMargin', 'Curr<br>Margin', { width: '72px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('recMargin', 'Rec<br>Margin', { width: '72px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('marginDelta', 'Margin<br>Delta', { width: '58px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('pace', 'Pace', { width: '70px' })}
+      <th style="width:72px;text-align:center;">Actions</th>
     </tr>
   `;
 }
@@ -1228,144 +1386,440 @@ function comparePackageSortValues(a, b, type) {
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
 }
 
-function sortedOfferings(offerings) {
-  const sorter = PACKAGE_SORTERS[packageSort.key];
-  if (!sorter) return offerings;
-  const dir = packageSort.dir === 'desc' ? -1 : 1;
-  return offerings
-    .map((offering, idx) => ({ offering, idx }))
-    .sort((a, b) => {
-      const cmp = comparePackageSortValues(sorter.value(a.offering), sorter.value(b.offering), sorter.type);
-      return cmp ? cmp * dir : a.idx - b.idx;
-    })
-    .map(x => x.offering);
+const BLANK_NUM = '<td class="pkg-placeholder">-</td>';
+const BLANK_TEXT = '<td class="pkg-placeholder">-</td>';
+
+function pkgKeyPart(value) {
+  const s = String(value ?? '').trim();
+  return encodeURIComponent(s || 'missing');
 }
 
-const BLANK_NUM = '<td class="text-right num" style="color:var(--border-mid);">—</td>';
+function packageDateLabel(pkg) {
+  const out = dayMon(pkg.departureDate);
+  const ret = dayMon(pkg.returnDate);
+  if (out && ret) return `${out} - ${ret}`;
+  return out || ret || '-';
+}
 
-// Group filtered leaves into offerings (hotel × gateway × duration × week).
-// Room types become the child rows under each offering. Insertion order is
-// preserved so offerings follow the existing dest → week → gateway ordering.
-function buildOfferings(leaves) {
-  const map = new Map();
-  for (const p of leaves) {
-    const key = `${p.destId}|${p.hotelId}|${p.gateway}|${p.duration}|${p.departureDate}`;
-    let o = map.get(key);
-    if (!o) { o = { key, rep: p, rooms: [] }; map.set(key, o); }
-    o.rooms.push(p);
+function packageRoomLabel(pkg) {
+  return pkg.roomCategory || pkg.packageName || '- no room type -';
+}
+
+function packageScopeCount(leaves) {
+  const n = leaves.length;
+  return `${n.toLocaleString()} package${n === 1 ? '' : 's'}`;
+}
+
+function newPackageGroup(type, level, key, label, sub, sortValue, sortType, rep) {
+  return {
+    type,
+    level,
+    key,
+    label,
+    sub,
+    sortValue,
+    sortType: sortType || 'text',
+    rep,
+    children: [],
+    leaves: [],
+    _childMap: new Map(),
+  };
+}
+
+function getPackageChild(parent, type, level, keyPart, label, sub, sortValue, sortType, rep) {
+  const key = `${parent.key || 'root'}|${type}|${keyPart}`;
+  let child = parent._childMap.get(key);
+  if (!child) {
+    child = newPackageGroup(type, level, key, label, sub, sortValue, sortType, rep);
+    parent._childMap.set(key, child);
+    parent.children.push(child);
   }
-  return Array.from(map.values());
+  return child;
 }
 
-// The trailing 14 metric cells, shared by parent (editable) and child (read-only).
-// opts.sold: number → shown in the Sold cell; null → blank (no room-class sold).
+function buildPackageTree(leaves) {
+  const root = { key: 'root', children: [], _childMap: new Map() };
+  for (const p of leaves) {
+    const gatewayLabel = p.gatewayCity || p.gateway || '-';
+    const itinerary = getPackageChild(
+      root,
+      'itinerary',
+      1,
+      `${pkgKeyPart(p.gatewayCity || p.gateway)}|${pkgKeyPart(p.destId || p.destination)}|${pkgKeyPart(p.departureDate)}|${pkgKeyPart(p.returnDate)}|${pkgKeyPart(p.duration)}`,
+      packageDateLabel(p),
+      `${p.duration}N`,
+      packageDateValue(p.departureDate),
+      'date',
+      p
+    );
+    itinerary.gatewayLabel = gatewayLabel;
+    itinerary.gatewaySub = p.gateway && p.gateway !== gatewayLabel ? p.gateway : '';
+    itinerary.destinationLabel = p.destination || '-';
+    itinerary.destinationSub = p.region || '';
+    const hotel = getPackageChild(
+      itinerary,
+      'hotel',
+      2,
+      pkgKeyPart(p.hotelId || p.hotel),
+      p.hotel || '-',
+      '',
+      p.hotel || '',
+      'text',
+      p
+    );
+    const room = {
+      type: 'room',
+      level: 3,
+      key: `pkg|${pkgKeyPart(p.id)}`,
+      label: packageRoomLabel(p),
+      sortValue: packageRoomLabel(p),
+      sortType: 'text',
+      rep: p,
+      leaves: [p],
+      children: [],
+    };
+    [itinerary, hotel].forEach(node => node.leaves.push(p));
+    hotel.children.push(room);
+  }
+  return root.children;
+}
+
+function packageNodeDefaultCompare(a, b) {
+  const type = a.sortType === 'date' || b.sortType === 'date' ? 'date' : 'text';
+  return comparePackageSortValues(a.sortValue, b.sortValue, type);
+}
+
+function packageNodeSortValue(node, sorter) {
+  if (node.type === 'room') return sorter.value(node.rep);
+  return node.rep ? sorter.value(node.rep) : node.sortValue;
+}
+
+function sortPackageNodes(nodes) {
+  const sorter = PACKAGE_SORTERS[packageSort.key];
+  const dir = packageSort.dir === 'desc' ? -1 : 1;
+  nodes.sort((a, b) => {
+    let cmp = 0;
+    const activeGroup = sorter && sorter.groupType === a.type && sorter.groupType === b.type;
+    const activeLeaf = sorter && !sorter.groupType && a.type === 'room' && b.type === 'room';
+    if (activeGroup || activeLeaf) {
+      cmp = comparePackageSortValues(packageNodeSortValue(a, sorter), packageNodeSortValue(b, sorter), sorter.type) * dir;
+    }
+    return cmp || packageNodeDefaultCompare(a, b);
+  });
+  nodes.forEach(node => {
+    if (node.children && node.children.length) sortPackageNodes(node.children);
+  });
+  return nodes;
+}
+
+function trimInputNumber(value, digits = 1) {
+  if (!Number.isFinite(value)) return '';
+  const rounded = Number(value.toFixed(digits));
+  return String(rounded);
+}
+
+function packageScopeAvg(leaves, fn) {
+  return leaves.length ? leaves.reduce((total, pkg) => total + fn(pkg), 0) / leaves.length : 0;
+}
+
+function packagePriceChangeCellForScope(scopeKey, leaves, editable = true) {
+  const unlocked = leaves.filter(pkg => !lockedPkgs.has(pkg.id));
+  const disabled = !editable || !unlocked.length;
+  const avgChange = packageScopeAvg(leaves, getPackagePriceChange);
+  const avgPct = packageScopeAvg(leaves, getPackagePriceChangePct);
+  const pctValue = Math.abs(avgPct) >= 0.05 ? trimInputNumber(avgPct, 1) : '';
+  const dollarValue = Math.abs(avgChange) >= 0.5 ? String(Math.round(avgChange)) : '0';
+  const safeKey = jsArg(scopeKey);
+  const disabledAttr = disabled ? 'disabled' : '';
+  const disabledClass = disabled ? ' disabled' : '';
+  const title = disabled ? 'All descendant packages are locked' : 'Adjust package price by percentage or dollars';
+  return `
+    <td class="pkg-change-cell" title="${title}">
+      <div class="pkg-change-pair" onclick="event.stopPropagation()">
+        <span class="pkg-change-wrap${disabledClass}">
+          <input class="pkg-change-input" type="number" step="0.1" value="${pctValue}" placeholder=""
+                 onchange="updatePackagePriceChangePct('${safeKey}', this.value)" ${disabledAttr} />
+          <span class="pkg-change-suffix">%</span>
+        </span>
+        <span class="pkg-change-wrap${disabledClass}">
+          <span class="pkg-change-prefix">$</span>
+          <input class="pkg-change-input" type="number" step="1" value="${dollarValue}"
+                 onchange="updatePackagePriceChangeDollar('${safeKey}', this.value)" ${disabledAttr} />
+        </span>
+      </div>
+    </td>
+  `;
+}
+
+function packagePriceChangeCell(pkg, editable) {
+  return packagePriceChangeCellForScope(pkg.id, [pkg], editable);
+}
+
+function actionSvg(name) {
+  if (name === 'accept') return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3L13 4.5"/></svg>';
+  if (name === 'reject') return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+  if (name === 'note') return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 2.5h8v11H4z"/><path d="M6 5h4M6 8h4M6 11h2"/></svg>';
+  return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg>';
+}
+
+function packageActionCellForScope(scopeKey, leaves) {
+  const safeKey = jsArg(scopeKey);
+  const hasLeaves = !!leaves.length;
+  const accepted = hasLeaves && leaves.every(pkg => acceptedRecs.has(pkg.id));
+  const rejected = hasLeaves && leaves.every(pkg => rejectedRecs.has(pkg.id));
+  const disabledAttr = hasLeaves ? '' : 'disabled';
+  const scopeWord = leaves.length > 1 ? 'bulk ' : '';
+  return `
+    <td class="pkg-actions-cell">
+      <span class="pkg-action-icons" onclick="event.stopPropagation()">
+        <button type="button" class="${accepted ? 'accepted' : ''}" title="${scopeWord}accept recommendation"
+                onclick="acceptRec('${safeKey}')" ${disabledAttr}>${actionSvg('accept')}</button>
+        <button type="button" class="${rejected ? 'rejected' : ''}" title="${scopeWord}reject recommendation"
+                onclick="rejectRec('${safeKey}')" ${disabledAttr}>${actionSvg('reject')}</button>
+        <button type="button" class="${notes[scopeKey] ? 'has-note' : ''}" title="Add note"
+                onclick="openNotesModal('${safeKey}')">${actionSvg('note')}</button>
+      </span>
+    </td>
+  `;
+}
+
+function packageActionCell(pkg, opts) {
+  return packageActionCellForScope(pkg.id, [pkg]);
+}
+
+function packageLeafMetrics(pkg) {
+  return {
+    soldStly: pkg.soldStly,
+    sold: pkg.soldPackages,
+    outboundForecast: pkg.outboundForecastLf,
+    returnForecast: pkg.returnForecastLf,
+    hotelForecast: pkg.hotelForecast,
+    pickup7d: pkg.pickupPax7d,
+    pickup14d: pkg.pickupPax14d,
+    price: getEffectivePrice(pkg),
+    recPrice: pkg.recPrice,
+    priceDelta: pkg.recPrice - getEffectivePrice(pkg),
+    currMargin: getEffectiveMargin(pkg),
+    recMargin: pkg.recMargin,
+    marginDelta: pkg.recMargin - getEffectiveMargin(pkg),
+    pace: paceRank(pkg.bookingPace),
+  };
+}
+
+function packageMetricValue(metric, key) {
+  const value = metric && metric[key];
+  return value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
+}
+
+function aggregateMetricValues(metrics, key, method) {
+  const values = metrics.map(metric => packageMetricValue(metric, key)).filter(v => v != null);
+  if (!values.length) return null;
+  if (method === 'sum') return values.reduce((total, value) => total + value, 0);
+  if (method === 'avg') return values.reduce((total, value) => total + value, 0) / values.length;
+  if (method === 'min') return Math.min(...values);
+  return null;
+}
+
+function packageAggregatedMetrics(node) {
+  if (node.type === 'room') return packageLeafMetrics(node.rep);
+  const childMetrics = (node.children || []).map(packageAggregatedMetrics);
+  return {
+    soldStly: aggregateMetricValues(childMetrics, 'soldStly', 'sum'),
+    sold: aggregateMetricValues(childMetrics, 'sold', 'sum'),
+    outboundForecast: aggregateMetricValues(childMetrics, 'outboundForecast', 'avg'),
+    returnForecast: aggregateMetricValues(childMetrics, 'returnForecast', 'avg'),
+    hotelForecast: aggregateMetricValues(childMetrics, 'hotelForecast', 'sum'),
+    pickup7d: aggregateMetricValues(childMetrics, 'pickup7d', 'sum'),
+    pickup14d: aggregateMetricValues(childMetrics, 'pickup14d', 'sum'),
+    price: aggregateMetricValues(childMetrics, 'price', 'min'),
+    recPrice: aggregateMetricValues(childMetrics, 'recPrice', 'min'),
+    priceDelta: aggregateMetricValues(childMetrics, 'priceDelta', 'min'),
+    currMargin: aggregateMetricValues(childMetrics, 'currMargin', 'avg'),
+    recMargin: aggregateMetricValues(childMetrics, 'recMargin', 'avg'),
+    marginDelta: aggregateMetricValues(childMetrics, 'marginDelta', 'avg'),
+    pace: aggregateMetricValues(childMetrics, 'pace', 'min'),
+  };
+}
+
+function metricNumCell(value) {
+  return value == null ? BLANK_NUM : `<td class="text-right num">${Math.round(value).toLocaleString()}</td>`;
+}
+
+function metricPctCell(value) {
+  return value == null ? BLANK_NUM : `<td class="text-right num">${fmtPct(value)}</td>`;
+}
+
+function metricMoneyCell(value, opts = {}) {
+  if (value == null) return BLANK_NUM;
+  const sign = opts.sign && value >= 0 ? '+' : '';
+  const cls = opts.delta ? ` ${deltaColor(value)}` : '';
+  return `<td class="text-right num${cls}">${sign}${fmt$(value)}</td>`;
+}
+
+function metricPaceCell(value) {
+  const pace = paceFromRank(value);
+  return pace ? `<td>${paceBadge(pace)}</td>` : BLANK_TEXT;
+}
+
+function packageGroupMetricCells(node) {
+  const metrics = packageAggregatedMetrics(node);
+  return `
+    ${metricNumCell(metrics.soldStly)}
+    ${metricNumCell(metrics.sold)}
+    ${metricPctCell(metrics.outboundForecast)}
+    ${metricPctCell(metrics.returnForecast)}
+    ${metricNumCell(metrics.hotelForecast)}
+    ${metricNumCell(metrics.pickup7d)}
+    ${metricNumCell(metrics.pickup14d)}
+    ${metricMoneyCell(metrics.price)}
+    ${packagePriceChangeCellForScope(node.key, node.leaves, true)}
+    ${metricMoneyCell(metrics.recPrice)}
+    ${metricMoneyCell(metrics.priceDelta, { delta: true, sign: true })}
+    ${metricMoneyCell(metrics.currMargin)}
+    ${metricMoneyCell(metrics.recMargin)}
+    ${metricMoneyCell(metrics.marginDelta, { delta: true, sign: true })}
+    ${metricPaceCell(metrics.pace)}
+    ${packageActionCellForScope(node.key, node.leaves)}
+  `;
+}
+
+// The trailing metric/action cells for leaf package rows.
 function metricCells(p, opts) {
   const editable = !!opts.editable;
   const currP  = getEffectivePrice(p);
   const currM  = getEffectiveMargin(p);
   const deltaP = p.recPrice - currP;
   const deltaM = p.recMargin - currM;
-  const isLocked = lockedPkgs.has(p.id);
-  const fcst = (v) => `<td class="text-right num">${v == null ? '—' : fmtPct(v)}</td>`;
+  const changed = Math.abs(getPackagePriceChange(p)) >= 0.5;
+  const fcst = (v) => `<td class="text-right num">${v == null ? '-' : fmtPct(v)}</td>`;
   const numCell = (v) => (v == null ? BLANK_NUM : `<td class="text-right num">${Math.round(v).toLocaleString()}</td>`);
   const soldCell = numCell(opts.sold);
   const stlyCell = numCell(opts.stly);
   const hotelFcstCell = numCell(opts.hotelFcst);
-  const priceCell = editable
-    ? `<td class="text-right">
-         <span class="price-edit"><span class="price-edit-sym">$</span><input class="price-input" type="number" step="1" value="${Math.round(currP)}"
-                onclick="event.stopPropagation()" onchange="updatePrice('${p.id}', this.value)" ${isLocked ? 'disabled' : ''} /></span>
-       </td>`
-    : `<td class="text-right num">${fmt$(currP)}</td>`;
-  const marginCell = editable
-    ? `<td class="text-right">
-         <span class="price-edit"><span class="price-edit-sym">$</span><input class="price-input" type="number" step="1" value="${Math.round(currM)}"
-                onclick="event.stopPropagation()" onchange="updateMargin('${p.id}', this.value)" ${isLocked ? 'disabled' : ''} /></span>
-       </td>`
-    : `<td class="text-right num">${fmt$(currM)}</td>`;
-  const recCell = editable
-    ? `<td class="text-right"><span class="rec-click ${acceptedRecs.has(p.id) ? 'accepted' : ''}"
-         onclick="event.stopPropagation();${acceptedRecs.has(p.id) ? '' : `acceptRec('${p.id}')`}">${fmt$(p.recPrice)}</span></td>`
-    : `<td class="text-right num" style="color:var(--accent);">${fmt$(p.recPrice)}</td>`;
+  const priceCell = `<td class="text-right num ${changed ? 'cur-pink' : ''}">${fmt$(currP)}</td>`;
+  const priceChangeCell = packagePriceChangeCell(p, editable);
+  const marginCell = `<td class="text-right num ${changed ? 'cur-pink' : ''}">${fmt$(currM)}</td>`;
+  const recClass = acceptedRecs.has(p.id) ? 'accepted' : (rejectedRecs.has(p.id) ? 'rejected' : '');
+  const recCell = `<td class="text-right"><span class="pkg-rec-value ${recClass}">${fmt$(p.recPrice)}</span></td>`;
+  const recMarginCell = `<td class="text-right"><span class="pkg-rec-value ${recClass}">${fmt$(p.recMargin)}</span></td>`;
   return `
     ${stlyCell}
     ${soldCell}
     ${fcst(p.outboundForecastLf)}
     ${fcst(p.returnForecastLf)}
     ${hotelFcstCell}
-    <td class="text-right num">${p.pickupPax7d == null ? '—' : p.pickupPax7d}</td>
-    <td class="text-right num">${p.pickupPax14d == null ? '—' : p.pickupPax14d}</td>
+    <td class="text-right num">${p.pickupPax7d == null ? '-' : p.pickupPax7d}</td>
+    <td class="text-right num">${p.pickupPax14d == null ? '-' : p.pickupPax14d}</td>
     ${priceCell}
+    ${priceChangeCell}
     ${recCell}
     <td class="text-right num ${deltaColor(deltaP)}">${deltaP>=0?'+':''}${fmt$(deltaP)}</td>
     ${marginCell}
-    <td class="text-right num" style="color:var(--accent);">${fmt$(p.recMargin)}</td>
+    ${recMarginCell}
     <td class="text-right num ${deltaColor(deltaM)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
     <td>${paceBadge(p.bookingPace)}</td>
+    ${packageActionCell(p, opts)}
   `;
 }
 
-// Parent (offering) row — editable, opens the booking panel on click.
-function offeringRow(o) {
-  const p = o.rep;
-  const open = expandedOfferings.has(o.key);
-  const multi = o.rooms.length > 1;
-  const totalSold = o.rooms.reduce((s, r) => s + (r.soldPackages || 0), 0);
-  const totalStly = o.rooms.reduce((s, r) => s + (r.soldStly || 0), 0);
-  const totalHotelFcst = o.rooms.reduce((s, r) => s + (r.hotelForecast || 0), 0);
+function packageHierarchyTextCell(title, sub) {
   return `
-    <tr class="row-unit pkg-parent" onclick="openBookingPanel('${o.key}')">
-      <td class="pkg-destination-cell">
-        <div style="display:flex;align-items:flex-start;gap:6px;">
-          <button class="expand-btn ${open ? 'open' : ''}" title="Show room types"
-                  onclick="event.stopPropagation();toggleOffering('${o.key}')">${chevron(open)}</button>
-          <div style="line-height:1.25;">
-            <div>
-              ${p.hasCostChange ? `<span class="cost-change-icon" title="Cost change since last evaluation" style="margin-right:5px;">&#9888;</span>` : ''}
-              <span class="pkg-destination-name" style="font-weight:500;">${p.destination}</span>
-            </div>
-            <div style="margin-top:3px;"><span class="region-badge ${regionClass(p.region)}">${p.region}</span></div>
-          </div>
-        </div>
-      </td>
-      <td class="pkg-hotel-cell">
-        <div style="display:flex;flex-direction:column;gap:2px;line-height:1.25;">
-          <span class="pkg-hotel-name" style="font-weight:600;">${p.hotel}</span>
-          ${starRating(p.hotelStars)}
-          ${multi ? `<span style="font-size:10.5px;color:var(--text-muted);">${o.rooms.length} room types</span>` : ''}
-        </div>
-      </td>
-      <td style="text-align:center;">${durPill(p.duration)}</td>
-      <td>
-        <div style="line-height:1.3;font-family:var(--font-mono);font-size:11px;">
-          <div>${dayMon(p.departureDate) || '—'}</div>
-          <div style="color:var(--text-muted);">${dayMon(p.returnDate) || ''}</div>
-        </div>
-      </td>
-      <td class="pkg-gateway-cell">
-        <div style="line-height:1.25;">
-          <div class="pkg-gateway-city" style="font-size:12px;">${p.gatewayCity}</div>
-          <div class="pkg-gateway-code" style="font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);">${p.gateway}</div>
-        </div>
-      </td>
-      ${metricCells(p, { editable: true, sold: totalSold, stly: totalStly, hotelFcst: totalHotelFcst })}
+    <td class="pkg-h-cell">
+      <div class="pkg-h-copy">
+        <div class="pkg-h-title">${esc(title)}</div>
+        ${sub ? `<div class="pkg-h-sub">${esc(sub)}</div>` : ''}
+      </div>
+    </td>
+  `;
+}
+
+function packageGroupCells(node, contentHtml) {
+  if (node.type === 'itinerary') {
+    return `
+      ${packageHierarchyTextCell(node.gatewayLabel || '-', node.gatewaySub || '')}
+      ${packageHierarchyTextCell(node.destinationLabel || '-', node.destinationSub || '')}
+      <td class="pkg-h-cell pkg-level-cell pkg-level-cell-1">${contentHtml}</td>
+    `;
+  }
+  const p = node.rep || {};
+  const gatewayLabel = p.gatewayCity || p.gateway || '-';
+  const gatewaySub = p.gateway && p.gateway !== gatewayLabel ? p.gateway : '';
+  const destinationLabel = p.destination || '-';
+  const destinationSub = p.region || '';
+  return `
+    ${packageHierarchyTextCell(gatewayLabel, gatewaySub)}
+    ${packageHierarchyTextCell(destinationLabel, destinationSub)}
+    <td class="pkg-h-cell pkg-level-cell pkg-level-cell-${node.level}">${contentHtml}</td>
+  `;
+}
+
+function packageGroupSubHtml(node) {
+  const count = packageScopeCount(node.leaves);
+  if (node.type === 'hotel') {
+    return `${starRating(node.rep && node.rep.hotelStars)} <span style="margin-left:6px;">${count}</span>`;
+  }
+  const bits = [];
+  if (node.sub) bits.push(esc(node.sub));
+  bits.push(count);
+  return bits.join(' &middot; ');
+}
+
+function packageGroupContent(node) {
+  const open = expandedOfferings.has(node.key);
+  return `
+    <div class="pkg-h-label">
+      <button class="expand-btn ${open ? 'open' : ''}" type="button" title="Expand"
+              onclick="event.stopPropagation();togglePackageGroup('${jsArg(node.key)}')">${chevron(open)}</button>
+      <div class="pkg-h-copy">
+        <div class="pkg-h-title">${esc(node.label)}</div>
+        <div class="pkg-h-sub">${packageGroupSubHtml(node)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function packageGroupRow(node) {
+  currentPackageGroups.set(node.key, node);
+  return `
+    <tr class="pkg-group pkg-level-${node.level}" onclick="togglePackageGroup('${jsArg(node.key)}')">
+      ${packageGroupCells(node, packageGroupContent(node))}
+      ${packageGroupMetricCells(node)}
     </tr>
   `;
 }
 
-// Child (room type) row — read-only detail. Blank room desc if none.
-function roomRow(room) {
+function packageRoomRow(node) {
+  const room = node.rep;
+  currentOfferings.set(node.key, { rep: room });
   const desc = room.roomCategory
-    ? `${room.roomCategory}${room.mealPlan ? ` <span style="color:var(--text-muted);">· ${room.mealPlan}</span>` : ''}`
-    : '<span style="color:var(--border-mid);">— no room type —</span>';
+    ? `${esc(room.roomCategory)}${room.mealPlan ? ` <span style="color:var(--text-muted);">&middot; ${esc(room.mealPlan)}</span>` : ''}`
+    : '<span style="color:var(--border-mid);">- no room type -</span>';
+  const sub = room.packageName && room.packageName !== room.roomCategory
+    ? `<div class="pkg-h-sub">${esc(room.packageName)}</div>`
+    : '';
+  const content = `
+    <div class="pkg-room-cell">
+      <div class="pkg-h-title">${room.hasCostChange ? '<span class="cost-change-icon" title="Cost change since last evaluation" style="margin-right:5px;">&#9888;</span>' : ''}${desc}</div>
+      ${sub}
+    </div>
+  `;
   return `
-    <tr class="pkg-child">
-      <td></td>
-      <td style="padding-left:28px;"><span style="font-size:11.5px;color:var(--text-secondary);">${desc}</span></td>
-      <td></td><td></td><td></td>
-      ${metricCells(room, { editable: false, sold: null })}
+    <tr class="pkg-room-row" onclick="openBookingPanel('${jsArg(node.key)}')">
+      ${packageGroupCells(node, content)}
+      ${metricCells(room, { editable: true, sold: room.soldPackages, stly: room.soldStly, hotelFcst: room.hotelForecast })}
     </tr>
   `;
+}
+
+function renderPackageNodes(nodes, rows) {
+  nodes.forEach(node => {
+    if (node.type === 'room') {
+      rows.push(packageRoomRow(node));
+      return;
+    }
+    rows.push(packageGroupRow(node));
+    if (expandedOfferings.has(node.key)) renderPackageNodes(node.children, rows);
+  });
 }
 
 function renderPackagesTable() {
@@ -1386,34 +1840,23 @@ function renderPackagesTable() {
     return;
   }
 
-  const offerings = sortedOfferings(buildOfferings(leaves));
-  currentOfferings = new Map(offerings.map(o => [o.key, o]));
-  const rendered = offerings.slice(0, visibleRowLimit);
+  const tree = sortPackageNodes(buildPackageTree(leaves));
+  currentOfferings = new Map();
+  currentPackageGroups = new Map();
   const rows = [];
-  rendered.forEach(o => {
-    rows.push(offeringRow(o));
-    if (expandedOfferings.has(o.key)) o.rooms.forEach(room => rows.push(roomRow(room)));
-  });
-
-  if (offerings.length > rendered.length) {
-    const nextCount = Math.min(offerings.length, rendered.length + ROW_RENDER_BATCH);
-    rows.push(`
-      <tr>
-        <td colspan="${COLSPAN}" style="padding:14px 16px;text-align:center;color:var(--text-secondary);">
-          Showing ${rendered.length.toLocaleString()} of ${offerings.length.toLocaleString()} hotel offerings.
-          <button class="btn btn-ghost" style="margin-left:10px;" onclick="showMorePackages()">Show next ${(nextCount - rendered.length).toLocaleString()}</button>
-        </td>
-      </tr>
-    `);
-  }
+  renderPackageNodes(tree, rows);
 
   tbody.innerHTML = rows.join('');
 }
 
-function toggleOffering(key) {
+function togglePackageGroup(key) {
   if (expandedOfferings.has(key)) expandedOfferings.delete(key);
   else expandedOfferings.add(key);
   renderPackagesTable();
+}
+
+function toggleOffering(key) {
+  togglePackageGroup(key);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1586,36 +2029,72 @@ function showMorePackages() {
 /* ══════════════════════════════════════════════════════════════════
    Inline price edit / accept rec / lock
    ══════════════════════════════════════════════════════════════════ */
-function updatePrice(pkgId, value) {
-  const v = Number(value);
-  if (isNaN(v)) return;
-  priceOverrides[pkgId] = v;
-  acceptedRecs.delete(pkgId);
+function packageScopeLeaves(scopeKey) {
+  const group = currentPackageGroups.get(scopeKey);
+  if (group) return group.leaves || [];
+  const p = packageIndex.byId.get(scopeKey);
+  return p ? [p] : [];
+}
+
+function applyPackagePriceChange(scopeKey, changeOrFn) {
+  const leaves = packageScopeLeaves(scopeKey).filter(pkg => !lockedPkgs.has(pkg.id));
+  if (!leaves.length) return;
+  leaves.forEach(pkg => {
+    const rawChange = typeof changeOrFn === 'function' ? changeOrFn(pkg) : changeOrFn;
+    const change = Number(rawChange);
+    if (!Number.isFinite(change) || Math.abs(change) < 0.5) delete priceOverrides[pkg.id];
+    else priceOverrides[pkg.id] = Math.max(0, Math.round(pkg.currentPrice + change));
+    acceptedRecs.delete(pkg.id);
+    rejectedRecs.delete(pkg.id);
+  });
   priceRevision++;
   renderPackagesTable();
 }
-// Price and margin are linked by margin = price - totalCost. Price is the single
-// source of truth (priceOverrides), so a margin edit back-solves the price.
-function updateMargin(pkgId, value) {
-  const v = Number(value);
-  if (isNaN(v)) return;
-  const p = packageIndex.byId.get(pkgId);
-  if (!p) return;
-  priceOverrides[pkgId] = v + p.totalCost;
-  acceptedRecs.delete(pkgId);
+
+function updatePackagePriceChangeDollar(scopeKey, value) {
+  const change = value === '' ? 0 : Number(value);
+  if (!Number.isFinite(change)) return;
+  applyPackagePriceChange(scopeKey, change);
+}
+
+function updatePackagePriceChangePct(scopeKey, value) {
+  const pct = value === '' ? 0 : Number(value);
+  if (!Number.isFinite(pct)) return;
+  applyPackagePriceChange(scopeKey, pkg => pkg.currentPrice * (pct / 100));
+}
+
+function acceptRec(scopeKey) {
+  const leaves = packageScopeLeaves(scopeKey).filter(pkg => !lockedPkgs.has(pkg.id));
+  if (!leaves.length) return;
+  leaves.forEach(pkg => {
+    priceOverrides[pkg.id] = pkg.recPrice;
+    acceptedRecs.add(pkg.id);
+    rejectedRecs.delete(pkg.id);
+  });
   priceRevision++;
   renderPackagesTable();
 }
-function acceptRec(pkgId) {
-  const p = packageIndex.byId.get(pkgId);
-  if (!p) return;
-  priceOverrides[pkgId] = p.recPrice;
-  acceptedRecs.add(pkgId);
+
+function rejectRec(scopeKey) {
+  const leaves = packageScopeLeaves(scopeKey).filter(pkg => !lockedPkgs.has(pkg.id));
+  if (!leaves.length) return;
+  leaves.forEach(pkg => {
+    delete priceOverrides[pkg.id];
+    acceptedRecs.delete(pkg.id);
+    rejectedRecs.add(pkg.id);
+  });
   priceRevision++;
   renderPackagesTable();
 }
-function toggleLock(pkgId) {
-  lockedPkgs.has(pkgId) ? lockedPkgs.delete(pkgId) : lockedPkgs.add(pkgId);
+
+function toggleLock(scopeKey) {
+  const leaves = packageScopeLeaves(scopeKey);
+  if (!leaves.length) return;
+  const allLocked = leaves.every(pkg => lockedPkgs.has(pkg.id));
+  leaves.forEach(pkg => {
+    if (allLocked) lockedPkgs.delete(pkg.id);
+    else lockedPkgs.add(pkg.id);
+  });
   renderPackagesTable();
 }
 
@@ -1669,15 +2148,21 @@ function savePkgRules() {
 /* ══════════════════════════════════════════════════════════════════
    Notes modal
    ══════════════════════════════════════════════════════════════════ */
-function openNotesModal(pkgId) {
-  activeNoteKey = pkgId;
-  const p = packageIndex.byId.get(pkgId);
-  document.getElementById('notesModalSub').textContent = p ? `${p.packageName} · ${p.checkInWeek}` : pkgId;
-  const existing = notes[pkgId];
+function openNotesModal(scopeKey) {
+  activeNoteKey = scopeKey;
+  const p = packageIndex.byId.get(scopeKey);
+  const group = currentPackageGroups.get(scopeKey);
+  const subtitle = p
+    ? `${p.packageName} - ${p.checkInWeek}`
+    : group
+      ? `${group.label} - ${packageScopeCount(group.leaves)}`
+      : scopeKey;
+  document.getElementById('notesModalSub').textContent = subtitle;
+  const existing = notes[scopeKey];
   document.getElementById('notesText').value       = existing ? existing.text : '';
   document.getElementById('notesExpiry').value     = existing ? existing.expires : '';
   document.getElementById('notesCreatedBy').value  = existing ? existing.createdBy : 'Sarah Chen';
-  document.getElementById('notesCreatedAt').textContent = existing ? `Created: ${existing.createdAt}` : 'Created: —';
+  document.getElementById('notesCreatedAt').textContent = existing ? `Entered: ${existing.createdAt}` : 'Entered: -';
   document.getElementById('notesDeleteBtn').style.display = existing ? 'inline-flex' : 'none';
   document.getElementById('notesModalBackdrop').classList.add('open');
 }

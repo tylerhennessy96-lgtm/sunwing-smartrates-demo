@@ -16,19 +16,24 @@ exports from the same origin as the HTML pages, and the Docker image bakes
 - Runtime data source: committed CSV files in `data/`
 - Browser network access: same-origin static assets and CSVs only
 
-## Required CSV Files
+## Required Runtime Data
 
-The app expects these files to exist in `data/`:
+The active Packages workflow expects these committed files to exist in `data/`:
 
 | File | Primary date field | Used by |
 | --- | --- | --- |
-| `v_hotel_pricing_pg.csv` | `week_start` | Hotel page |
-| `v_flight_pricing_pg.csv` | `departure_date` | Flight page |
-| `v_flight_booking_curve_pg.csv` | `departure_date` | Flight booking curves |
 | `v_package_pricing_pg.csv` | `departure_date` | Packages page |
+| `curves_outbound.json` | generated | Outbound booking curves |
+| `curves_inbound.json` | generated | Inbound booking curves |
+| `curves_hotel.json` | generated | Hotel booking curves |
 
-The committed demo window is July 1, 2026 through September 30, 2026 inclusive.
-The loader and CI validation both enforce that window.
+The raw booking-curve CSV exports are local build inputs and are ignored because
+they are too large for the static repo/image. Regenerate the committed compact
+JSON after replacing those raw exports:
+
+```powershell
+python .\scripts\build_booking_curves.py
+```
 
 ## Local Run
 
@@ -58,18 +63,19 @@ python .\scripts\validate_csv_contract.py
 ```
 
 The validator checks that each required CSV exists, contains the required
-columns, has at least one row, and stays inside the July-September 2026 demo
-window.
+columns, has at least one row, and has parseable package dates.
 
 ## Data Refresh Process
 
-1. Export the four CSV files from the approved source.
+1. Export the package pricing CSV and raw booking-curve CSVs from the approved
+   source.
 2. Sanitize the files so they contain no secrets, credentials, customer PII, or
    non-demo data.
-3. Trim the files to the approved demo window.
-4. Replace the files in `data/`.
+3. Replace `data/v_package_pricing_pg.csv` and the local raw curve CSVs in
+   `data/`.
+4. Run `python .\scripts\build_booking_curves.py`.
 5. Run `python .\scripts\validate_csv_contract.py`.
-6. Start the local server and smoke-test the main pages.
+6. Start the local server and smoke-test `pricing.html`.
 
 No real database credentials, AWS values, secret ARNs, or personal-user details
 belong in this repository.
