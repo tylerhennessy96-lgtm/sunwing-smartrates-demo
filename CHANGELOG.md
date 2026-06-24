@@ -12,6 +12,27 @@ Format:
 
 ---
 
+## 2026-06-24 — Package accordion, bulk controls, and data refresh
+- Reworked `data/pricing.html` around the Packages workflow: the accordion now
+  groups by Gateway / Destination / Dates, then expands to hotels and room
+  types; Gateway and Destination labels repeat on child rows for easier scanning.
+- Added package price-change controls and accept/reject/note actions at group
+  and room levels so RMs can apply bulk overrides. Removed the visible lock icon
+  from package row actions.
+- Group rows now aggregate child metrics instead of showing placeholders:
+  sold/pickup/hotel forecast sum, flight forecasts average, price/recommended
+  price/delta minimums, current/recommended/margin-delta averages, and Pace as
+  the worst child status.
+- Refreshed the package pricing CSV (`data/v_package_pricing_pg.csv`, 29,095
+  rows) and rebuilt the compact booking-curve JSONs from the latest raw curve
+  exports (`curves_outbound.json`, `curves_inbound.json`, `curves_hotel.json`).
+- Added `data/EXAMPLE.html` / `data/EXAMPLE.css` as a reference styling snapshot
+  and used its table/accordion treatment to tighten row hierarchy styling without
+  adding external runtime dependencies.
+- Why: support package-level bulk pricing decisions, make aggregation visible at
+  every accordion level, refresh the static demo data, and keep the package table
+  more compact and scannable.
+
 ## 2026-06-18 — Wire packages loader to the new CSV schema
 - Re-pointed `data-loader.js` to the renamed package columns so the table
   populates again: Sold → `hotel_current_booked_room_nights`, Out/Ret Fcst →
