@@ -785,8 +785,8 @@
       outboundForecastLf: num(r.outbound_flight_forecast_final_lf),
       returnForecastLf: num(r.return_flight_forecast_final_lf),
       pickupPax1d: num(r.pickup_pax_1d),
+      pickupPax3d: num(r.pickup_pax_3d),
       pickupPax7d: num(r.pickup_pax_7d),
-      pickupPax14d: num(r.pickup_pax_14d),
     };
   }
 

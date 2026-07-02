@@ -2315,8 +2315,6 @@ function renderRecsHead() {
       <th class="text-right" style="width:85px;cursor:pointer;user-select:none;" onclick="toggleTopSort()" title="Sort by forecast LF">Forecast<span class="th-sub">LF % <span class="sort-ind">${arrow}</span></span></th>
       <th class="text-right" style="width:80px;">Current<span class="th-sub">LF %</span></th>
       <th class="text-right" style="width:90px;">Current<span class="th-sub">Fare $</span></th>
-      <th class="text-right" style="width:80px;">Chg<span class="th-sub">$</span></th>
-      <th class="text-right" style="width:80px;">Chg<span class="th-sub">%</span></th>
       <th class="text-right" style="width:90px;">Rec<span class="th-sub">Fare $</span></th>
       <th class="text-right" style="width:80px;">Delta<span class="th-sub">$</span></th>
       <th class="text-right" style="width:90px;">Current<span class="th-sub">Margin $</span></th>
@@ -2396,8 +2394,7 @@ function renderRecsTable() {
           <td class="text-right num">${dwAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${dwAgg.capacity.toLocaleString()}</td>
           <td class="text-right">${lfPill(dwAgg.forecastLF)}</td>
           <td class="text-right">${lfText(dwAgg.lf)}</td>
-          <td class="text-right${Math.abs(_fltScopeAvg('dw', dest.id, weekIdx).avgChange) >= 0.5 ? ' cur-pink' : ''}">${fmt$(dwAgg.avgCurrentFare + _fltScopeAvg('dw', dest.id, weekIdx).avgChange)}</td>
-          ${_fltChgCells('dw', dest.id, weekIdx, '', '', '')}
+          <td class="text-right">${fmt$(dwAgg.avgCurrentFare)}</td>
           <td class="text-right highlight-teal${dwAgg.deltaFare < 0 ? ' rec-down' : ''}">${fmt$(dwAgg.avgRecFare)}</td>
           <td class="text-right">${deltaCell(dwAgg.deltaFare)}</td>
           <td class="text-right num">${fmt$(dwAgg.avgCurrentMargin)}</td>
@@ -2405,7 +2402,7 @@ function renderRecsTable() {
           <td class="text-right">${deltaCell(dwAgg.deltaMargin)}</td>
           <td class="text-right">${ratioBadge(ratio)}</td>
           <td class="text-right">${hOcc != null ? lfPill(hOcc) : '<span class="text-muted">—</span>'}</td>
-          <td class="flags-cell">${dwAgg.hasAlert ? '<span class="cost-change-flag" title="Alerts in this week">⚠️</span>' : ''}</td>
+          <td class="flags-cell"></td>
           ${_dwCapAlertTD(dest, weekIdx)}
           <td>
             <span class="pkg-action-icons" style="display:inline-flex;align-items:center;gap:6px;">
@@ -2430,9 +2427,6 @@ function renderRecsTable() {
         const routeKey = `${dest.id}::${weekIdx}::${route.id}`;
         const routeOpen = expandedRoutes.has(routeKey);
         const rAgg = aggDates([date]);
-        const rosAheadRoute = date.rateOfSale >= date.rateOfSaleTarget;
-        const routeAlert = !rosAheadRoute || date.forecastLF < date.targetLF;
-
         entryRows.push(`
           <tr class="row-bedtype clickable" onclick="toggleRoute('${routeKey}')" style="cursor:pointer;">
             <td>
@@ -2445,8 +2439,7 @@ function renderRecsTable() {
             <td class="text-right num">${rAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${rAgg.capacity.toLocaleString()}</td>
             <td class="text-right">${lfPill(rAgg.forecastLF)}</td>
             <td class="text-right">${lfText(rAgg.lf)}</td>
-            <td class="text-right${Math.abs(_fltScopeAvg('rt', dest.id, weekIdx, route.id).avgChange) >= 0.5 ? ' cur-pink' : ''}">${fmt$(rAgg.avgCurrentFare + _fltScopeAvg('rt', dest.id, weekIdx, route.id).avgChange)}</td>
-            ${_fltChgCells('rt', dest.id, weekIdx, route.id, '', '')}
+            <td class="text-right">${fmt$(rAgg.avgCurrentFare)}</td>
             <td class="text-right highlight-teal${rAgg.deltaFare < 0 ? ' rec-down' : ''}">${fmt$(rAgg.avgRecFare)}</td>
             <td class="text-right">${deltaCell(rAgg.deltaFare)}</td>
             <td class="text-right num">${fmt$(rAgg.avgCurrentMargin)}</td>
@@ -2454,7 +2447,7 @@ function renderRecsTable() {
             <td class="text-right">${deltaCell(rAgg.deltaMargin)}</td>
             <td class="text-muted">—</td>
             <td class="text-muted">—</td>
-            <td class="flags-cell">${routeAlert ? '<span class="cost-change-flag" title="Alerts on this route">⚠️</span>' : ''}</td>
+            <td class="flags-cell"></td>
             ${_capAlertTD(!!date.capacityAlert)}
             <td></td>
           </tr>
@@ -2475,7 +2468,6 @@ function renderRecsTable() {
           const blendRecMargin  = day.recMargin || 0;
           const blendForecast = day.forecastLF;
 
-          const hasNote    = !!notes[day.id];
           const dayAnyAuto = !!day.autoChanged || !!(day.economy && day.economy.autoChanged) || !!(day.business && day.business.autoChanged);
 
           entryRows.push(`
@@ -2489,8 +2481,7 @@ function renderRecsTable() {
               <td class="text-right num">${totalSold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${totalCap.toLocaleString()}</td>
               <td class="text-right">${lfPill(blendForecast)}</td>
               <td class="text-right">${lfText(blendLF)}</td>
-              <td class="text-right${Math.abs(_fltScopeAvg('dt', dest.id, weekIdx, route.id, day.id).avgChange) >= 0.5 ? ' cur-pink' : ''}">${fmt$(blendCurrFare + _fltScopeAvg('dt', dest.id, weekIdx, route.id, day.id).avgChange)}</td>
-              ${_fltChgCells('dt', dest.id, weekIdx, route.id, day.id, '')}
+              <td class="text-right">${fmt$(blendCurrFare)}</td>
               <td class="text-right highlight-teal${(blendRecFare - blendCurrFare) < 0 ? ' rec-down' : ''}">${fmt$(blendRecFare)}</td>
               <td class="text-right">${deltaCell(blendRecFare - blendCurrFare)}</td>
               <td class="text-right num">${fmt$(blendCurrMargin)}</td>
@@ -2500,7 +2491,6 @@ function renderRecsTable() {
               <td class="text-muted">—</td>
               <td class="flags-cell">
                 <div class="flags-inline">
-                  ${day.hasCostChange ? '<span class="cost-change-flag" title="Cost change">⚠️</span>' : ''}
                   ${dayAnyAuto        ? '<span class="badge-auto" title="One or more classes auto-adjusted">⚡ AUTO</span>' : ''}
                 </div>
               </td>
@@ -2529,7 +2519,7 @@ function renderRecsTable() {
 
   const allRows = entries.flatMap(e => e.rows);
   if (visibleDestSet.size === 0 && (advFiltersActive() || headerFiltersActive())) {
-    allRows.push('<tr><td colspan="18" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
+    allRows.push('<tr><td colspan="16" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
   }
 
   tbody.innerHTML = allRows.join('');
@@ -4284,8 +4274,6 @@ function renderCalPanel() {
       ${alerts.length ? `<div class="cdp-section"><div class="cdp-section-title">Alerts</div>${alerts.join('')}</div>` : ''}
 
       <div class="cdp-actions">
-        <button type="button" class="cdp-btn primary" onclick="cdpAcceptRec('${date.id}')">Accept Recommendation</button>
-        <button type="button" class="cdp-btn ${date.locked ? 'primary locked' : ''}" onclick="cdpToggleLock('${date.id}')">${date.locked ? '🔒 Unlock Price' : '🔒 Lock Price'}</button>
         <button type="button" class="cdp-btn" onclick="openExposure('${date.id}')">📊 View Booking Curve</button>
       </div>
     `;
@@ -4299,8 +4287,8 @@ function renderCalPanel() {
     const routeBucketDates = bucketIndices.map(i => route.dates[i]).filter(Boolean);
     const date = route.dates[weekIdx] || routeBucketDates[0];
     const agg = routeBucketDates.length ? aggDates(routeBucketDates) : null;
-    // Per-date chips for this route.
-    const dateChips = route.dates.filter(Boolean).map((d) => {
+    // Per-date chips for only the clicked calendar week/month block.
+    const dateChips = routeBucketDates.map((d) => {
       const lfPct = d.capacity ? Math.round((d.sold / d.capacity) * 100) : 0;
       const pill = lfPill(d.capacity ? d.sold / d.capacity : 0);
       return `<div class="cdp-chip-row">
@@ -4332,9 +4320,9 @@ function renderCalPanel() {
       </div>
 
       <div class="cdp-section">
-        <div class="cdp-section-title">All Flight Dates</div>
+        <div class="cdp-section-title">Flight Dates in Selection</div>
         <div class="cdp-chip-list">${dateChips}</div>
-        <a class="cdp-link" href="#" onclick="event.preventDefault();cdpExpandRoute('${dest.id}','${route.id}')">View all dates in list →</a>
+        <a class="cdp-link" href="#" onclick="event.preventDefault();cdpExpandRoute('${dest.id}','${route.id}')">View route in list →</a>
       </div>
     `;
     return;
@@ -5210,17 +5198,15 @@ function _generalFlightAnswer(q) {
     { id: 'forecastLF',    label: 'Forecast LF %',    col: 4 },
     { id: 'currentLF',     label: 'Current LF %',     col: 5 },
     { id: 'currentFare',   label: 'Current Fare $',   col: 6,  locked: true },
-    { id: 'chgDollar',     label: 'Chg $',            col: 7 },
-    { id: 'chgPct',        label: 'Chg %',            col: 8 },
-    { id: 'recFare',       label: 'Rec Fare $',       col: 9,  locked: true },
-    { id: 'deltaDollar',   label: 'Delta $',          col: 10 },
-    { id: 'currentMargin', label: 'Current Margin $', col: 11 },
-    { id: 'recMargin',     label: 'Rec Margin $',     col: 12 },
-    { id: 'marginDelta',   label: 'Margin Δ $',       col: 13 },
-    { id: 'bsRatio',       label: 'Beds/Seats',       col: 14 },
-    { id: 'hotelOcc',      label: 'Hotel Occ %',      col: 15 },
-    { id: 'flags',         label: 'Flags',            col: 16 },
-    { id: 'capAlert',      label: 'Cap. Alert',       col: 17 },
+    { id: 'recFare',       label: 'Rec Fare $',       col: 7,  locked: true },
+    { id: 'deltaDollar',   label: 'Delta $',          col: 8 },
+    { id: 'currentMargin', label: 'Current Margin $', col: 9 },
+    { id: 'recMargin',     label: 'Rec Margin $',     col: 10 },
+    { id: 'marginDelta',   label: 'Margin Δ $',       col: 11 },
+    { id: 'bsRatio',       label: 'Beds/Seats',       col: 12 },
+    { id: 'hotelOcc',      label: 'Hotel Occ %',      col: 13 },
+    { id: 'flags',         label: 'Flags',            col: 14 },
+    { id: 'capAlert',      label: 'Cap. Alert',       col: 15 },
   ];
   const columnVisibility = Object.fromEntries(COLUMN_DEFS.map(d => [d.id, true]));
   let built = false;

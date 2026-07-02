@@ -12,6 +12,21 @@ Format:
 
 ---
 
+## 2026-07-02 - Flight read-only cleanup and package table updates
+- Made the Flights tab read-only by removing visible price-adjustment columns
+  and accept/lock actions from the list/calendar detail flow.
+- Removed warning icons from the Flights Flags column and constrained calendar
+  route detail panels to only the dates in the clicked week/month cell.
+- Updated Packages to use 1/3/7 day pickup columns from the latest package CSV,
+  added margin-delta advanced filters, added package column visibility controls,
+  and removed the visible Yes/No recommendation badge from the Status column.
+- Aligned Packages load-factor conditional formatting with the Flights pill
+  style and added a fourth package booking-panel chart with mock package price
+  history plus margin-change dots.
+- Rebuilt compact booking-curve JSONs from the latest raw CSVs.
+- Why: keep Flights as a view-only diagnostic page while improving package
+  table scanability, filtering, and booking-panel storytelling.
+
 ## 2026-07-01 - New CSV schema support and hotel curve aggregation fix
 - Updated the flight CSV normalization to support the latest
   `v_flight_pricing_pg.csv` schema, including `flight_date`, missing
