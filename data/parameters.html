@@ -6,6 +6,9 @@
   <title>Parameters — Sunwing RMS</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="data.js"></script>
+  <script src="vendor/papaparse.min.js"></script>
+  <script src="data-loader.js"></script>
+  <script src="package-parameters.js"></script>
   <script src="filters.js"></script>
   <style>
     /* ── Page shell ─────────────────────────────────────────── */
@@ -263,7 +266,8 @@
       font-family: var(--font-mono);
       font-size: 12px;
     }
-    .val-wrap input[type="number"] {
+    .val-wrap input[type="number"],
+    .val-wrap input[type="date"] {
       width: 54px;
       padding: 2px 5px;
       border: 1px solid transparent;
@@ -277,10 +281,18 @@
       transition: background .1s, border-color .1s;
       -moz-appearance: textfield;
     }
+    .val-wrap input[type="date"] {
+      width: 118px;
+      text-align: left;
+      font-family: var(--font-sans);
+      color-scheme: light;
+    }
     .val-wrap input[type="number"]::-webkit-outer-spin-button,
     .val-wrap input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .val-wrap input[type="number"]:hover { background: #f3f4f6; border-color: var(--border); }
-    .val-wrap input[type="number"]:focus { background: #fff; border-color: var(--accent); }
+    .val-wrap input[type="number"]:hover,
+    .val-wrap input[type="date"]:hover { background: #f3f4f6; border-color: var(--border); }
+    .val-wrap input[type="number"]:focus,
+    .val-wrap input[type="date"]:focus { background: #fff; border-color: var(--accent); }
     .val-prefix, .val-suffix { color: var(--text-muted); font-size: 11px; }
 
     select.sev-select, select.enum-select {
@@ -360,6 +372,351 @@
       background: #d1d5db; border-color: #d1d5db; cursor: not-allowed;
     }
     .save-fab .btn-primary:hover:not(:disabled) { background: var(--accent-dim); border-color: var(--accent-dim); }
+
+    /* Package parameter accordions */
+    .pkg-param-panel {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .pkg-param-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #fafbfc;
+      border-bottom: 1px solid var(--border);
+    }
+    .pkg-param-head-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .pkg-param-head-sub {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .pkg-param-table-wrap { overflow: auto; }
+    table.pkg-param-table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-family: var(--font-sans);
+      font-size: 12px;
+    }
+    table.pkg-param-table th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--text-secondary);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+    table.pkg-param-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    table.pkg-param-table tbody tr:hover td { background: var(--row-hover); }
+    table.pkg-param-table tbody tr.row-defaults td {
+      background: #fff7fb;
+      font-weight: 600;
+    }
+    table.pkg-param-table tbody tr.depth-1 td {
+      background: #fff;
+      font-weight: 600;
+    }
+    table.pkg-param-table tbody tr.depth-2 td {
+      background: #fafbfc;
+    }
+    table.pkg-param-table tbody tr.depth-3 td {
+      background: #fff;
+    }
+    table.pkg-param-table tbody tr.depth-4 td {
+      background: #fff;
+      color: var(--text-secondary);
+    }
+    .pkg-param-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .pkg-param-name-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 360px;
+    }
+    .pkg-param-meta {
+      color: var(--text-muted);
+      font-size: 10.5px;
+      font-weight: 400;
+      margin-left: 4px;
+    }
+    .pkg-param-reset {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text-secondary);
+      height: 26px;
+      padding: 0 9px;
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .pkg-param-reset:hover { border-color: var(--accent); color: var(--accent); }
+    .pkg-param-field.inherit .val-wrap,
+    .pkg-param-field.inherit .inline-toggle {
+      opacity: .62;
+    }
+    .pkg-param-field .inh-mark {
+      color: var(--text-muted);
+      font-size: 9px;
+      margin-left: 4px;
+    }
+    .pkg-param-field .over-dot {
+      display: inline-block;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+    .pkg-param-empty {
+      margin-top: 18px;
+      padding: 40px;
+      text-align: center;
+      color: var(--text-muted);
+      border: 1px dashed var(--border-mid);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .rules-shell {
+      display: flex;
+      min-height: calc(100vh - 210px);
+      background: var(--body-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .rules-list-pane {
+      width: 380px;
+      min-width: 380px;
+      background: #fff;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .rules-list-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .rules-list-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .btn-sm { padding: 5px 11px; font-size: 11.5px; }
+    .rules-list { flex: 1; overflow-y: auto; padding: 10px 12px; }
+    .rule-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 13px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .rule-card:hover { border-color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .rule-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232,0,125,.15); }
+    .rule-card .rc-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+    .rule-card .rc-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+    .rule-status {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .rule-status.rs-active { background: rgba(232,0,125,0.12); color: #c2185b; }
+    .rule-status.rs-inactive { background: #f3f4f6; color: var(--text-secondary); }
+    .rule-status.rs-draft { background: rgba(245,166,35,0.14); color: #b45309; }
+    .rule-card .rc-meta { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+    .rule-card .rc-cond {
+      font-size: 10.5px;
+      color: var(--text-primary);
+      padding: 4px 7px;
+      background: #f9fafb;
+      border-radius: 3px;
+      margin-top: 4px;
+      font-family: var(--font-mono);
+    }
+    .rule-card .rc-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 10.5px;
+      color: var(--text-muted);
+    }
+    .rule-card .rc-actions { display: flex; gap: 4px; }
+    .rule-card .rc-icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .rule-card .rc-icon-btn:hover { color: var(--accent); background: #f3f4f6; }
+    .rules-editor-pane {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--body-bg);
+      padding: 22px 28px;
+    }
+    .rules-editor {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 22px 24px;
+      max-width: 760px;
+    }
+    .re-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .re-header h3 { margin: 0; font-size: 15px; font-weight: 600; }
+    .re-field { margin-bottom: 16px; }
+    .re-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 6px;
+    }
+    .re-input,
+    .re-select {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      color: var(--text-primary);
+      box-sizing: border-box;
+    }
+    .re-input:focus, .re-select:focus { outline: none; border-color: var(--accent); }
+    .re-cb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    .re-cb, .re-radio {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    .re-cb input, .re-radio input { cursor: pointer; }
+    .re-radio-list { display: flex; flex-direction: column; gap: 6px; }
+    .re-cond-row {
+      display: grid;
+      grid-template-columns: 1.5fr 0.8fr 1fr auto;
+      gap: 8px;
+      margin-bottom: 7px;
+      align-items: center;
+    }
+    .re-cond-row .re-x {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 16px;
+      padding: 0 6px;
+    }
+    .re-cond-row .re-x:hover { color: #ef4444; }
+    .re-add-cond {
+      background: none;
+      border: 1px dashed var(--border);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11.5px;
+    }
+    .re-add-cond:hover { border-color: var(--accent); color: var(--accent); }
+    .re-action-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px; }
+    .re-guardrails { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+    .re-footer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 18px;
+    }
+    .re-footer .spacer { flex: 1; }
+    .btn-teal {
+      background: var(--accent);
+      color: #fff;
+      border: 1px solid var(--accent);
+      padding: 7px 16px;
+      border-radius: 4px;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-teal:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
+    .toggle-sw { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .toggle-sw input { display: none; }
+    .toggle-sw .sl { position: absolute; inset: 0; background: #cbd5e1; border-radius: 20px; transition: .2s; }
+    .toggle-sw .sl::before {
+      content: '';
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transition: .2s;
+    }
+    .toggle-sw input:checked + .sl { background: var(--accent); }
+    .toggle-sw input:checked + .sl::before { transform: translateX(16px); }
   </style>
 </head>
 <body>
@@ -450,7 +807,7 @@
 
     <!-- LEFT: categorized nav -->
     <aside class="param-sidebar" id="paramSidebar">
-      <div class="param-nav-group open" data-group="flights">
+      <div class="param-nav-group" data-group="flights">
         <button class="param-nav-header" type="button" onclick="toggleNavGroup('flights')">
           <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 7l12-5-3 12-3-5-3-1z"/></svg>
           <span>Flights</span>
@@ -476,7 +833,7 @@
           <a class="param-nav-item" data-section="hotels.los"       onclick="selectSection('hotels.los')">Length of Stay</a>
         </div>
       </div>
-      <div class="param-nav-group" data-group="packages">
+      <div class="param-nav-group open" data-group="packages">
         <button class="param-nav-header" type="button" onclick="toggleNavGroup('packages')">
           <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><polygon points="7,1 13,4 13,10 7,13 1,10 1,4"/><line x1="7" y1="7" x2="7" y2="13"/><polyline points="1,4 7,7 13,4"/></svg>
           <span>Packages</span>
@@ -485,6 +842,7 @@
         <div class="param-nav-items">
           <a class="param-nav-item" data-section="packages.autopilot" onclick="selectSection('packages.autopilot')">Autopilot</a>
           <a class="param-nav-item" data-section="packages.alerts"    onclick="selectSection('packages.alerts')">Alerts</a>
+          <a class="param-nav-item" data-section="packages.rules"     onclick="selectSection('packages.rules')">Package Rules</a>
           <a class="param-nav-item" data-section="packages.price"     onclick="selectSection('packages.price')">Price Controls</a>
         </div>
       </div>
@@ -532,6 +890,7 @@ const SECTIONS = {
   'hotels.los':         { tab: 'hotel',   groups: ['los'],                       title: 'Hotel Length of Stay',   subtitle: 'Length-of-stay uplifts, discounts, and min/max night bounds.' },
   'packages.autopilot': { tab: 'package', groups: ['autopilot'],                 title: 'Package Autopilot',      subtitle: 'Auto-apply rec package-price adjustments within safe bounds.' },
   'packages.alerts':    { tab: 'package', groups: ['lfAlert','fcAlert','mgAlert'], title: 'Package Alerts',         subtitle: 'Thresholds for LF, forecast, and margin alerts.' },
+  'packages.rules':     { tab: 'package', groups: ['rules'],                    title: 'Package Rules',          subtitle: 'Date-scoped package guardrails, lock rules, and review thresholds.' },
   'packages.price':     { tab: 'package', groups: ['margin','price'],            title: 'Package Price Controls', subtitle: 'Minimum / maximum package prices and margin guardrails.' },
   'system.cost':        { stub: true,                                            title: 'Cost Change Rules',      subtitle: 'How supplier cost changes flow into pricing recommendations.' },
   'system.rollback':    { stub: true,                                            title: 'Rollback & History',     subtitle: 'Published-change audit log and rollback controls.' },
@@ -540,12 +899,56 @@ const SECTIONS = {
 /* ══════════════════════════════════════════════════════════════════
    State
    ══════════════════════════════════════════════════════════════════ */
-let activeSection = 'flights.autopilot';
+let activeSection = 'packages.alerts';
 const expanded    = new Set();  // `${tab}::${destId}` or `${tab}::${destId}::${midId}`
 const dirtyKeys   = new Set();  // `${tab}::${pathStr}::${field}`
+let packageParamState = window.PackageParameters ? PackageParameters.load() : null;
+let packageParamRows = [];
 
 const MID_KEY   = { flight: 'routes',   hotel: 'hotels', package: 'gateways' };
 const GRAND_KEY = { flight: 'classes',  hotel: 'rooms',  package: 'packages' };
+
+const PACKAGE_ALERT_FIELDS = [
+  { key: 'enabled', label: 'On', type: 'toggle' },
+  { key: 'outFcstMin', label: 'OUT FCST min', type: 'pct' },
+  { key: 'retFcstMin', label: 'RET FCST min', type: 'pct' },
+  { key: 'hotelFcstMin', label: 'HOTEL FCST min', type: 'int' },
+  { key: 'marginDeltaMin', label: 'MARGIN DELTA min', type: 'dollar' },
+  { key: 'costChangeMin', label: 'Cost change min', type: 'dollar' },
+  { key: 'pickupDailyMax', label: 'Pickup/day max', type: 'int' },
+];
+
+const PACKAGE_PRICE_FIELDS = [
+  { key: 'minPrice', label: 'Min price', type: 'dollar' },
+  { key: 'maxPrice', label: 'Max price', type: 'dollar' },
+  { key: 'minMargin', label: 'Min margin', type: 'dollar' },
+  { key: 'maxMargin', label: 'Max margin', type: 'dollar' },
+];
+
+const PACKAGE_RULE_FIELDS = [
+  { key: 'enabled', label: 'On', type: 'toggle' },
+  { key: 'startDate', label: 'Start date', type: 'date' },
+  { key: 'endDate', label: 'End date', type: 'date' },
+  { key: 'flightCategory', label: 'Flight cat.', type: 'enum', options: ['Any', 'Own Flight', 'Risk Block', '3rd Party'] },
+  { key: 'hotelClassification', label: 'Hotel class', type: 'enum', options: ['Any', 'Exclusive', 'Commodity'] },
+  { key: 'commitment', label: 'Commitment', type: 'enum', options: ['Any', 'Fully Committed', 'Allotment - Partially Committed', 'Allotment - Not Committed'] },
+  { key: 'conditionMetric', label: 'Metric', type: 'enum', options: ['LF %', 'Forecast LF %', 'Rate of Sale', 'Days to Departure', 'Margin $', 'Occ %', 'Beds:Seats Ratio', 'Always apply'] },
+  { key: 'conditionOperator', label: 'Op', type: 'enum', options: ['>', '<', '=', '>=', '<=', 'between'] },
+  { key: 'conditionValue', label: 'Trigger', type: 'number' },
+  { key: 'actionType', label: 'Action', type: 'enum', options: ['Increase margin by $', 'Decrease margin by $', 'Increase margin by %', 'Decrease margin by %', 'Set margin to $', 'Set fare to $', 'Lock price', 'Flag for review'] },
+  { key: 'actionValue', label: 'Action value', type: 'number' },
+  { key: 'maxChange', label: 'Max change', type: 'dollar' },
+  { key: 'minMargin', label: 'Min margin', type: 'dollar' },
+  { key: 'maxMargin', label: 'Max margin', type: 'dollar' },
+  { key: 'lockPrice', label: 'Lock', type: 'toggle' },
+  { key: 'reviewChangeOver', label: 'Review over', type: 'dollar' },
+  { key: 'priority', label: 'Priority', type: 'int' },
+];
+
+const PACKAGE_RULE_STORAGE_KEY = 'dynamica.packageRules.v1';
+let packageRulesState = loadPackageRulesState();
+let packageRuleDraft = null;
+let selectedPackageRuleId = null;
 
 /* ══════════════════════════════════════════════════════════════════
    Helpers
@@ -593,8 +996,540 @@ function hasOverride(node, fieldKey) {
 function coerce(field, raw) {
   if (field.type === 'toggle') return !!raw;
   if (field.type === 'sev' || field.type === 'enum') return String(raw);
+  if (field.type === 'date' || field.type === 'text') return String(raw || '');
   const n = Number(raw);
   return isNaN(n) ? 0 : n;
+}
+
+function escParam(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch]));
+}
+
+function jsParamArg(value) {
+  return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function flattenPackageRows() {
+  const rows = [];
+  PACKAGE_DATA.forEach(dest => {
+    dest.checkInWeeks.forEach(wk => {
+      wk.gateways.forEach(gw => {
+        gw.durations.forEach(pkg => {
+          pkg.gatewayCity = pkg.gatewayCity || gw.gatewayCity || pkg.gateway;
+          pkg.weekLabel = pkg.weekLabel || wk.label || pkg.checkInWeek;
+          pkg.weekStartIso = pkg.weekStartIso || wk.weekStartIso;
+          rows.push(pkg);
+        });
+      });
+    });
+  });
+  packageParamRows = rows;
+  return rows;
+}
+
+function dateLabelForParam(pkg) {
+  const out = dayMonParam(pkg.departureDate);
+  const ret = dayMonParam(pkg.returnDate);
+  return out && ret ? `${out} - ${ret}` : (out || ret || '-');
+}
+
+function dayMonParam(dateText) {
+  const s = String(dateText || '').trim();
+  const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return s;
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return `${months[Number(m[2]) - 1] || m[2]} ${Number(m[3])}`;
+}
+
+function buildPackageParamTree() {
+  const regionMap = new Map();
+  flattenPackageRows().forEach(pkg => {
+    const keys = PackageParameters.keysForPackage(pkg);
+    if (!regionMap.has(keys.region)) {
+      regionMap.set(keys.region, {
+        key: keys.region,
+        name: pkg.region || '-',
+        sample: pkg,
+        destinations: new Map(),
+      });
+    }
+    const region = regionMap.get(keys.region);
+    if (!region.destinations.has(keys.destination)) {
+      region.destinations.set(keys.destination, {
+        key: keys.destination,
+        name: pkg.destination || '-',
+        sample: pkg,
+        dates: new Map(),
+      });
+    }
+    const dest = region.destinations.get(keys.destination);
+    if (!dest.dates.has(keys.date)) {
+      dest.dates.set(keys.date, {
+        key: keys.date,
+        name: dateLabelForParam(pkg),
+        meta: `${pkg.duration || '-'}N`,
+        sample: pkg,
+        hotels: new Map(),
+      });
+    }
+    const date = dest.dates.get(keys.date);
+    if (!date.hotels.has(keys.hotel)) {
+      date.hotels.set(keys.hotel, {
+        key: keys.hotel,
+        name: pkg.hotel || '-',
+        sample: pkg,
+        count: 0,
+      });
+    }
+    date.hotels.get(keys.hotel).count += 1;
+  });
+  return Array.from(regionMap.values())
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(region => {
+      region.destinations = Array.from(region.destinations.values()).sort((a, b) => a.name.localeCompare(b.name));
+      region.destinations.forEach(dest => {
+        dest.dates = Array.from(dest.dates.values()).sort((a, b) => String(a.sample.departureDate).localeCompare(String(b.sample.departureDate)));
+        dest.dates.forEach(date => {
+          date.hotels = Array.from(date.hotels.values()).sort((a, b) => a.name.localeCompare(b.name));
+        });
+      });
+      return region;
+    });
+}
+
+function packageBucketName(scope) {
+  return {
+    region: 'regions',
+    destination: 'destinations',
+    date: 'dates',
+    hotel: 'hotels',
+  }[scope];
+}
+
+function packageOverride(area, scope, key, create) {
+  const root = packageParamState && packageParamState[area];
+  if (!root) return null;
+  if (scope === 'defaults') return root.defaults;
+  const bucket = packageBucketName(scope);
+  if (!bucket) return null;
+  if (create && !root[bucket][key]) root[bucket][key] = {};
+  return root[bucket][key] || {};
+}
+
+function packageEffective(area, node, scope) {
+  if (area === 'alerts') {
+    if (scope === 'defaults') return packageParamState.alerts.defaults;
+    return PackageParameters.effectiveAlerts(packageParamState, node.sample);
+  }
+  if (area === 'rules') {
+    if (scope === 'defaults') return packageParamState.rules.defaults;
+    return PackageParameters.effectiveRules(packageParamState, node.sample);
+  }
+  if (scope === 'defaults') return packageParamState.price.defaults;
+  return PackageParameters.effectivePrice(packageParamState, node.sample);
+}
+
+function packageParamFields(area) {
+  if (area === 'alerts') return PACKAGE_ALERT_FIELDS;
+  if (area === 'rules') return PACKAGE_RULE_FIELDS;
+  return PACKAGE_PRICE_FIELDS;
+}
+
+function renderPackageParamField(area, scope, key, node, field) {
+  const effective = packageEffective(area, node, scope);
+  const override = packageOverride(area, scope, key, false);
+  const isDefaults = scope === 'defaults';
+  const isOver = !isDefaults && Object.prototype.hasOwnProperty.call(override, field.key);
+  const isInherit = !isDefaults && !isOver;
+  const value = effective[field.key];
+  const safeKey = jsParamArg(key);
+  const onchange = `onchange="editPackageParam('${area}','${scope}','${safeKey}','${field.key}',${field.type === 'toggle' ? 'this.checked' : 'this.value'},'${field.type}')"`;
+  let control = '';
+  if (field.type === 'toggle') {
+    control = `<label class="inline-toggle" onclick="event.stopPropagation()">
+      <input type="checkbox" ${value ? 'checked' : ''} ${onchange}>
+      <span class="slider"></span>
+    </label>`;
+  } else if (field.type === 'pct') {
+    control = `<span class="val-wrap"><input type="number" step="1" value="${escParam(value)}" ${onchange}><span class="val-suffix">%</span></span>`;
+  } else if (field.type === 'dollar') {
+    control = `<span class="val-wrap"><span class="val-prefix">$</span><input type="number" step="1" value="${escParam(value)}" ${onchange}></span>`;
+  } else if (field.type === 'date') {
+    control = `<span class="val-wrap"><input type="date" value="${escParam(value)}" ${onchange}></span>`;
+  } else if (field.type === 'enum') {
+    control = `<select class="enum-select" onclick="event.stopPropagation()" ${onchange}>
+      ${(field.options || []).map(opt => `<option value="${escParam(opt)}" ${String(value) === String(opt) ? 'selected' : ''}>${escParam(opt)}</option>`).join('')}
+    </select>`;
+  } else {
+    control = `<span class="val-wrap"><input type="number" step="1" value="${escParam(value)}" ${onchange}></span>`;
+  }
+  const marker = isInherit ? '<span class="inh-mark" title="Inherited from parent">up</span>'
+    : (isOver ? '<span class="over-dot" title="Overridden from parent"></span>' : '');
+  return `<td class="pkg-param-field ${isInherit ? 'inherit' : isOver ? 'override' : ''}">${control}${marker}</td>`;
+}
+
+function renderPackageParamRow(area, scope, node, depth, hasChildren) {
+  const fields = packageParamFields(area);
+  const key = scope === 'defaults' ? 'defaults' : node.key;
+  const rowId = `${area}::${scope}::${key}`;
+  const isOpen = expanded.has(rowId);
+  const indent = depth * 18;
+  const safeRowId = jsParamArg(rowId);
+  const safeKey = jsParamArg(key);
+  const chevBtn = hasChildren
+    ? `<button class="fc-chev ${isOpen ? 'open' : ''}" onclick="event.stopPropagation();togglePackageParamNode('${safeRowId}')">${chev(isOpen)}</button>`
+    : `<span class="fc-chev placeholder">${chev(false)}</span>`;
+  const meta = node.meta ? `<span class="pkg-param-meta">${escParam(node.meta)}</span>` : '';
+  const count = node.count ? `<span class="pkg-param-meta">${node.count} room type${node.count === 1 ? '' : 's'}</span>` : '';
+  return `
+    <tr class="${scope === 'defaults' ? 'row-defaults' : `depth-${depth}`}">
+      <td>
+        <div class="pkg-param-name" style="padding-left:${indent}px;">
+          ${chevBtn}
+          <span class="pkg-param-name-text">${escParam(node.name)}</span>
+          ${meta}${count}
+        </div>
+      </td>
+      ${fields.map(field => renderPackageParamField(area, scope, key, node, field)).join('')}
+      <td><button class="pkg-param-reset" type="button" onclick="resetPackageParamScope('${area}','${scope}','${safeKey}')">Reset</button></td>
+    </tr>
+  `;
+}
+
+function renderPackageParamsTable(area) {
+  const cfg = SECTIONS[activeSection];
+  const fields = packageParamFields(area);
+  const tree = buildPackageParamTree();
+  const defaultsNode = { key: 'defaults', name: 'Global defaults', sample: packageParamRows[0] || {} };
+  const rows = [renderPackageParamRow(area, 'defaults', defaultsNode, 0, false)];
+  tree.forEach(region => {
+    const regionId = `${area}::region::${region.key}`;
+    rows.push(renderPackageParamRow(area, 'region', region, 1, region.destinations.length));
+    if (!expanded.has(regionId)) return;
+    region.destinations.forEach(dest => {
+      const destId = `${area}::destination::${dest.key}`;
+      const hasDateChildren = (area === 'price' || area === 'rules') && dest.dates.length;
+      rows.push(renderPackageParamRow(area, 'destination', dest, 2, hasDateChildren));
+      if (!hasDateChildren || !expanded.has(destId)) return;
+      dest.dates.forEach(date => {
+        const dateId = `${area}::date::${date.key}`;
+        rows.push(renderPackageParamRow(area, 'date', date, 3, date.hotels.length));
+        if (!expanded.has(dateId)) return;
+        date.hotels.forEach(hotel => rows.push(renderPackageParamRow(area, 'hotel', hotel, 4, false)));
+      });
+    });
+  });
+  const panelTitle = area === 'alerts'
+    ? 'Package Alert Configuration'
+    : area === 'rules'
+      ? 'Package Rules'
+      : 'Package Price Controls';
+  const panelSub = area === 'alerts'
+    ? 'Region and destination thresholds. Destination rows inherit from their region until edited.'
+    : area === 'rules'
+      ? 'Region, destination, date, and hotel rules. Date fields let rules apply only inside a package travel window.'
+      : 'Region, destination, date, and hotel guardrails. Hotel rows inherit from the levels above.';
+  return `
+    <h2 class="section-title">${cfg.title}</h2>
+    <div class="section-subtitle">${cfg.subtitle}</div>
+    <div class="pkg-param-panel">
+      <div class="pkg-param-head">
+        <div>
+          <div class="pkg-param-head-title">${panelTitle}</div>
+          <div class="pkg-param-head-sub">${panelSub}</div>
+        </div>
+      </div>
+      <div class="pkg-param-table-wrap">
+        <table class="pkg-param-table">
+          <thead>
+            <tr>
+              <th style="width:34%;">Scope</th>
+              ${fields.map(field => `<th>${escParam(field.label)}</th>`).join('')}
+              <th style="width:70px;">Reset</th>
+            </tr>
+          </thead>
+          <tbody>${rows.join('')}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderPackageBlank(cfg) {
+  return `
+    <h2 class="section-title">${cfg.title}</h2>
+    <div class="section-subtitle">${cfg.subtitle}</div>
+    <div class="pkg-param-empty">No package controls are configured for this section yet.</div>
+  `;
+}
+
+function loadPackageRulesState() {
+  try {
+    const raw = localStorage.getItem(PACKAGE_RULE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    console.warn('[parameters] package rules could not be read:', err);
+    return [];
+  }
+}
+
+function savePackageRulesState() {
+  localStorage.setItem(PACKAGE_RULE_STORAGE_KEY, JSON.stringify(packageRulesState));
+  dirtyKeys.add(`package::rules::${Date.now()}`);
+  updateSaveBar();
+}
+
+function ruleDestinations() {
+  const rows = flattenPackageRows();
+  return ['All'].concat(Array.from(new Set(rows.map(r => r.destination).filter(Boolean))).sort());
+}
+
+function newPackageRuleDraft() {
+  return {
+    id: 'RULE-' + String(Date.now()).slice(-6),
+    name: '',
+    status: 'Draft',
+    priority: 50,
+    startDate: '',
+    endDate: '',
+    flightCategories: [],
+    hotelClassifications: ['Any'],
+    commitment: 'Any',
+    destinations: ['All'],
+    conditionLogic: 'ALL',
+    conditions: [{ metric: 'LF %', operator: '>=', value: 80 }],
+    action: { type: 'Increase margin by $', value: 10, maxChange: 50, minMargin: null, maxMargin: null, flagForReview: false },
+    lastModified: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }),
+    modifiedBy: 'Current User',
+  };
+}
+
+function ruleSummary(rule) {
+  const cats = (rule.flightCategories || []).join('/') || 'Any flight';
+  const dest = (rule.destinations && rule.destinations[0] === 'All') ? 'All Destinations' : (rule.destinations || []).join(', ');
+  const dates = rule.startDate || rule.endDate ? `${rule.startDate || '...'} - ${rule.endDate || '...'}` : 'All dates';
+  return `${cats} - ${dest} - ${dates}`;
+}
+
+function conditionString(c) {
+  if (!c || c.metric === 'Always apply') return 'Always apply';
+  return `${c.metric} ${c.operator} ${c.value}`;
+}
+
+function actionSummary(a) {
+  if (!a) return '';
+  if (a.type === 'Lock price') return 'Lock price' + (a.flagForReview ? ' + Flag for review' : '');
+  if (a.type === 'Flag for review') return 'Flag for review';
+  if (a.type === 'Set margin to $') return `Set minimum margin to $${a.value}`;
+  if (a.type === 'Set fare to $') return `Set fare to $${a.value}`;
+  const pct = a.type.includes('%');
+  const unit = pct ? '%' : '$';
+  const dir = a.type.startsWith('Increase') ? 'Increase' : 'Decrease';
+  return `${dir} margin by ${unit === '$' ? '$' : ''}${a.value}${unit === '%' ? '%' : ''}`;
+}
+
+function renderPackageRulesBuilder() {
+  const cfg = SECTIONS[activeSection];
+  return `
+    <h2 class="section-title">${cfg.title}</h2>
+    <div class="section-subtitle">${cfg.subtitle}</div>
+    <div class="rules-shell">
+      <div class="rules-list-pane">
+        <div class="rules-list-head">
+          <div class="rules-list-title">Package Rules</div>
+          <button class="btn-primary btn-sm" type="button" onclick="newPackageRule()">+ New Rule</button>
+        </div>
+        <div class="rules-list" id="rulesList"></div>
+      </div>
+      <div class="rules-editor-pane">
+        <div class="rules-editor-empty" id="rulesEditorEmpty">
+          <div style="font-size:13px;color:var(--text-muted);text-align:center;padding:60px 20px;">
+            Select a rule to edit or click <strong>+ New Rule</strong> to create one.
+          </div>
+        </div>
+        <div class="rules-editor" id="rulesEditor" style="display:none;"></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPackageRulesList() {
+  const list = document.getElementById('rulesList');
+  if (!list) return;
+  if (!packageRulesState.length) {
+    list.innerHTML = '<div style="padding:26px 14px;text-align:center;color:var(--text-muted);font-size:12px;">No package rules yet.</div>';
+    return;
+  }
+  list.innerHTML = packageRulesState.map(rule => {
+    const sCls = rule.status === 'Active' ? 'rs-active' : rule.status === 'Draft' ? 'rs-draft' : 'rs-inactive';
+    const cond = (rule.conditions || []).map(conditionString).join(rule.conditionLogic === 'ANY' ? ' OR ' : ' AND ');
+    const active = rule.id === selectedPackageRuleId ? ' active' : '';
+    return `<div class="rule-card${active}" onclick="editPackageRule('${jsParamArg(rule.id)}')">
+      <div class="rc-top"><div class="rc-name">${escParam(rule.name || 'Untitled rule')}</div><span class="rule-status ${sCls}">${escParam(rule.status)}</span></div>
+      <div class="rc-meta">${escParam(ruleSummary(rule))}</div>
+      <div class="rc-cond">${escParam(cond)}</div>
+      <div class="rc-meta" style="margin-top:6px;">${escParam(actionSummary(rule.action))}</div>
+      <div class="rc-foot">
+        <span>Modified ${escParam(rule.lastModified || '-')} - ${escParam(rule.modifiedBy || '-')}</span>
+        <div class="rc-actions">
+          <button type="button" class="rc-icon-btn" title="Edit" onclick="event.stopPropagation();editPackageRule('${jsParamArg(rule.id)}')">Edit</button>
+          <button type="button" class="rc-icon-btn" title="Toggle active" onclick="event.stopPropagation();togglePackageRule('${jsParamArg(rule.id)}')">${rule.status === 'Active' ? 'Pause' : 'Run'}</button>
+          <button type="button" class="rc-icon-btn" title="Delete" onclick="event.stopPropagation();deletePackageRule('${jsParamArg(rule.id)}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderPackageRuleEditor() {
+  const empty = document.getElementById('rulesEditorEmpty');
+  const editor = document.getElementById('rulesEditor');
+  if (!empty || !editor) return;
+  if (!packageRuleDraft) {
+    empty.style.display = '';
+    editor.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  editor.style.display = '';
+  const d = packageRuleDraft;
+  const flightCats = ['Own Flight', 'Risk Block', '3rd Party'];
+  const hotelCls = ['Exclusive', 'Commodity', 'Any'];
+  const commitments = ['Fully Committed', 'Allotment - Partially Committed', 'Allotment - Not Committed', 'Any'];
+  const metrics = ['LF %', 'Forecast LF %', 'Rate of Sale', 'Days to Departure', 'Margin $', 'Occ %', 'Beds:Seats Ratio', 'Always apply'];
+  const ops = ['>', '<', '=', '>=', '<=', 'between'];
+  const actions = ['Increase margin by $', 'Decrease margin by $', 'Increase margin by %', 'Decrease margin by %', 'Set margin to $', 'Set fare to $', 'Lock price', 'Flag for review'];
+  const opts = (values, selected) => values.map(v => `<option value="${escParam(v)}" ${String(selected) === String(v) ? 'selected' : ''}>${escParam(v)}</option>`).join('');
+  const catCbs = flightCats.map(c => `<label class="re-cb"><input type="checkbox" ${d.flightCategories.includes(c) ? 'checked' : ''} onchange="ruleDraftToggle('flightCategories','${jsParamArg(c)}',this.checked)"> ${escParam(c)}</label>`).join('');
+  const hotelCbs = hotelCls.map(c => `<label class="re-cb"><input type="checkbox" ${d.hotelClassifications.includes(c) ? 'checked' : ''} onchange="ruleDraftToggle('hotelClassifications','${jsParamArg(c)}',this.checked)"> ${escParam(c)}</label>`).join('');
+  const commitRadios = commitments.map(c => `<label class="re-radio"><input type="radio" name="ruleCommit" ${d.commitment === c ? 'checked' : ''} onchange="ruleDraftSet('commitment','${jsParamArg(c)}')"> ${escParam(c)}</label>`).join('');
+  const destSel = `<select class="re-select" onchange="ruleDraftSet('destinations',[this.value])">${opts(ruleDestinations(), d.destinations[0] || 'All')}</select>`;
+  const condRows = (d.conditions || []).map((c, i) => `<div class="re-cond-row">
+    <select class="re-select" onchange="ruleDraftCondSet(${i},'metric',this.value)">${opts(metrics, c.metric)}</select>
+    <select class="re-select" onchange="ruleDraftCondSet(${i},'operator',this.value)" ${c.metric === 'Always apply' ? 'disabled' : ''}>${opts(ops, c.operator)}</select>
+    <input class="re-input" value="${escParam(c.value ?? '')}" ${c.metric === 'Always apply' ? 'disabled' : ''} oninput="ruleDraftCondSet(${i},'value',this.value)">
+    <button type="button" class="re-x" onclick="ruleDraftCondRemove(${i})">x</button>
+  </div>`).join('');
+  const noActionValue = d.action.type === 'Lock price' || d.action.type === 'Flag for review';
+  editor.innerHTML = `
+    <div class="re-header">
+      <h3>${selectedPackageRuleId ? 'Edit Rule' : 'New Rule'}</h3>
+      <label class="re-radio" style="gap:8px;"><span class="re-label" style="margin:0;">Active</span><span class="toggle-sw"><input type="checkbox" ${d.status === 'Active' ? 'checked' : ''} onchange="ruleDraftSet('status',this.checked?'Active':'Inactive')"><span class="sl"></span></span></label>
+    </div>
+    <div class="re-field"><label class="re-label">Rule Name</label><input class="re-input" value="${escParam(d.name)}" oninput="ruleDraftSet('name',this.value)" placeholder="e.g. Own Flight High LF Uplift"></div>
+    <div class="re-action-row">
+      <div class="re-field"><label class="re-label">Start Date</label><input type="date" class="re-input" value="${escParam(d.startDate || '')}" onchange="ruleDraftSet('startDate',this.value)"></div>
+      <div class="re-field"><label class="re-label">End Date</label><input type="date" class="re-input" value="${escParam(d.endDate || '')}" onchange="ruleDraftSet('endDate',this.value)"></div>
+    </div>
+    <div class="re-field"><label class="re-label">Flight Category</label><div class="re-cb-grid">${catCbs}</div></div>
+    <div class="re-field"><label class="re-label">Hotel Classification</label><div class="re-cb-grid">${hotelCbs}</div></div>
+    <div class="re-field"><label class="re-label">Commitment Type</label><div class="re-radio-list">${commitRadios}</div></div>
+    <div class="re-field"><label class="re-label">Destination</label>${destSel}</div>
+    <div class="re-field"><label class="re-label">Trigger Conditions - when <select class="re-select" style="display:inline-block;width:auto;padding:2px 6px;margin-left:6px;font-size:11px;" onchange="ruleDraftSet('conditionLogic',this.value)">${opts(['ALL','ANY'], d.conditionLogic)}</select> of these are met</label>${condRows}<button type="button" class="re-add-cond" onclick="ruleDraftCondAdd()">+ Add Condition</button></div>
+    <div class="re-field"><label class="re-label">Action</label><div class="re-action-row"><select class="re-select" onchange="ruleDraftActionSet('type',this.value)">${opts(actions, d.action.type)}</select><input class="re-input" value="${escParam(d.action.value ?? '')}" ${noActionValue ? 'disabled' : ''} oninput="ruleDraftActionSet('value',this.value)" placeholder="Value"></div><div class="re-guardrails"><div><label class="re-label" style="font-size:10px;">Max change $</label><input class="re-input" value="${escParam(d.action.maxChange ?? '')}" oninput="ruleDraftActionSet('maxChange',this.value)"></div><div><label class="re-label" style="font-size:10px;">Min margin $</label><input class="re-input" value="${escParam(d.action.minMargin ?? '')}" oninput="ruleDraftActionSet('minMargin',this.value)"></div><div><label class="re-label" style="font-size:10px;">Max margin $</label><input class="re-input" value="${escParam(d.action.maxMargin ?? '')}" oninput="ruleDraftActionSet('maxMargin',this.value)"></div></div></div>
+    <div class="re-field"><label class="re-label">Review threshold $</label><input class="re-input" style="max-width:140px;" value="${escParam(d.action.reviewChangeOver ?? d.reviewChangeOver ?? 50)}" oninput="ruleDraftActionSet('reviewChangeOver',this.value)"></div>
+    <div class="re-field"><label class="re-label">Rule Priority</label><input type="number" class="re-input" style="max-width:120px;" value="${escParam(d.priority)}" oninput="ruleDraftSet('priority',parseInt(this.value)||0)"></div>
+    <div class="re-footer"><div class="spacer"></div><button type="button" class="pkg-param-reset" onclick="cancelRuleEdit()">Cancel</button><button type="button" class="btn-teal" onclick="saveRuleEdit()">Save Rule</button></div>
+  `;
+}
+
+function renderPackageRulesUi() {
+  renderPackageRulesList();
+  renderPackageRuleEditor();
+}
+
+function newPackageRule() {
+  selectedPackageRuleId = null;
+  packageRuleDraft = newPackageRuleDraft();
+  renderPackageRulesUi();
+}
+
+function editPackageRule(id) {
+  const rule = packageRulesState.find(r => r.id === id);
+  if (!rule) return;
+  selectedPackageRuleId = id;
+  packageRuleDraft = JSON.parse(JSON.stringify(rule));
+  renderPackageRulesUi();
+}
+
+function togglePackageRule(id) {
+  const rule = packageRulesState.find(r => r.id === id);
+  if (!rule) return;
+  rule.status = rule.status === 'Active' ? 'Inactive' : 'Active';
+  savePackageRulesState();
+  renderPackageRulesUi();
+}
+
+function deletePackageRule(id) {
+  const i = packageRulesState.findIndex(r => r.id === id);
+  if (i === -1) return;
+  packageRulesState.splice(i, 1);
+  if (selectedPackageRuleId === id) { selectedPackageRuleId = null; packageRuleDraft = null; }
+  savePackageRulesState();
+  renderPackageRulesUi();
+}
+
+function ruleDraftSet(key, value) {
+  if (!packageRuleDraft) return;
+  packageRuleDraft[key] = value;
+}
+
+function ruleDraftToggle(key, value, on) {
+  const arr = packageRuleDraft[key] || [];
+  const i = arr.indexOf(value);
+  if (on && i === -1) arr.push(value);
+  if (!on && i !== -1) arr.splice(i, 1);
+  packageRuleDraft[key] = arr;
+}
+
+function ruleDraftCondSet(i, key, value) {
+  const cond = packageRuleDraft.conditions[i];
+  cond[key] = value;
+  if (key === 'metric' && value === 'Always apply') { cond.operator = '-'; cond.value = ''; }
+  if (key === 'metric' && value !== 'Always apply' && cond.operator === '-') { cond.operator = '>='; cond.value = 0; }
+  if (key === 'metric') renderPackageRuleEditor();
+}
+
+function ruleDraftCondAdd() {
+  packageRuleDraft.conditions.push({ metric: 'LF %', operator: '>=', value: 80 });
+  renderPackageRuleEditor();
+}
+
+function ruleDraftCondRemove(i) {
+  packageRuleDraft.conditions.splice(i, 1);
+  if (!packageRuleDraft.conditions.length) packageRuleDraft.conditions.push({ metric: 'LF %', operator: '>=', value: 80 });
+  renderPackageRuleEditor();
+}
+
+function ruleDraftActionSet(key, value) {
+  packageRuleDraft.action[key] = value;
+  if (key === 'type') renderPackageRuleEditor();
+}
+
+function cancelRuleEdit() {
+  packageRuleDraft = null;
+  selectedPackageRuleId = null;
+  renderPackageRulesUi();
+}
+
+function saveRuleEdit() {
+  if (!packageRuleDraft) return;
+  if (!packageRuleDraft.name || !packageRuleDraft.name.trim()) {
+    packageRuleDraft.name = 'Untitled rule';
+  }
+  packageRuleDraft.lastModified = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+  const idx = packageRulesState.findIndex(r => r.id === packageRuleDraft.id);
+  if (idx >= 0) packageRulesState[idx] = JSON.parse(JSON.stringify(packageRuleDraft));
+  else packageRulesState.unshift(JSON.parse(JSON.stringify(packageRuleDraft)));
+  selectedPackageRuleId = packageRuleDraft.id;
+  savePackageRulesState();
+  renderPackageRulesUi();
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -619,6 +1554,30 @@ function renderContentPanel() {
   const cfg = SECTIONS[activeSection];
   const panel = document.getElementById('paramContent');
   if (!panel) return;
+  if (!cfg) return;
+  if (activeSection === 'packages.alerts') {
+    panel.innerHTML = renderPackageParamsTable('alerts');
+    return;
+  }
+  if (activeSection === 'packages.rules') {
+    panel.innerHTML = renderPackageRulesBuilder();
+    renderPackageRulesUi();
+    return;
+  }
+  if (activeSection === 'packages.price') {
+    panel.innerHTML = renderPackageParamsTable('price');
+    return;
+  }
+  if (activeSection === 'packages.autopilot') {
+    panel.innerHTML = renderPackageBlank(cfg);
+    return;
+  }
+  panel.innerHTML = `
+    <h2 class="section-title">${cfg.title}</h2>
+    <div class="section-subtitle">${cfg.subtitle}</div>
+    <div class="pkg-param-empty">No data available - this section is configuration and is not yet connected to a data source.</div>
+  `;
+  return;
   // ── DATA GAP: the Parameters page is configuration with NO pricing-CSV
   // source. Rather than show fabricated sample rules / alerts / controls, every
   // section now renders an honest empty state. This gap is listed in the
@@ -791,6 +1750,37 @@ function renderFieldCell(tab, path, node, field, isDefaults) {
 /* ══════════════════════════════════════════════════════════════════
    Mutations
    ══════════════════════════════════════════════════════════════════ */
+function togglePackageParamNode(rowId) {
+  expanded.has(rowId) ? expanded.delete(rowId) : expanded.add(rowId);
+  renderContentPanel();
+}
+
+function editPackageParam(area, scope, key, fieldKey, rawValue, type) {
+  const target = packageOverride(area, scope, key, true);
+  if (!target) return;
+  target[fieldKey] = coerce({ type }, rawValue);
+  dirtyKeys.add(`package::${area}::${scope}::${key}::${fieldKey}`);
+  renderContentPanel();
+  updateSaveBar();
+}
+
+function resetPackageParamScope(area, scope, key) {
+  if (scope === 'defaults') {
+    const defaults = area === 'alerts'
+      ? PackageParameters.DEFAULT_ALERTS
+      : area === 'rules'
+        ? PackageParameters.DEFAULT_RULES
+        : PackageParameters.DEFAULT_PRICE;
+    packageParamState[area].defaults = Object.assign({}, defaults);
+  } else {
+    const bucket = packageBucketName(scope);
+    if (bucket && packageParamState[area][bucket]) delete packageParamState[area][bucket][key];
+  }
+  dirtyKeys.add(`package::${area}::${scope}::${key}::reset`);
+  renderContentPanel();
+  updateSaveBar();
+}
+
 function toggleNode(pathStr) {
   const cfg = SECTIONS[activeSection];
   const key = `${cfg.tab}::${pathStr}`;
@@ -845,6 +1835,9 @@ function updateSaveBar() {
 function saveAll() {
   if (dirtyKeys.size === 0) return;
   const n = dirtyKeys.size;
+  if (window.PackageParameters && packageParamState) {
+    packageParamState = PackageParameters.save(packageParamState);
+  }
   dirtyKeys.clear();
   updateSaveBar();
   alert(`✓ Saved ${n} parameter change${n === 1 ? '' : 's'}.`);
@@ -852,8 +1845,13 @@ function saveAll() {
 
 function resetAll() {
   if (!confirm('Reset ALL parameters in all tabs back to their seeded defaults? This will drop every override.')) return;
+  if (window.PackageParameters) {
+    packageParamState = PackageParameters.blankState();
+    PackageParameters.save(packageParamState);
+  }
   ['flight', 'hotel', 'package'].forEach(tab => {
     const tree = getTree(tab);
+    if (!tree || !Array.isArray(tree.destinations)) return;
     tree.destinations.forEach(d => {
       d.overrides = {};
       (d[MID_KEY[tab]] || []).forEach(m => {
@@ -864,6 +1862,7 @@ function resetAll() {
   });
   dirtyKeys.clear();
   updateSaveBar();
+  renderContentPanel();
   renderSectionBody();
 }
 
@@ -912,9 +1911,30 @@ document.addEventListener('click', (e) => {
 /* ══════════════════════════════════════════════════════════════════
    Init
    ══════════════════════════════════════════════════════════════════ */
-Filters.populateStandard();
-selectSection(activeSection);
-updateSaveBar();
+function initParameters() {
+  Filters.populateStandard();
+  if (window.__filterRegions && window.__filterRegions.length && Filters.setMultiSelectValues) {
+    Filters.setMultiSelectValues('fRegion', window.__filterRegions);
+  }
+  packageParamState = window.PackageParameters ? PackageParameters.load() : packageParamState;
+  selectSection(activeSection);
+  updateSaveBar();
+}
+
+if (typeof loadPackageData === 'function') {
+  loadPackageData()
+    .then(rows => {
+      window.__packageRows = rows;
+      const meta = DataLoader.applyPackagesToGlobals(rows);
+      window.__filterRegions = meta && meta.regions;
+      console.info(`[parameters] ${rows.length} package rows loaded for package controls`);
+    })
+    .catch(err => console.warn('[parameters] package CSV load failed - package parameters will render empty:', err))
+    .finally(initParameters);
+} else {
+  console.warn('[parameters] data-loader.js unavailable - package parameter tree will render empty.');
+  initParameters();
+}
 </script>
 
 </body>

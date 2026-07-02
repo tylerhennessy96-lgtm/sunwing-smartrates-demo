@@ -1,7 +1,7 @@
 # Dynamica SmartRates - Project Context
 
 Living context document. Keep this current so any teammate or future session can
-get oriented quickly. Verified against the codebase on 2026-06-24.
+get oriented quickly. Verified against the codebase on 2026-07-01.
 
 ## Project
 
@@ -43,9 +43,10 @@ Required committed runtime data:
 | File | Primary date field | Purpose |
 | --- | --- | --- |
 | `data/v_package_pricing_pg.csv` | `departure_date` | Package pricing |
+| `data/v_flight_pricing_pg.csv` | `departure_date` | Flight pricing and calendar view |
 | `data/curves_outbound.json` | generated | Outbound booking curves |
 | `data/curves_inbound.json` | generated | Inbound booking curves |
-| `data/curves_hotel.json` | generated | Hotel booking curves |
+| `data/curves_hotel.json` | generated | Hotel booking curves; absolute room nights keyed by destination, hotel, Sunday week start, and duration |
 
 Current committed package export: **29,095 rows**.
 
@@ -73,6 +74,13 @@ python .\scripts\validate_csv_contract.py
 The validator checks required package columns, non-empty row counts, and
 parseable package dates.
 
+Hotel booking curves are intentionally aggregated at
+`destination_id|hotel_id|week_start|duration`. Do not collapse them to
+destination-week-duration; that sums targets across unrelated hotels and makes
+the Packages chart targets unrealistically large. The current hotel builder uses
+the raw `weeks_to_stay` bucket when available and falls back to
+`week_start - snapshot_date` for older exports.
+
 ## Serving Layout
 
 `data/` is the web root in container/`serve-demo.ps1` environments:
@@ -86,10 +94,12 @@ Useful local URLs:
 http://localhost:8099/flight.html
 http://localhost:8099/hotel.html
 http://localhost:8099/pricing.html
+http://localhost:8099/parameters.html
 ```
 
 If using a simple `python -m http.server` from the repository root instead,
-open `http://127.0.0.1:8000/data/pricing.html`.
+run `python -m http.server 8099 --bind 127.0.0.1 --directory data` and open the
+same `http://localhost:8099/...` URLs.
 
 Opening pages via `file://` will not work because the browser must fetch CSVs.
 
@@ -97,14 +107,15 @@ Opening pages via `file://` will not work because the browser must fetch CSVs.
 
 | Page | Purpose |
 | --- | --- |
-| `data/flight.html` | Flight pricing recs, load factor, competitor fares, RM Copilot |
-| `data/hotel.html` | Hotel pricing recs, occupancy, cost-change flags, RM Copilot |
-| `data/pricing.html` | Package pricing accordion, bulk overrides, booking curves |
-| `data/parameters.html` | Configuration empty states for unconnected settings |
+| `data/flight.html` | Flights pricing recs, load factor, competitor fares, week/month calendar view, RM Copilot |
+| `data/hotel.html` | Hotels pricing recs, occupancy, cost-change flags, RM Copilot |
+| `data/pricing.html` | Package pricing accordion, bell alert column, status column, date/advanced filters, selected-row bulk overrides, paginated rendering, booking curves |
+| `data/parameters.html` | Package alert thresholds, package rules, and package price-control guardrails; flights/hotels remain blank |
 | `data/index.html` | Entry point |
 
 Shared assets include `styles.css`, `data.js`, `data-loader.js`,
-`chart.local.js`, `filters.js`, and vendored libraries under `data/vendor/`.
+`chart.local.js`, `filters.js`, `package-parameters.js`, and vendored
+libraries under `data/vendor/`.
 
 ## Data Honesty
 
@@ -113,10 +124,21 @@ CSV backing is blanked, rendered as an empty state, or called out by the RM
 Copilot. Known gaps include:
 
 - Persistent package notes/comments.
+- Persistent package selections, price overrides, and approval state; these are
+  client-side demo state until publish/audit backing exists.
+- Package parameter settings, including package alerts, package rules, and
+  package price controls, are stored in browser localStorage for the static
+  demo. Package rules now live under Parameters -> Packages as a two-pane rule
+  builder carrying the old flight-tab rule concepts plus date windows. They are
+  not yet server-side persisted or audited.
+- Flight calendar STLY delta is currently displayed as current LF versus the
+  benchmark/target LF from `v_flight_pricing_pg.csv`; the flight export does not
+  currently include a separate STLY LF field.
 - Publish, approval, and audit history.
 - Historical fare/ADR time series.
 - Detailed cost-change history beyond the CSV flag.
-- Package autopilot/rule execution.
+- Package autopilot/rule execution beyond the visible localStorage
+  configuration.
 - Demand-driver and price-elasticity narratives.
 
 `data/data.js` remains an empty-globals contract. `data/data-loader.js` fills the
