@@ -82,6 +82,19 @@
     const p = iso.split('-'); // [YYYY, MM, DD]
     return `${p[1]}/${p[2]}/${p[0].slice(-2)}`;
   }
+  function sundayWeekStartIso(s) {
+    const iso = isoDate(s);
+    if (!iso) return '';
+    const p = iso.split('-').map(Number);
+    const d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+    d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  }
+  function lfToPct(v) {
+    const n = num(v);
+    if (n === null) return null;
+    return Math.abs(n) <= 1 ? n * 100 : n;
+  }
   function isWithinActiveDateWindow(s) {
     // Unbounded when no window is configured — read every row the CSV contains.
     if (!ACTIVE_START_DATE_ISO && !ACTIVE_END_DATE_ISO) return true;
@@ -149,24 +162,46 @@
   // backward-compatible: if an old-schema column is already present they keep it,
   // so either export shape loads.
   function normalizeFlightRow(r) {
-    const capTot  = num(r.capacity_total) || 0;
-    const soldTot = num(r.sold_total) || 0;
+    const capEco = num(r.capacity_eco) || 0;
+    const capBiz = num(r.capacity_biz) || 0;
+    const soldEco = num(r.sold_eco) || 0;
+    const soldBiz = num(r.sold_biz) || 0;
+    const capTot = num(r.curve_flight_capacity) ?? num(r.capacity_total) ?? (capEco + capBiz);
+    const soldTot = num(r.curve_current_booked_seats) ?? num(r.sold_total) ?? (soldEco + soldBiz);
     const cfe = num(r.current_fare_eco), rfe = num(r.rec_fare_eco);
     const cfb = num(r.current_fare_biz), rfb = num(r.rec_fare_biz);
     const comps = [num(r.comp1_fare), num(r.comp2_fare)].filter(v => v !== null && v > 0);
     const cheapest = comps.length ? Math.min.apply(null, comps) : null;
     const ros = num(r.rate_of_sale), rosT = num(r.rate_of_sale_target);
-    const fLf = num(r.forecast_lf), tLf = num(r.target_lf);
+    const fLf = lfToPct(r.curve_forecast_final_lf) ?? lfToPct(r.forecast_lf);
+    const tLf = lfToPct(r.curve_target_same_time_last_year_lf) ?? lfToPct(r.target_lf);
+    const fLfBiz = lfToPct(r.forecast_lf_biz), tLfBiz = lfToPct(r.target_lf_biz);
+    const currentLf = lfToPct(r.curve_current_lf)
+      ?? lfToPct(r.current_lf_pct)
+      ?? lfToPct(r.current_lf_eco)
+      ?? (capTot ? (soldTot / capTot) * 100 : null);
+    const departureIso = isoDate(r.departure_date || r.flight_date);
+    const weekStartIso = isoDate(r.week_start) || sundayWeekStartIso(departureIso);
     const ratio = num(r.beds_to_seats_ratio);
     const has = (k) => r[k] !== undefined && r[k] !== null && r[k] !== '';
     return Object.assign({}, r, {
+      departure_date: has('departure_date') ? r.departure_date : departureIso,
+      week_start: has('week_start') ? isoDate(r.week_start) : weekStartIso,
+      week_label: has('week_label') ? r.week_label : weekLabelWithYear('', weekStartIso),
+      destination_name: has('destination_name') ? r.destination_name : (r.dest_airport_code || r.destination_id),
+      origin_city: has('origin_city') ? r.origin_city : r.origin_code,
+      region_name: has('region_name') ? r.region_name : '',
+      brand_name: has('brand_name') ? r.brand_name : '',
       category:      r.flight_category != null ? r.flight_category : r.category,
+      capacity_total: capTot,
+      sold_total: soldTot,
       unsold_total:  has('unsold_total') ? r.unsold_total : Math.max(0, capTot - soldTot),
       // The view ships LF as 0–1 fractions; the loader's pctToFrac expects 0–100.
-      forecast_lf_pct: fLf != null ? fLf * 100 : num(r.forecast_lf_pct),
-      target_lf_pct:   tLf != null ? tLf * 100 : num(r.target_lf_pct),
-      current_lf_pct:  has('current_lf_pct') ? num(r.current_lf_pct)
-                        : (capTot ? (soldTot / capTot) * 100 : null),
+      forecast_lf_pct: fLf != null ? fLf : lfToPct(r.forecast_lf_pct),
+      target_lf_pct:   tLf != null ? tLf : lfToPct(r.target_lf_pct),
+      forecast_lf_biz_pct: fLfBiz != null ? fLfBiz : lfToPct(r.forecast_lf_biz_pct),
+      target_lf_biz_pct:   tLfBiz != null ? tLfBiz : lfToPct(r.target_lf_biz_pct),
+      current_lf_pct: currentLf,
       fare_delta_eco:  has('fare_delta_eco') ? num(r.fare_delta_eco)
                         : ((cfe != null && rfe != null) ? rfe - cfe : null),
       fare_delta_biz:  has('fare_delta_biz') ? num(r.fare_delta_biz)
@@ -425,8 +460,8 @@
       currentMargin: num(r[`current_margin_${fc}`]) || 0,
       recMargin: num(r[`rec_margin_${fc}`]) || 0,
       deltaFare: num(r[`fare_delta_${fc}`]) || 0,
-      forecastLF: pctToFrac(r.forecast_lf_pct),
-      targetLF: pctToFrac(r.target_lf_pct),
+      forecastLF: pctToFrac(isBiz && r.forecast_lf_biz_pct != null ? r.forecast_lf_biz_pct : r.forecast_lf_pct),
+      targetLF: pctToFrac(isBiz && r.target_lf_biz_pct != null ? r.target_lf_biz_pct : r.target_lf_pct),
       rateOfSale: num(r.rate_of_sale) || 0,
       rateOfSaleTarget: num(r.rate_of_sale_target) || 0,
       comp1Fare: num(r.comp1_fare) || 0,
@@ -749,6 +784,7 @@
       // Forecast final flight load factors (0–1 fractions) + recent pickup pax.
       outboundForecastLf: num(r.outbound_flight_forecast_final_lf),
       returnForecastLf: num(r.return_flight_forecast_final_lf),
+      pickupPax1d: num(r.pickup_pax_1d),
       pickupPax7d: num(r.pickup_pax_7d),
       pickupPax14d: num(r.pickup_pax_14d),
     };

@@ -6,13 +6,14 @@ hotel_booking_curve.csv) are ~420 MB combined — one ~40-point curve per
 package_id, which a static browser app cannot fetch/parse. Their package_id
 hashes don't match the pricing data and the hotel_id encodings differ, but the
 flight keys (origin, destination, date, duration) and the hotel keys
-(destination, week_start, duration) DO match. So we aggregate to those levels:
+(destination, hotel_id, week_start, duration) DO match. So we aggregate to those levels:
 
   * outbound/inbound -> true flight load factor = sum(booked) / sum(capacity)
     per (key, days_to_departure, curve_type)
-  * hotel -> room nights summed per (key, weeks_to_stay, curve_type), then
-    normalised to a 0-1 cumulative share (weeks_to_stay * 7 = days, so all
-    three charts share one "days" x-axis)
+  * hotel -> room nights summed per (key, lead_time_days, curve_type). The new
+    hotel export includes explicit weekly `weeks_to_stay` buckets, so those are
+    used as the x-axis source. Older exports fall back to Sunday-normalised
+    week_start - snapshot_date.
 
 Output: data/curves_outbound.json, curves_inbound.json, curves_hotel.json
 keyed by "a|b|c|d" -> { ACTUAL|TARGET|FORECAST: [[x, y], ...] } (x ascending).
@@ -23,6 +24,7 @@ from __future__ import annotations
 import csv
 import json
 from collections import defaultdict
+from datetime import datetime, timedelta
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / "data"
@@ -34,6 +36,20 @@ def _f(v):
         return float(v)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _parse_date(value):
+    try:
+      return datetime.strptime(str(value).strip()[:10], "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+      return None
+
+
+def _sunday_week_start(value):
+    dt = _parse_date(value)
+    if dt is None:
+        return None
+    return dt - timedelta(days=(dt.weekday() + 1) % 7)
 
 
 def build_flight(filename, date_col, out_name):
@@ -67,30 +83,36 @@ def build_flight(filename, date_col, out_name):
 
 
 def build_hotel(out_name):
-    """room nights summed -> normalised 0-1, keyed by dest|week_start|duration."""
-    # key -> weeks_to_stay -> curve_type -> roomnights_sum
+    """room nights summed, keyed by dest|hotel_id|Sunday week_start|duration."""
+    # key -> lead_time_days -> curve_type -> roomnights_sum
     acc = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     path = DATA / "hotel_booking_curve.csv"
     with path.open(newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            key = f"{row['destination_id']}|{row['week_start']}|{row['duration']}"
+            week_start = _sunday_week_start(row.get("week_start"))
+            if week_start is None:
+                continue
+            try:
+                lead_days = int(float(row["weeks_to_stay"])) * 7
+            except (KeyError, TypeError, ValueError):
+                snapshot = _sunday_week_start(row.get("snapshot_date"))
+                if snapshot is None:
+                    continue
+                lead_days = (week_start - snapshot).days
+            if lead_days < 0:
+                continue
+            key = f"{row['destination_id']}|{row.get('hotel_id', '')}|{week_start.isoformat()}|{row['duration']}"
             ct = row["curve_type"]
             if ct not in TYPES:
                 continue
-            try:
-                w = int(float(row["weeks_to_stay"]))
-            except (TypeError, ValueError):
-                continue
-            acc[key][w][ct] += _f(row["roomnights"])
+            acc[key][lead_days][ct] += _f(row["roomnights"])
 
     out = {}
-    for key, ws in acc.items():
-        peak = max((rn for w in ws.values() for rn in w.values()), default=0.0)
+    for key, xs in acc.items():
         series = {t: [] for t in TYPES}
-        for w in sorted(ws):
-            for ct, rn in ws[w].items():
-                y = round(rn / peak, 4) if peak > 0 else 0.0
-                series[ct].append([w * 7, y])  # weeks -> days, shared x-axis
+        for x in sorted(xs):
+            for ct, rn in xs[x].items():
+                series[ct].append([x, round(rn, 4)])
         out[key] = {t: v for t, v in series.items() if v}
     _write(out, out_name)
 

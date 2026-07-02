@@ -15,3 +15,6 @@ __pycache__/
 data/outbound_booking_curve.csv
 data/inbound_booking_curve.csv
 data/hotel_booking_curve.csv
+
+# Local headless-browser smoke-test profiles.
+.tmp-chrome-profile*/

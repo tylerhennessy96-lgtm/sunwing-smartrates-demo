@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flight Only — Sunwing RMS</title>
+  <title>Flights — Sunwing RMS</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="./vendor/papaparse.min.js"></script>
   <script src="chart.local.js"></script>
@@ -100,6 +100,8 @@
     .vt-btn + .vt-btn { border-left: 1px solid var(--border); }
     .vt-btn.vt-active { background: var(--accent); color: #fff; }
     .vt-btn:not(.vt-active):hover { background: #f5f6f8; color: var(--text-primary); }
+    .calendar-bucket-toggle { display: none; }
+    .calendar-bucket-toggle.visible { display: inline-flex; }
 
     /* ── Calendar view ───────────────────────────────────────── */
     .cal-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -199,7 +201,20 @@
       color: var(--text-muted);
       border-color: var(--border);
     }
-    table.cal-table td.cal-cell .cal-pri { font-size: 18px; font-weight: 700; line-height: 1.15; }
+    table.cal-table td.cal-cell .cal-pri {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      white-space: nowrap;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+    table.cal-table td.cal-cell .cal-sep { opacity: 0.55; font-weight: 600; }
+    table.cal-table td.cal-cell .cal-delta { font-size: 12px; font-weight: 700; }
+    table.cal-table td.cal-cell .cal-delta-pos { color: #047857; }
+    table.cal-table td.cal-cell .cal-delta-neg { color: #b91c1c; }
     table.cal-table td.cal-cell .cal-sec { font-size: 11px; margin-top: 3px; opacity: 0.95; }
     table.cal-table td.cal-cell .cal-sec .cal-rec { color: #a5f3fc; font-weight: 500; margin-left: 4px; }
     table.cal-table td.cal-cell .cal-tri { font-size: 10px; margin-top: 2px; opacity: 0.9; }
@@ -1219,8 +1234,7 @@
     /* ── Row-height consistency + Flags cell clipping ─────────── */
     table.data-table tbody tr.row-property,
     table.data-table tbody tr.row-bedtype,
-    table.data-table tbody tr.row-date,
-    table.data-table tbody tr.row-unit {
+    table.data-table tbody tr.row-date {
       height: 40px;
     }
     table.data-table td.flags-cell {
@@ -1290,7 +1304,13 @@
       height: 36px;
       vertical-align: middle;
     }
-    tr.row-date.clickable:hover td { background: #eef1f6 !important; cursor: pointer; }
+    .row-indent-spacer {
+      display: inline-block;
+      width: 22px;
+      height: 1px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
 
     /* Cabin class chip (used in leaf rows to indicate Economy / Business) */
     .class-chip {
@@ -1460,7 +1480,7 @@
       </div>
       <div class="re-modal-section">
         <div class="re-modal-section-title">Options</div>
-        <label class="re-modal-cb"><input type="checkbox" id="reOptRules" checked> Apply package rules automatically</label>
+        <label class="re-modal-cb"><input type="checkbox" id="reOptRules" checked> Apply configured rules automatically</label>
         <label class="re-modal-cb"><input type="checkbox" id="reOptComp" checked> Include competitor fare adjustments</label>
         <label class="re-modal-cb"><input type="checkbox" id="reOptLF" checked> Apply load factor thresholds</label>
         <label class="re-modal-cb"><input type="checkbox" id="reOptFlag" checked> Flag fare changes above $40 for review</label>
@@ -1598,8 +1618,8 @@
 
   <!-- ── Sub-tab Bar ── -->
   <div class="subtab-bar">
-    <a href="flight.html"  class="subtab active">Flight Only</a>
-    <a href="hotel.html"   class="subtab">Hotel Only</a>
+    <a href="flight.html"  class="subtab active">Flights</a>
+    <a href="hotel.html"   class="subtab">Hotels</a>
     <a href="pricing.html" class="subtab">Packages</a>
     <div class="subtab-spacer"></div>
     <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
@@ -1650,11 +1670,14 @@
   <div class="subsubtab-bar" id="subsubtabBar" style="display:flex;align-items:center;">
     <a class="subsubtab active" data-view="recs"       onclick="switchView('recs')">New Recommendations</a>
     <a class="subsubtab"        data-view="competitor" onclick="switchView('competitor')">Competitor Analysis</a>
-    <a class="subsubtab"        data-view="rules"      onclick="switchView('rules')">Package Rules</a>
     <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding-right:16px;">
       <div class="view-toggle" role="group" aria-label="View mode">
         <button type="button" class="vt-btn vt-active" data-mode="list" onclick="setViewMode('list')">☰ List</button>
         <button type="button" class="vt-btn" data-mode="calendar" onclick="setViewMode('calendar')">▦ Calendar</button>
+      </div>
+      <div class="view-toggle calendar-bucket-toggle" id="calendarBucketToggle" role="group" aria-label="Calendar granularity">
+        <button type="button" class="vt-btn vt-active" data-cal-bucket="week" onclick="setCalendarBucketMode('week')">Week</button>
+        <button type="button" class="vt-btn" data-cal-bucket="month" onclick="setCalendarBucketMode('month')">Month</button>
       </div>
       <button class="adv-trigger-btn" id="advTriggerBtn" type="button" onclick="openAdvDrawer()">
         <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h10M4 7h6M6 11h2"/></svg>
@@ -1849,7 +1872,7 @@
         </div>
       </div>
       <div class="adv-range-row">
-        <div class="adv-range-label">Target LF % <span class="adv-range-vals"><span class="dr-min-val">0</span>% — <span class="dr-max-val">100</span>%</span></div>
+        <div class="adv-range-label">STLY LF % <span class="adv-range-vals"><span class="dr-min-val">0</span>% — <span class="dr-max-val">100</span>%</span></div>
         <div class="dr-wrap" data-af="targetLF">
           <div class="dr-track"></div><div class="dr-fill"></div>
           <input type="range" class="dr-min" min="0" max="100" value="0">
@@ -2220,7 +2243,13 @@ function aggDates(dates) {
   if (!dates.length) return null;
   const capacity = dates.reduce((s, x) => s + x.capacity, 0);
   const sold = dates.reduce((s, x) => s + x.sold, 0);
-  const lf = capacity ? sold / capacity : 0;
+  let lfWeight = 0;
+  const lfNumerator = dates.reduce((s, x) => {
+    if (!Number.isFinite(x.currentLF) || !x.capacity) return s;
+    lfWeight += x.capacity;
+    return s + x.currentLF * x.capacity;
+  }, 0);
+  const lf = lfWeight ? lfNumerator / lfWeight : (capacity ? sold / capacity : 0);
   const fCur = dates.reduce((s, x) => s + getEffectiveFare(x), 0) / dates.length;
   const fRec = dates.reduce((s, x) => s + x.recFare, 0) / dates.length;
   const mCur = dates.reduce((s, x) => s + x.currentMargin, 0) / dates.length;
@@ -2433,37 +2462,26 @@ function renderRecsTable() {
 
         if (!routeOpen) return;
 
-        // ── Level 3: Flight Date aggregate rows ──
+        // ── Level 3: Flight Date rows ──
         const dayList = date.days || [date];
         dayList.forEach(day => {
           const dayKey  = `${routeKey}::${day.id}`;
-          const dayOpen = expandedDays.has(dayKey);
-
-          const eco = day.economy;
-          const biz = day.business;
-          const totalCap  = (eco ? eco.capacity : 0) + (biz ? biz.capacity : 0);
-          const totalSold = (eco ? eco.sold     : 0) + (biz ? biz.sold     : 0);
-          const blendLF   = totalCap  ? totalSold / totalCap : 0;
-
-          // Revenue-weighted blended fares / margins (falls back to economy when no sales yet)
-          const blend = (getEco, getBiz) => {
-            const num = (eco ? eco.sold * getEco(eco) : 0) + (biz ? biz.sold * getBiz(biz) : 0);
-            return totalSold > 0 ? Math.round(num / totalSold) : Math.round(eco ? getEco(eco) : 0);
-          };
-          const blendCurrFare   = blend(x => x.currentFare,   x => x.currentFare);
-          const blendRecFare    = blend(x => x.recFare,       x => x.recFare);
-          const blendCurrMargin = blend(x => x.currentMargin, x => x.currentMargin);
-          const blendRecMargin  = blend(x => x.recMargin,     x => x.recMargin);
+          const totalCap  = day.capacity || 0;
+          const totalSold = day.sold || 0;
+          const blendLF   = Number.isFinite(day.currentLF) ? day.currentLF : (totalCap ? totalSold / totalCap : 0);
+          const blendCurrFare   = day.currentFare || 0;
+          const blendRecFare    = day.recFare || 0;
+          const blendCurrMargin = day.currentMargin || 0;
+          const blendRecMargin  = day.recMargin || 0;
           const blendForecast = day.forecastLF;
-          const blendTarget   = day.targetLF;
 
           const hasNote    = !!notes[day.id];
-          const dayAnyAuto = (eco && eco.autoChanged) || (biz && biz.autoChanged);
+          const dayAnyAuto = !!day.autoChanged || !!(day.economy && day.economy.autoChanged) || !!(day.business && day.business.autoChanged);
 
           entryRows.push(`
-            <tr class="row-date clickable" onclick="toggleDay('${dayKey}')" style="cursor:pointer;">
+            <tr class="row-date">
               <td>
-                <button class="expand-btn ${dayOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleDay('${dayKey}')">${chevron(dayOpen)}</button>
+                <span class="row-indent-spacer"></span>
                 <span>${shortDate(day.departureDate)}</span>
                 <span style="color:var(--text-muted);font-size:10.5px;margin-left:6px;">${day.departureTime}</span>
               </td>
@@ -2492,73 +2510,11 @@ function renderRecsTable() {
                   <button title="Booking curve" onclick="event.stopPropagation();openExposure('${day.id}')">
                     <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2,11 5,7 8,9 12,3"/><line x1="2" y1="12" x2="12" y2="12"/></svg>
                   </button>
-                  <button title="Rules" onclick="event.stopPropagation()">
-                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="2"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2M2.5 2.5l1.4 1.4M10.1 10.1l1.4 1.4M2.5 11.5l1.4-1.4M10.1 3.9l1.4-1.4"/></svg>
-                  </button>
                   ${day.locked ? '<span class="lock-indicator" title="Price locked" style="display:inline-flex;align-items:center;padding:0 6px;color:var(--accent);"><svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg></span>' : ''}
                 </span>
               </td>
             </tr>
           `);
-
-          if (!dayOpen) return;
-
-          // ── Level 4 (leaves): Economy + Business cabin class rows for this flight date ──
-          // Business class shows whenever the flight date carries business data
-          // (capacity_biz > 0), regardless of route category.
-          const classes = day.business ? ['eco', 'biz'] : ['eco'];
-          classes.forEach(cls => {
-            const cd = getClassData(day, cls);
-            if (!cd) return;
-            const leafKey = `${day.id}::${cls}`;
-            const className = cls === 'biz' ? 'Business' : 'Economy';
-            const chipCls   = cls === 'biz' ? 'class-chip-biz' : 'class-chip-eco';
-            const eff     = fareOverrides[leafKey] != null ? fareOverrides[leafKey] : cd.currentFare;
-            const dFare   = cd.recFare - eff;
-            const lfLeaf  = cd.capacity ? cd.sold / cd.capacity : 0;
-            const isRejected = rejectedRecs.has(leafKey);
-            const isAuto     = !!cd.autoChanged;
-            // No persisted pending-publish state (no change-log backing). Accept/reject
-            // still update the row in-session, but we don't show a PENDING highlight.
-            const rowClass   = 'row-unit';
-
-            entryRows.push(`
-              <tr class="${rowClass}">
-                <td>
-                  <span class="class-chip ${chipCls}">${className}</span>
-                  <span style="color:var(--text-muted);font-size:10.5px;">${cd.capacity} seats</span>
-                </td>
-                <td class="text-muted">—</td>
-                <td class="text-right num">${cd.sold}<span style="color:var(--text-muted);margin:0 5px;">/</span>${cd.capacity}</td>
-                <td class="text-right">${lfPill(cd.forecastLF)}</td>
-                <td class="text-right">${lfText(lfLeaf)}</td>
-                <td class="text-right${eff !== cd.currentFare ? ' cur-pink' : ''}">${fmt$(eff)}</td>
-                ${_fltChgCells('lf', dest.id, weekIdx, route.id, day.id, cls)}
-                <td class="text-right" style="white-space:nowrap;">
-                  <span class="rec-margin-cell${isRejected ? ' rec-rejected' : ''}" onclick="event.stopPropagation();${isRejected ? '' : `acceptRec('${leafKey}')`}" title="${isRejected ? 'Rejected' : 'Click to accept'}">${fmt$(cd.recFare)}</span>
-                  ${isRejected ? '' : `<button class="reject-btn" title="Reject recommendation" onclick="event.stopPropagation();rejectRec('${leafKey}')">✕</button>`}
-                </td>
-                <td class="text-right">${deltaCell(dFare)}</td>
-                <td class="text-right num">${fmt$(cd.currentMargin)}</td>
-                <td class="text-right num">${fmt$(cd.recMargin)}</td>
-                <td class="text-right">${deltaCell(cd.recMargin - cd.currentMargin)}</td>
-                <td class="text-muted">—</td>
-                <td class="text-muted">—</td>
-                <td class="flags-cell">
-                  <div class="flags-inline">
-                    ${isAuto     ? `<span class="badge-auto" title="${cd.autoChangedRule || 'Auto-adjusted by rules engine'}">⚡ AUTO</span>` : ''}
-                    ${isRejected ? '<span class="badge-rejected" title="Recommendation rejected">REJECTED</span>' : ''}
-                  </div>
-                </td>
-                ${_capAlertTD(!!day.capacityAlert)}
-                <td>
-                  <span class="pkg-action-icons">
-                    ${day.locked ? '<span class="lock-indicator" title="Price locked" style="display:inline-flex;align-items:center;padding:0 6px;color:var(--accent);"><svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg></span>' : ''}
-                  </span>
-                </td>
-              </tr>
-            `);
-          });
         });
       });
     }
@@ -2796,10 +2752,11 @@ function _fltScopeLeaves(scope, destId, weekIdx, routeId, dayId, cls) {
     : dest.routes;
   routes.forEach(route => {
     const date = route.dates[weekIdx];
-    if (!date || !date.days) return;
+    if (!date) return;
+    const sourceDays = date.days || [date];
     const days = (scope === 'dt' || scope === 'lf')
-      ? date.days.filter(d => d.id === dayId)
-      : date.days;
+      ? sourceDays.filter(d => d.id === dayId)
+      : sourceDays;
     days.forEach(day => {
       const classes = (scope === 'lf') ? [cls] : ['eco', 'biz'];
       classes.forEach(c => {
@@ -3540,14 +3497,13 @@ function switchView(view) {
   document.querySelector(`.subsubtab[data-view="${view}"]`).classList.add('active');
 
   document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-  const map = { recs: 'viewRecs', competitor: 'viewCompetitor', rules: 'viewRules' };
+  const map = { recs: 'viewRecs', competitor: 'viewCompetitor' };
+  if (!map[view]) view = 'recs';
   document.getElementById(map[view]).classList.remove('hidden');
-  // Hide view-toggle and adv filters button when on Rules tab
   const viewToggle = document.querySelector('.view-toggle');
   const advBtn = document.getElementById('advTriggerBtn');
-  if (viewToggle) viewToggle.style.display = (view === 'rules') ? 'none' : '';
-  if (advBtn)     advBtn.style.display     = (view === 'rules') ? 'none' : '';
-  if (view === 'rules') renderPackageRules();
+  if (viewToggle) viewToggle.style.display = '';
+  if (advBtn) advBtn.style.display = '';
 }
 
 // ── Filter / menu stubs ────────────────────────────────────
@@ -3858,6 +3814,7 @@ function buildAdvDrawer() {
 
 // ── Calendar view ─────────────────────────────────────────
 let viewMode = 'list'; // 'list' | 'calendar'
+let calendarBucketMode = 'week'; // 'week' | 'month'
 const calExpandedDests  = new Set(); // dest.id
 const calExpandedRoutes = new Set(); // `${dest.id}::${route.id}`
 
@@ -3882,14 +3839,71 @@ function getCalendarWeeks() {
   return weeks;
 }
 
+function monthYearLabel(s) {
+  const d = parseAppDate(s);
+  if (!d) return s || '';
+  const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${mons[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function getCalendarBuckets() {
+  const weeks = getCalendarWeeks();
+  if (calendarBucketMode !== 'month') {
+    return weeks.map(w => Object.assign({}, w, {
+      key: `week-${w.idx}`,
+      indices: [w.idx],
+      mode: 'week',
+    }));
+  }
+
+  const byMonth = new Map();
+  weeks.forEach(w => {
+    const d = parseAppDate(w.departureDate);
+    const key = d
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      : `month-${w.idx}`;
+    if (!byMonth.has(key)) {
+      byMonth.set(key, {
+        key,
+        idx: w.idx,
+        departureDate: w.departureDate,
+        label: monthYearLabel(w.departureDate),
+        mmdd: '',
+        indices: [],
+        mode: 'month',
+      });
+    }
+    const bucket = byMonth.get(key);
+    bucket.indices.push(w.idx);
+    bucket.lastDepartureDate = w.departureDate;
+  });
+
+  return Array.from(byMonth.values()).map(bucket => {
+    const n = bucket.indices.length;
+    return Object.assign(bucket, {
+      mmdd: `${n} wk${n === 1 ? '' : 's'}`,
+    });
+  });
+}
+
 function setViewMode(mode) {
   viewMode = mode;
-  document.querySelectorAll('.vt-btn').forEach(b => {
+  document.querySelectorAll('.vt-btn[data-mode]').forEach(b => {
     b.classList.toggle('vt-active', b.dataset.mode === mode);
   });
+  const bucketToggle = document.getElementById('calendarBucketToggle');
+  if (bucketToggle) bucketToggle.classList.toggle('visible', mode === 'calendar');
   document.getElementById('listPane').classList.toggle('hidden', mode !== 'list');
   document.getElementById('calPane').classList.toggle('hidden', mode !== 'calendar');
   if (mode === 'calendar') renderCalendar();
+}
+function setCalendarBucketMode(mode) {
+  calendarBucketMode = mode === 'month' ? 'month' : 'week';
+  document.querySelectorAll('.vt-btn[data-cal-bucket]').forEach(b => {
+    b.classList.toggle('vt-active', b.dataset.calBucket === calendarBucketMode);
+  });
+  if (viewMode === 'calendar') renderCalendar();
+  if (calPanelOpen) renderCalPanel();
 }
 function toggleCalDest(id) {
   if (calExpandedDests.has(id)) calExpandedDests.delete(id);
@@ -3912,16 +3926,50 @@ function calLfClass(lf) {
   return 'cal-lo';
 }
 
-function renderCalendarHead(calWeeks) {
+function calDatesForDest(dest, bucket) {
+  return dest.routes.flatMap(route => calDatesForRoute(route, bucket));
+}
+
+function calDatesForRoute(route, bucket) {
+  return (bucket.indices || [bucket.idx])
+    .map(i => route.dates[i])
+    .filter(Boolean);
+}
+
+function calMetricsMarkup(agg) {
+  if (!agg) return '<div class="cal-pri">—</div>';
+  const forecast = Number.isFinite(agg.forecastLF) ? Math.round(agg.forecastLF * 100) : null;
+  const current = Number.isFinite(agg.lf) ? Math.round(agg.lf * 100) : null;
+  const benchmark = Number.isFinite(agg.targetLF) ? Math.round(agg.targetLF * 100) : null;
+  const delta = (current != null && benchmark != null) ? current - benchmark : null;
+  const deltaText = delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta}%`;
+  const deltaCls = delta == null ? '' : (delta >= 0 ? ' cal-delta-pos' : ' cal-delta-neg');
+  const forecastText = forecast == null ? '—' : `${forecast}%`;
+  const currentText = current == null ? '—' : `${current}%`;
+  const benchmarkText = benchmark == null ? '—' : `${benchmark}%`;
+  return `
+    <div class="cal-pri">
+      <span>${forecastText}</span>
+      <span class="cal-sep">|</span>
+      <span class="cal-delta${deltaCls}">${deltaText}</span>
+    </div>
+    <div class="cal-sec">Cur ${currentText} · STLY ${benchmarkText}</div>`;
+}
+
+function emptyCalCell() {
+  return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
+}
+
+function renderCalendarHead(calBuckets) {
   const thead = document.getElementById('calHead');
-  const weekCells = calWeeks.map(wk => {
+  const weekCells = calBuckets.map(wk => {
     return `<th class="cal-wk-hd">
       <div class="cal-wk-lbl">${wk.label}</div>
       <div class="cal-wk-sub">${wk.mmdd}</div>
     </th>`;
   }).join('');
   const arrow = topSortDir === 'asc' ? '↑' : '↓';
-  thead.innerHTML = `<tr><th class="cal-corner" style="cursor:pointer;" onclick="toggleTopSort()" title="Sort destinations by forecast LF">Destination / Route / Flight <span class="sort-ind">${arrow}</span></th>${weekCells}</tr>`;
+  thead.innerHTML = `<tr><th class="cal-corner" style="cursor:pointer;" onclick="toggleTopSort()" title="Sort destinations by forecast LF">Destination / Flight <span class="sort-ind">${arrow}</span></th>${weekCells}</tr>`;
 }
 
 function _calFocusHelpers() {
@@ -3946,8 +3994,8 @@ function _calCls(focused, anyExpanded) {
 }
 
 function renderCalendar() {
-  const calWeeks = getCalendarWeeks();
-  renderCalendarHead(calWeeks);
+  const calBuckets = getCalendarBuckets();
+  renderCalendarHead(calBuckets);
   const tbody = document.getElementById('calBody');
   const rows = [];
   const { anyExpanded, isDestFocused, isRouteFocused } = _calFocusHelpers();
@@ -3972,22 +4020,17 @@ function renderCalendar() {
     if (headerFiltersActive() && !passesHeaderFilters(dest)) return;
     const destOpen = calExpandedDests.has(dest.id);
 
-    // Dest-level cells: aggregate across all routes for that week
-    const destCells = calWeeks.map((wk) => {
-      const weekIdx = wk.idx;
-      const datesAtWeek = dest.routes.map(r => r.dates[weekIdx]).filter(Boolean);
-      if (!datesAtWeek.length) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
-      if (headerFiltersActive() && !passesHeaderDate(datesAtWeek[0])) {
-        return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
-      }
-      const agg = aggDates(datesAtWeek);
-      const cls = calLfClass(agg.lf);
+    // Dest-level cells: aggregate across all routes for that week/month bucket.
+    const destCells = calBuckets.map((bucket) => {
+      const datesAtBucket = calDatesForDest(dest, bucket);
+      if (!datesAtBucket.length) return emptyCalCell();
+      const agg = aggDates(datesAtBucket);
+      const cls = calLfClass(agg.forecastLF);
       let flags = '';
-      if (datesAtWeek.some(d => d.locked)) flags += '🔒';
-      return `<td class="cal-cell ${cls} clickable" onclick="event.stopPropagation();openCalPanel('dest','${dest.id}','','',${weekIdx})">
+      if (datesAtBucket.some(d => d.locked)) flags += '🔒';
+      return `<td class="cal-cell ${cls} clickable" onclick="event.stopPropagation();openCalPanel('dest','${dest.id}','','',${bucket.idx})">
         ${flags ? `<div class="cal-flags">${flags}</div>` : ''}
-        <div class="cal-pri">${Math.round(agg.lf * 100)}%</div>
-        <div class="cal-sec">${fmt$(agg.avgCurrentFare)}</div>
+        ${calMetricsMarkup(agg)}
       </td>`;
     }).join('');
 
@@ -4007,73 +4050,34 @@ function renderCalendar() {
 
     dest.routes.forEach(route => {
       const routeKey = `${dest.id}::${route.id}`;
-      const routeOpen = calExpandedRoutes.has(routeKey);
 
-      const routeCells = calWeeks.map((wk) => {
-        const weekIdx = wk.idx;
-        const date = route.dates[weekIdx];
-        if (!date) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
-        if (headerFiltersActive() && !passesHeaderDate(date)) {
-          return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
-        }
-        const agg = aggDates([date]);
-        const cls = calLfClass(agg.lf);
+      const routeCells = calBuckets.map((bucket) => {
+        const datesAtBucket = calDatesForRoute(route, bucket);
+        if (!datesAtBucket.length) return emptyCalCell();
+        const agg = aggDates(datesAtBucket);
+        const cls = calLfClass(agg.forecastLF);
         let flags = '';
-        if (date.locked) flags += '🔒';
-        return `<td class="cal-cell ${cls} clickable" onclick="event.stopPropagation();openCalPanel('route','${dest.id}','${route.id}','',${weekIdx})">
+        if (datesAtBucket.some(d => d.locked)) flags += '🔒';
+        return `<td class="cal-cell ${cls} clickable" onclick="event.stopPropagation();openCalPanel('route','${dest.id}','${route.id}','',${bucket.idx})">
           ${flags ? `<div class="cal-flags">${flags}</div>` : ''}
-          <div class="cal-pri">${Math.round(agg.lf * 100)}%</div>
-          <div class="cal-sec">${fmt$(agg.avgCurrentFare)}<span class="cal-rec">${fmt$(agg.avgRecFare)}</span></div>
+          ${calMetricsMarkup(agg)}
         </td>`;
       }).join('');
 
       const routeCls = _calCls(isRouteFocused(dest.id, route.id), anyExpanded);
       rows.push(`<tr class="cal-route${routeCls}">
-        <td class="cal-name" onclick="toggleCalRoute('${routeKey}')" style="cursor:pointer;">
-          <button class="expand-btn ${routeOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleCalRoute('${routeKey}')">${chevron(routeOpen)}</button>
+        <td class="cal-name">
           <span class="font-mono" style="font-weight:500;">${route.flightNum}</span>
-          <span style="color:var(--text-secondary);margin-left:6px;font-size:11px;">${route.origin}→${dest.id}</span>
+          <span style="color:var(--text-secondary);margin-left:6px;font-size:11px;">(${route.origin}-${route.destination || dest.id})</span>
           ${flightCatBadge(route.category)}
         </td>
         ${routeCells}
-      </tr>`);
-
-      if (!routeOpen) return;
-
-      // Leaf row: one row showing flight-date detail across the 8 week columns
-      const leafCells = calWeeks.map((wk) => {
-        const weekIdx = wk.idx;
-        const date = route.dates[weekIdx];
-        if (!date) return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
-        if (headerFiltersActive() && !passesHeaderDate(date)) {
-          return '<td class="cal-cell cal-none"><div class="cal-pri">—</div></td>';
-        }
-        const eff = getEffectiveFare(date);
-        const lf = date.capacity ? date.sold / date.capacity : 0;
-        const dFare = date.recFare - eff;
-        const cls = calLfClass(lf);
-        let flags = '';
-        if (date.locked) flags += '🔒';
-        const deltaStr = dFare ? ((dFare > 0 ? '+' : '') + fmt$(dFare)) : '';
-        return `<td class="cal-cell ${cls} clickable" onclick="event.stopPropagation();openCalPanel('date','${dest.id}','${route.id}','${date.id}',${weekIdx})">
-          ${flags ? `<div class="cal-flags">${flags}</div>` : ''}
-          <div class="cal-pri">${Math.round(lf * 100)}%</div>
-          <div class="cal-sec">${fmt$(eff)}<span class="cal-rec">${fmt$(date.recFare)}</span></div>
-          ${deltaStr ? `<div class="cal-tri">${deltaStr}</div>` : ''}
-        </td>`;
-      }).join('');
-
-      // One "date detail" row under each route when expanded — departure times per week
-      const leafCls = _calCls(isRouteFocused(dest.id, route.id), anyExpanded);
-      rows.push(`<tr class="cal-date${leafCls}">
-        <td class="cal-name">Flight dates</td>
-        ${leafCells}
       </tr>`);
     });
   });
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="${calWeeks.length + 1}" style="text-align:center;color:var(--text-muted);padding:32px;">No flights match the current filters</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${calBuckets.length + 1}" style="text-align:center;color:var(--text-muted);padding:32px;">No flights match the current filters</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.join('');
@@ -4081,11 +4085,24 @@ function renderCalendar() {
 
 // ── Calendar click-to-detail panel ────────────────────────
 let calPanelOpen = false;
-let calPanelCtx  = null; // { type, destId, routeId, dateId, weekIdx }
+let calPanelCtx  = null; // { type, destId, routeId, dateId, weekIdx, bucketIndices }
 
 function openCalPanel(type, destId, routeId, dateId, weekIdx) {
+  const idx = Number(weekIdx);
+  const bucket = getCalendarBuckets().find(b => b.idx === idx);
   calPanelOpen = true;
-  calPanelCtx = { type, destId, routeId, dateId, weekIdx };
+  calPanelCtx = {
+    type,
+    destId,
+    routeId,
+    dateId,
+    weekIdx: idx,
+    bucketKey: bucket ? bucket.key : `week-${idx}`,
+    bucketMode: bucket ? bucket.mode : 'week',
+    bucketLabel: bucket ? bucket.label : '',
+    bucketDepartureDate: bucket ? bucket.departureDate : '',
+    bucketIndices: bucket ? bucket.indices.slice() : [idx],
+  };
   renderCalPanel();
   document.getElementById('calDetailPanel').classList.add('open');
   document.getElementById('calDetailPanel').setAttribute('aria-hidden', 'false');
@@ -4161,13 +4178,41 @@ function drawSparkline(canvasId, data) {
   });
 }
 
+function panelBucketContext() {
+  if (!calPanelCtx) return { bucket: null, indices: [] };
+  const idx = Number(calPanelCtx.weekIdx);
+  const liveBucket = getCalendarBuckets().find(b => b.key === calPanelCtx.bucketKey)
+    || getCalendarBuckets().find(b => b.idx === idx);
+  const bucket = liveBucket || {
+    idx,
+    key: calPanelCtx.bucketKey || `week-${idx}`,
+    mode: calPanelCtx.bucketMode || 'week',
+    label: calPanelCtx.bucketLabel || '',
+    departureDate: calPanelCtx.bucketDepartureDate || '',
+    mmdd: '',
+    indices: calPanelCtx.bucketIndices || [idx],
+  };
+  return { bucket, indices: bucket.indices || [idx] };
+}
+
+function hotelOccForIndices(dest, indices) {
+  const vals = (indices || [])
+    .map(i => hotelOccForWeek(dest, i))
+    .filter(v => v != null && !isNaN(v));
+  if (!vals.length) return null;
+  return vals.reduce((s, v) => s + v, 0) / vals.length;
+}
+
 function renderCalPanel() {
   if (!calPanelCtx) return;
   const { type, destId, routeId, dateId, weekIdx } = calPanelCtx;
   const dest = FLIGHT_DATA.find(d => d.id === destId);
   if (!dest) return;
-  const wk = getCalendarWeeks()[weekIdx] || {};
-  const weekLabel = wk.label + ' · ' + (wk.departureDate || '');
+  const { bucket, indices: bucketIndices } = panelBucketContext();
+  const weekLabel = bucket
+    ? `${bucket.label || ''}${bucket.mode === 'month' ? ` · ${bucket.mmdd}` : ` · ${bucket.departureDate || ''}`}`
+    : '';
+  const periodLabel = bucket && bucket.mode === 'month' ? 'selected month' : 'this week';
   const content = document.getElementById('cdpContent');
 
   if (type === 'date') {
@@ -4204,7 +4249,7 @@ function renderCalPanel() {
       <div class="cdp-section">
         <div class="cdp-section-title">Load Factor</div>
         ${lfBar('Current LF', lf, date.targetLF)}
-        <div class="cdp-row"><span class="cdp-label">Target LF</span><span class="cdp-val">${Math.round(date.targetLF * 100)}%</span></div>
+        <div class="cdp-row"><span class="cdp-label">STLY LF</span><span class="cdp-val">${Math.round(date.targetLF * 100)}%</span></div>
         <div class="cdp-row"><span class="cdp-label">Forecast LF</span><span class="cdp-val">${Math.round(date.forecastLF * 100)}%</span></div>
         <div class="cdp-row"><span class="cdp-label">Capacity</span><span class="cdp-val">${date.capacity} seats</span></div>
         <div class="cdp-row"><span class="cdp-label">Sold</span><span class="cdp-val">${date.sold} seats</span></div>
@@ -4227,32 +4272,6 @@ function renderCalPanel() {
         <div class="cdp-row"><span class="cdp-label">Rec Margin</span><span class="cdp-val teal">${fmt$(date.recMargin)}</span></div>
         <div class="cdp-row"><span class="cdp-label">Margin Δ</span><span class="cdp-val">${deltaCell(marginD)}</span></div>
       </div>
-
-      ${date.economy ? `
-      <div class="cdp-section">
-        <div class="cdp-section-title">Cabin Class Breakdown</div>
-        <div style="display:grid;grid-template-columns:${date.business ? '1fr 1fr' : '1fr'};gap:12px;">
-          <div style="border:1px solid var(--nav-border);border-radius:6px;padding:10px 12px;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.4px;color:#0d9488;text-transform:uppercase;margin-bottom:6px;">Economy</div>
-            <div class="cdp-row"><span class="cdp-label">Capacity</span><span class="cdp-val">${date.economy.capacity}</span></div>
-            <div class="cdp-row"><span class="cdp-label">Sold</span><span class="cdp-val">${date.economy.sold}</span></div>
-            <div class="cdp-row"><span class="cdp-label">LF</span><span class="cdp-val">${Math.round((date.economy.sold / date.economy.capacity) * 100)}%</span></div>
-            <div class="cdp-row"><span class="cdp-label">Current Fare</span><span class="cdp-val">${fmt$(date.economy.currentFare)}</span></div>
-            <div class="cdp-row"><span class="cdp-label">Rec Fare</span><span class="cdp-val teal">${fmt$(date.economy.recFare)}</span></div>
-            <div class="cdp-row"><span class="cdp-label">Margin</span><span class="cdp-val">${fmt$(date.economy.currentMargin)}</span></div>
-          </div>
-          ${date.business ? `
-          <div style="border:1px solid var(--nav-border);border-radius:6px;padding:10px 12px;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.4px;color:#5a30a8;text-transform:uppercase;margin-bottom:6px;">Business</div>
-            <div class="cdp-row"><span class="cdp-label">Capacity</span><span class="cdp-val">${date.business.capacity}</span></div>
-            <div class="cdp-row"><span class="cdp-label">Sold</span><span class="cdp-val">${date.business.sold}</span></div>
-            <div class="cdp-row"><span class="cdp-label">LF</span><span class="cdp-val">${Math.round((date.business.sold / date.business.capacity) * 100)}%</span></div>
-            <div class="cdp-row"><span class="cdp-label">Current Fare</span><span class="cdp-val">${fmt$(date.business.currentFare)}</span></div>
-            <div class="cdp-row"><span class="cdp-label">Rec Fare</span><span class="cdp-val teal">${fmt$(date.business.recFare)}</span></div>
-            <div class="cdp-row"><span class="cdp-label">Margin</span><span class="cdp-val">${fmt$(date.business.currentMargin)}</span></div>
-          </div>` : ''}
-        </div>
-      </div>` : ''}
 
       <div class="cdp-section">
         <div class="cdp-section-title">Competitor Pricing</div>
@@ -4277,10 +4296,11 @@ function renderCalPanel() {
   if (type === 'route') {
     const route = dest.routes.find(r => r.id === routeId);
     if (!route) { content.innerHTML = ''; return; }
-    const date = route.dates[weekIdx];
-    const agg = date ? aggDates([date]) : null;
-    // Per-date chips for this route (all 8 weeks)
-    const dateChips = route.dates.map((d, i) => {
+    const routeBucketDates = bucketIndices.map(i => route.dates[i]).filter(Boolean);
+    const date = route.dates[weekIdx] || routeBucketDates[0];
+    const agg = routeBucketDates.length ? aggDates(routeBucketDates) : null;
+    // Per-date chips for this route.
+    const dateChips = route.dates.filter(Boolean).map((d) => {
       const lfPct = d.capacity ? Math.round((d.sold / d.capacity) * 100) : 0;
       const pill = lfPill(d.capacity ? d.sold / d.capacity : 0);
       return `<div class="cdp-chip-row">
@@ -4297,7 +4317,7 @@ function renderCalPanel() {
       </div>
 
       <div class="cdp-section">
-        <div class="cdp-section-title">Load Factor (this week)</div>
+        <div class="cdp-section-title">Load Factor (${periodLabel})</div>
         ${agg ? lfBar('LF', agg.lf, agg.targetLF) : '<div class="text-muted">No data</div>'}
         ${agg ? `<div class="cdp-row"><span class="cdp-label">Forecast LF</span><span class="cdp-val">${Math.round(agg.forecastLF * 100)}%</span></div>` : ''}
         ${agg ? `<div class="cdp-row"><span class="cdp-label">Capacity</span><span class="cdp-val">${agg.capacity}</span></div>` : ''}
@@ -4305,7 +4325,7 @@ function renderCalPanel() {
       </div>
 
       <div class="cdp-section">
-        <div class="cdp-section-title">Pricing (this week)</div>
+        <div class="cdp-section-title">Pricing (${periodLabel})</div>
         ${agg ? `<div class="cdp-row"><span class="cdp-label">Avg current fare</span><span class="cdp-val cdp-big">${fmt$(agg.avgCurrentFare)}</span></div>` : ''}
         ${agg ? `<div class="cdp-row"><span class="cdp-label">Avg rec fare</span><span class="cdp-val cdp-big teal">${fmt$(agg.avgRecFare)}</span></div>` : ''}
         ${agg ? `<div class="cdp-row"><span class="cdp-label">Delta</span><span class="cdp-val">${deltaCell(agg.deltaFare)}</span></div>` : ''}
@@ -4321,18 +4341,20 @@ function renderCalPanel() {
   }
 
   // type === 'dest'
-  const datesAtWeek = dest.routes.map(r => r.dates[weekIdx]).filter(Boolean);
+  const datesAtWeek = calDatesForDest(dest, { indices: bucketIndices });
   const agg = aggDates(datesAtWeek);
   const ratio = bedsSeatsRatio(datesAtWeek);
-  const hOcc  = hotelOccForWeek(dest, weekIdx);
+  const hOcc  = hotelOccForIndices(dest, bucketIndices);
   const routeChips = dest.routes.map(r => {
-    const d = r.dates[weekIdx];
-    const lf = (d && d.capacity) ? d.sold / d.capacity : 0;
+    const routeDates = bucketIndices.map(i => r.dates[i]).filter(Boolean);
+    if (!routeDates.length) return '';
+    const rAgg = aggDates(routeDates);
+    const lf = rAgg ? rAgg.lf : 0;
     return `<div class="cdp-chip-row">
-      <span class="cdp-chip-name"><span class="font-mono">${r.flightNum}</span> ${r.origin}→${dest.id} ${flightCatBadge(r.category)}</span>
+      <span class="cdp-chip-name"><span class="font-mono">${r.flightNum}</span> ${r.origin}→${r.destination || dest.id} ${flightCatBadge(r.category)}</span>
       ${lfPill(lf)}
     </div>`;
-  }).join('');
+  }).filter(Boolean).join('');
 
   content.innerHTML = `
     <div class="cdp-header">
@@ -4342,7 +4364,7 @@ function renderCalPanel() {
     </div>
 
     <div class="cdp-section">
-      <div class="cdp-section-title">Destination (this week)</div>
+      <div class="cdp-section-title">Destination (${periodLabel})</div>
       ${agg ? lfBar('Avg LF', agg.lf, agg.targetLF) : '<div class="text-muted">No data</div>'}
       ${agg ? `<div class="cdp-row"><span class="cdp-label">Avg forecast LF</span><span class="cdp-val">${Math.round(agg.forecastLF * 100)}%</span></div>` : ''}
       <div class="cdp-row"><span class="cdp-label">Beds:Seats</span><span class="cdp-val">${ratioBadge(ratio)}</span></div>

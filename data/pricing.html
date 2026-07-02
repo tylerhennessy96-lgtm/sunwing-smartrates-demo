@@ -9,6 +9,7 @@
   <script src="data.js"></script>
   <script src="vendor/papaparse.min.js"></script>
   <script src="data-loader.js"></script>
+  <script src="package-parameters.js"></script>
   <script src="filters.js"></script>
   <style>
     /* ── Flight category pills (OWN / RSK / 3RD) ─────────────── */
@@ -107,13 +108,6 @@
       font-family: var(--font-sans);
     }
     .pkg-name .pkg-meta .pkg-meta-sep { color: var(--border-mid); margin: 0 5px; }
-    .cost-change-icon {
-      color: var(--warn);
-      font-size: 11px;
-      vertical-align: middle;
-      cursor: help;
-    }
-
     /* ── Legend bar ──────────────────────────────────────────── */
     .legend-bar {
       background: var(--surface);
@@ -142,6 +136,28 @@
     }
     .pkg-rec-value.accepted { color: var(--text-muted); text-decoration: line-through; }
     .pkg-rec-value.rejected { color: var(--danger); text-decoration: line-through; }
+    .pkg-value-stack {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+      line-height: 1.05;
+    }
+    .pkg-new-value {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .pkg-adjust-up .pkg-new-value { color: var(--accent); }
+    .pkg-adjust-down .pkg-new-value { color: var(--danger); }
+    .pkg-old-value {
+      color: var(--text-muted);
+      font-size: 10.5px;
+      font-weight: 400;
+      text-decoration: line-through;
+    }
+    .pkg-adjusted-cell {
+      background: rgba(232, 0, 125, 0.045) !important;
+    }
 
     tr.pkg-group { cursor: pointer; }
     tr.pkg-group > td,
@@ -154,15 +170,21 @@
     tr.pkg-level-1 > td {
       background: #fff;
       font-weight: 600;
-      height: 42px;
+      height: 44px;
+      padding-top: 10px !important;
+      padding-bottom: 10px !important;
     }
     tr.pkg-level-2 > td {
       background: #fafbfc;
       height: 38px;
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
     }
     tr.pkg-room-row > td {
       background: #fff;
       height: 34px;
+      padding-top: 6px !important;
+      padding-bottom: 6px !important;
     }
     tr.pkg-room-row:hover > td { cursor: pointer; }
     .pkg-empty-cell { color: var(--border-mid); }
@@ -189,8 +211,8 @@
       font-size: 11.5px;
       font-weight: 500;
     }
-    tr.pkg-level-2 .pkg-level-cell-2 { padding-left: 18px !important; }
-    .pkg-room-cell { padding-left:34px !important; }
+    tr.pkg-level-2 .pkg-level-cell-2 { padding-left: 28px !important; }
+    .pkg-room-cell { padding-left:44px !important; }
     .pkg-placeholder {
       color: var(--border-mid);
       text-align: center;
@@ -207,6 +229,191 @@
     table.data-table.packages-table .expand-btn svg {
       width: 12px;
       height: 12px;
+    }
+
+    /* Package-only date range picker. The shared picker remains week-based for the other tabs. */
+    .pkg-date-range-popover {
+      width: 580px;
+      color: #e5e7eb;
+    }
+    @media (max-width: 700px) {
+      .pkg-date-range-popover { width: min(92vw, 360px); }
+      .pkg-calendar-months { grid-template-columns: 1fr !important; }
+    }
+    .pkg-date-range-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 0;
+    }
+    .pkg-calendar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .pkg-calendar-navs {
+      display: inline-flex;
+      gap: 6px;
+    }
+    .pkg-calendar-nav {
+      width: 28px;
+      height: 28px;
+      border: 1px solid #2a2d35;
+      border-radius: 4px;
+      background: #1e2028;
+      color: #e5e7eb;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .pkg-calendar-nav:hover { border-color: var(--accent); color: #fff; }
+    .pkg-calendar-months {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .pkg-calendar-month-title {
+      color: #f3f4f6;
+      font-weight: 600;
+      font-size: 12px;
+      margin-bottom: 9px;
+      text-align: center;
+    }
+    .pkg-calendar-weekdays,
+    .pkg-calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+    }
+    .pkg-calendar-weekdays span {
+      color: #6b7280;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .pkg-calendar-day {
+      height: 30px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: #d1d5db;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .pkg-calendar-day:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .pkg-calendar-day.empty {
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .pkg-calendar-day.disabled {
+      color: #4b5563;
+      cursor: default;
+      opacity: .45;
+    }
+    .pkg-calendar-day.disabled:hover { background: transparent; color: #4b5563; }
+    .pkg-calendar-day.in-range {
+      background: rgba(233, 30, 140, .14);
+      color: #fff;
+    }
+    .pkg-calendar-day.range-start,
+    .pkg-calendar-day.range-end {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    .pkg-calendar-day.today {
+      border-color: rgba(255,255,255,.38);
+    }
+    .pkg-date-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #2a2d35;
+    }
+    .pkg-date-actions button {
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid #2a2d35;
+      background: #1e2028;
+      color: #e5e7eb;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      padding: 0 10px;
+      cursor: pointer;
+    }
+    .pkg-date-actions button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .pkg-alert-cell {
+      text-align: center;
+      padding-left: 4px !important;
+      padding-right: 4px !important;
+    }
+    .pkg-alert-bell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 28px;
+      height: 24px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: #9ca3af;
+      cursor: default;
+    }
+    .pkg-alert-bell svg {
+      width: 14px;
+      height: 14px;
+      display: block;
+    }
+    .pkg-alert-bell.has-alerts {
+      color: #b91c1c;
+    }
+    .pkg-alert-bell.muted {
+      color: #c7cdd6;
+    }
+    .pkg-alert-count {
+      position: absolute;
+      top: 2px;
+      right: 1px;
+      min-width: 14px;
+      height: 14px;
+      padding: 0 3px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 14px;
+      box-shadow: 0 0 0 1px #fff;
+    }
+    .pkg-alert-bell.muted .pkg-alert-count {
+      background: #d1d5db;
+      color: #6b7280;
+    }
+    .pkg-metric-bad {
+      background: rgba(231, 76, 60, .075) !important;
+      color: #b91c1c !important;
+      font-weight: 600;
+    }
+    .pkg-metric-warn {
+      background: rgba(245, 166, 35, .12) !important;
+      color: #92400e !important;
+      font-weight: 600;
+    }
+    .pkg-metric-good {
+      color: var(--text-primary);
     }
 
     /* ── Booking-curve panel (dark, slides up from the bottom) ── */
@@ -258,6 +465,40 @@
     .bp-charts { display: flex; flex-direction: column; gap: 10px; }
     .bp-chart-title { font-size: 11px; font-weight: 600; color: #e5e7eb; margin-bottom: 4px; }
     .bp-chart-wrap { position: relative; width: 100%; height: 130px; }
+    .bp-hoverline {
+      position: absolute;
+      top: 18px;
+      bottom: 34px;
+      width: 1px;
+      background: rgba(255,255,255,.58);
+      pointer-events: none;
+      display: none;
+      z-index: 2;
+    }
+    .bp-tooltip {
+      position: absolute;
+      top: 8px;
+      min-width: 156px;
+      max-width: 220px;
+      padding: 8px 10px;
+      border: 1px solid #3d4150;
+      border-radius: 6px;
+      background: rgba(22, 24, 32, .96);
+      color: #f9fafb;
+      font-size: 11px;
+      line-height: 1.35;
+      pointer-events: none;
+      display: none;
+      z-index: 3;
+      box-shadow: 0 8px 20px rgba(0,0,0,.22);
+    }
+    .bp-tooltip-title { font-weight: 700; margin-bottom: 5px; }
+    .bp-tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #d1d5db;
+    }
     .bp-nodata {
       height: 130px;
       border: 1px dashed #3d4150;
@@ -273,6 +514,67 @@
     .bp-k-forecast { border-top-color: #9ca3af; border-top-style: dotted; }
     .bp-k-today    { border-top-color: #ffffff; border-top-style: dashed; }
     .bp-xaxis-label { text-align: center; font-size: 10.5px; color: #6b7280; margin-top: 4px; }
+
+    .pkg-alert-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(7, 10, 18, .45);
+      z-index: 260;
+    }
+    .pkg-alert-modal-backdrop.open { display: flex; }
+    .pkg-alert-modal {
+      width: 420px;
+      max-width: calc(100vw - 32px);
+      border: 1px solid #3d4150;
+      border-radius: 8px;
+      background: #10131d;
+      color: #f9fafb;
+      box-shadow: 0 18px 60px rgba(0,0,0,.38);
+      overflow: hidden;
+    }
+    .pkg-alert-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #262a36;
+    }
+    .pkg-alert-modal-title { font-size: 14px; font-weight: 700; }
+    .pkg-alert-modal-sub { margin-top: 3px; font-size: 11px; color: #9ca3af; }
+    .pkg-alert-modal-close {
+      border: 0;
+      background: transparent;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 2px;
+    }
+    .pkg-alert-modal-body { padding: 12px 16px 16px; }
+    .pkg-alert-modal-row {
+      display: grid;
+      grid-template-columns: 54px 1fr;
+      gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px solid #262a36;
+    }
+    .pkg-alert-modal-row:last-child { border-bottom: 0; }
+    .pkg-alert-modal-key {
+      align-self: start;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 22px;
+      border-radius: 4px;
+      background: rgba(232,0,125,.16);
+      color: #f9a8d4;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .03em;
+    }
+    .pkg-alert-modal-text { font-size: 12.5px; line-height: 1.35; color: #e5e7eb; }
 
     /* ── Package Rules drawer (separate from adv-drawer) ─────── */
     .pkg-rules-drawer {
@@ -545,6 +847,14 @@
       opacity: .48;
       background: #f3f4f6;
     }
+    .pkg-change-cell.has-adjustment .pkg-change-wrap {
+      border-color: rgba(232, 0, 125, 0.35);
+      background: rgba(232, 0, 125, 0.035);
+    }
+    .pkg-change-cell.adjust-down .pkg-change-wrap {
+      border-color: rgba(231, 76, 60, 0.32);
+      background: rgba(231, 76, 60, 0.035);
+    }
     .pkg-change-input {
       width: 100%;
       min-width: 0;
@@ -579,6 +889,264 @@
       color: var(--accent);
       background: rgba(232, 0, 125, 0.08);
     }
+    .pkg-status-cell {
+      text-align: center;
+      padding-left: 4px !important;
+      padding-right: 4px !important;
+    }
+    .pkg-status-stack {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      min-width: 48px;
+    }
+    .pkg-rec-flag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border-mid);
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .pkg-rec-flag.has-rec {
+      border-color: rgba(232,0,125,.28);
+      color: var(--accent);
+      background: rgba(232,0,125,.04);
+    }
+    .pkg-rec-flag.no-rec {
+      color: #9ca3af;
+      background: #f9fafb;
+    }
+    .pkg-status-pill {
+      display: inline-flex;
+      align-items: center;
+      height: 18px;
+      padding: 0 6px;
+      border-radius: 4px;
+      background: #f3f4f6;
+      color: #6b7280;
+      font-size: 9.5px;
+      font-weight: 700;
+      line-height: 18px;
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+    .pkg-status-pill.unapproved {
+      background: rgba(245, 166, 35, .13);
+      color: #92400e;
+    }
+    .pkg-status-pill.approved {
+      background: rgba(34, 197, 94, .12);
+      color: #15803d;
+    }
+    .pkg-status-pill.published {
+      background: rgba(59, 130, 246, .12);
+      color: #1d4ed8;
+    }
+    .pkg-pager-row td {
+      padding: 14px 16px !important;
+      text-align: center;
+      color: var(--text-muted);
+      background: #fafbfc;
+      border-top: 1px solid var(--border);
+    }
+    .pkg-show-more-btn {
+      margin-left: 10px;
+      height: 28px;
+      border: 1px solid var(--border-mid);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 0 12px;
+      cursor: pointer;
+    }
+    .pkg-show-more-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .pkg-toolbar {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 10px;
+    }
+    .pkg-selection-count {
+      min-width: 74px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      text-align: right;
+    }
+    .pkg-toolbar .btn:disabled,
+    .modal-footer .btn:disabled {
+      opacity: .45;
+      cursor: default;
+    }
+    .pkg-select-cell,
+    .pkg-select-head {
+      text-align: center;
+      padding-left: 6px !important;
+      padding-right: 4px !important;
+    }
+    .pkg-select-box {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .pkg-adv-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(17, 20, 27, .28);
+      z-index: 180;
+    }
+    .pkg-adv-backdrop.open { display: block; }
+    .pkg-adv-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 390px;
+      max-width: calc(100vw - 30px);
+      background: #fff;
+      border-left: 1px solid var(--border);
+      box-shadow: -14px 0 30px rgba(17, 20, 27, .18);
+      z-index: 185;
+      display: none;
+      flex-direction: column;
+      font-family: var(--font-sans);
+    }
+    .pkg-adv-panel.open { display: flex; }
+    .pkg-adv-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pkg-adv-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .pkg-adv-sub {
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 11.5px;
+    }
+    .pkg-adv-close {
+      border: 0;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 3px;
+      border-radius: 4px;
+    }
+    .pkg-adv-close:hover { background: var(--row-hover); color: var(--text-primary); }
+    .pkg-adv-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .pkg-adv-section {
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pkg-adv-section:last-child { border-bottom: 0; margin-bottom: 0; }
+    .pkg-adv-section-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .pkg-adv-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .pkg-adv-field label,
+    .bulk-field label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    .pkg-adv-field input,
+    .pkg-adv-field select,
+    .bulk-field input,
+    .bulk-field select {
+      width: 100%;
+      height: 34px;
+      border: 1px solid var(--border-mid);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      padding: 5px 9px;
+      outline: none;
+    }
+    .pkg-adv-field input:focus,
+    .pkg-adv-field select:focus,
+    .bulk-field input:focus,
+    .bulk-field select:focus { border-color: var(--accent); }
+    .pkg-adv-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: #fafbfc;
+    }
+    .bulk-mode {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--border-mid);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .bulk-mode label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 36px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      background: #fff;
+      color: var(--text-secondary);
+    }
+    .bulk-mode label + label { border-left: 1px solid var(--border-mid); }
+    .bulk-mode input { accent-color: var(--accent); }
+    .bulk-summary {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-bottom: 14px;
+    }
 
     /* Compact package table */
     .packages-table-wrap { overflow-x: auto; }
@@ -602,16 +1170,16 @@
       padding: 8px 8px;
       white-space: normal;
       line-height: 1.08;
-      letter-spacing: .02em;
+      letter-spacing: 0;
       vertical-align: middle;
-      font-size: 10.5px;
-      text-transform: uppercase;
+      font-size: 11.5px;
+      text-transform: none;
       border-bottom: 1px solid var(--border);
     }
     table.data-table.packages-table tbody td {
       box-sizing: border-box;
       padding: 6px 7px;
-      font-size: 12px;
+      font-size: 12.5px;
     }
     .pkg-sort-btn {
       width: 100%;
@@ -776,7 +1344,7 @@
           <line x1="5" y1="1.5" x2="5" y2="4"/>
           <line x1="9" y1="1.5" x2="9" y2="4"/>
         </svg>
-        <span class="date-range-text" id="fDatesLabel">Select weeks</span>
+        <span class="date-range-text" id="fDatesLabel">Select dates</span>
       </button>
       <div class="date-pill-popover"></div>
     </div>
@@ -791,10 +1359,20 @@
 
   <!-- ── Sub-tab Bar ── -->
   <div class="subtab-bar">
-    <a href="flight.html"  class="subtab">Flight Only</a>
-    <a href="hotel.html"   class="subtab">Hotel Only</a>
+    <a href="flight.html"  class="subtab">Flights</a>
+    <a href="hotel.html"   class="subtab">Hotels</a>
     <a href="pricing.html" class="subtab active">Packages</a>
     <div class="subtab-spacer"></div>
+    <div class="pkg-toolbar">
+      <span class="pkg-selection-count" id="pkgSelectionCount">0 selected</span>
+      <button class="btn btn-ghost" id="pkgClearSelectionBtn" onclick="clearPackageSelection()" disabled>Clear</button>
+      <button class="btn btn-ghost" id="pkgBulkChangeBtn" onclick="openBulkChangeModal()" disabled>
+        Bulk Change
+      </button>
+      <button class="btn btn-ghost" id="pkgAdvancedFiltersBtn" onclick="openPackageAdvancedFilters()">
+        Advanced Filters
+      </button>
+    </div>
     <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
       Run Evaluation
@@ -852,71 +1430,28 @@
         <div class="bp-chart-wrap"><canvas id="bpChartInbound"></canvas></div>
       </div>
       <div class="bp-chart">
-        <div class="bp-chart-title">Hotel — cumulative room nights (% of peak)</div>
+        <div class="bp-chart-title">Hotel — cumulative room nights</div>
         <div class="bp-chart-wrap"><canvas id="bpChartHotel"></canvas></div>
       </div>
-      <div class="bp-xaxis-label">Days before departure (→ departure)</div>
+      <div class="bp-xaxis-label">Days before service date (→ service)</div>
     </div>
   </div>
 </aside>
 
-<!-- ── Per-Package Rules Drawer ── -->
-<div class="adv-backdrop" id="prdBackdrop" onclick="closePkgRules()"></div>
-<aside class="pkg-rules-drawer" id="pkgRulesDrawer" aria-hidden="true">
-  <div class="prd-header">
-    <div>
-      <div class="prd-title">Package Rules</div>
-      <div class="prd-sub" id="prdSub">—</div>
+<div class="pkg-alert-modal-backdrop" id="pkgAlertModalBackdrop" onclick="closePackageAlertModal()">
+  <div class="pkg-alert-modal" onclick="event.stopPropagation()">
+    <div class="pkg-alert-modal-head">
+      <div>
+        <div class="pkg-alert-modal-title" id="pkgAlertModalTitle">Package alerts</div>
+        <div class="pkg-alert-modal-sub" id="pkgAlertModalSub">-</div>
+      </div>
+      <button class="pkg-alert-modal-close" type="button" aria-label="Close" onclick="closePackageAlertModal()">
+        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>
     </div>
-    <button class="prd-close" type="button" aria-label="Close" onclick="closePkgRules()">
-      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
-    </button>
+    <div class="pkg-alert-modal-body" id="pkgAlertModalBody"></div>
   </div>
-
-  <div class="prd-section">
-    <div class="prd-section-title">Price Bounds</div>
-    <div class="prd-row">
-      <label>Min price ($)</label>
-      <input type="number" id="prdMinPrice" placeholder="—" />
-    </div>
-    <div class="prd-row">
-      <label>Max price ($)</label>
-      <input type="number" id="prdMaxPrice" placeholder="—" />
-    </div>
-  </div>
-
-  <div class="prd-section">
-    <div class="prd-section-title">Margin Bounds</div>
-    <div class="prd-row">
-      <label>Min margin ($)</label>
-      <input type="number" id="prdMinMargin" placeholder="—" />
-    </div>
-    <div class="prd-row">
-      <label>Max margin ($)</label>
-      <input type="number" id="prdMaxMargin" placeholder="—" />
-    </div>
-  </div>
-
-  <div class="prd-section">
-    <div class="prd-section-title">Controls</div>
-    <label class="prd-toggle">
-      <input type="checkbox" id="prdLock" /> Lock price (no rec changes)
-    </label>
-    <label class="prd-toggle" style="margin-top:6px;">
-      <input type="checkbox" id="prdFlag" /> Flag changes &gt; $50 for review
-    </label>
-  </div>
-
-  <div class="prd-section">
-    <div class="prd-section-title">Last Modified</div>
-    <div class="prd-meta" id="prdMeta">—</div>
-  </div>
-
-  <div class="prd-footer">
-    <button class="re-btn ghost"   type="button" onclick="closePkgRules()">Cancel</button>
-    <button class="re-btn primary" type="button" onclick="savePkgRules()">Save</button>
-  </div>
-</aside>
+</div>
 
 <!-- ── Notes Modal ── -->
 <div class="modal-backdrop" id="notesModalBackdrop">
@@ -953,7 +1488,158 @@
   </div>
 </div>
 
-<!-- ── Run Evaluation Modal + Toast ── -->
+<!-- Package Bulk Change Modal -->
+<div class="modal-backdrop" id="bulkChangeModalBackdrop">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Bulk price change</div>
+        <div class="modal-subtitle" id="bulkChangeSub">0 packages selected</div>
+      </div>
+      <button class="modal-close" onclick="closeBulkChangeModal()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="bulk-summary" id="bulkChangeSummary">Select dates, hotels, or room rows to apply a price change.</div>
+      <div class="bulk-mode" role="group" aria-label="Bulk price change type">
+        <label><input type="radio" name="bulkChangeMode" value="pct" checked onchange="syncBulkChangeMode()"> Percent</label>
+        <label><input type="radio" name="bulkChangeMode" value="abs" onchange="syncBulkChangeMode()"> Dollars</label>
+      </div>
+      <div class="bulk-field">
+        <label id="bulkChangeAmountLabel" for="bulkChangeAmount">Percent change</label>
+        <input type="number" id="bulkChangeAmount" step="0.1" value="0" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeBulkChangeModal()">Cancel</button>
+      <button class="btn btn-primary" id="bulkApplyBtn" onclick="applyBulkChange()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Package Advanced Filters -->
+<div class="pkg-adv-backdrop" id="pkgAdvancedBackdrop" onclick="closePackageAdvancedFilters()"></div>
+<aside class="pkg-adv-panel" id="pkgAdvancedPanel" aria-hidden="true">
+  <div class="pkg-adv-head">
+    <div>
+      <div class="pkg-adv-title">Advanced filters</div>
+      <div class="pkg-adv-sub">Filter packages by adjustment state, margin, forecasts, and pace.</div>
+    </div>
+    <button class="pkg-adv-close" type="button" aria-label="Close" onclick="closePackageAdvancedFilters()">
+      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+    </button>
+  </div>
+  <div class="pkg-adv-body">
+    <div class="pkg-adv-section">
+      <div class="pkg-adv-section-title">State</div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advPublishedState">Published status</label>
+          <select id="advPublishedState">
+            <option value="">Any</option>
+            <option value="published">Published</option>
+            <option value="unapproved">Unapproved</option>
+          </select>
+        </div>
+        <div class="pkg-adv-field">
+          <label for="advRecommendationState">Recommendation</label>
+          <select id="advRecommendationState">
+            <option value="">Any</option>
+            <option value="yes">Y</option>
+            <option value="no">N</option>
+          </select>
+        </div>
+      </div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advPaceState">Alert / pace status</label>
+          <select id="advPaceState">
+            <option value="">Any</option>
+            <option value="behind">Behind</option>
+            <option value="on track">On Track</option>
+            <option value="ahead">Ahead</option>
+          </select>
+        </div>
+        <div class="pkg-adv-field">
+          <label for="advAdjustmentState">Price adjustments</label>
+          <select id="advAdjustmentState">
+            <option value="">Any</option>
+            <option value="adjusted">Adjustment in effect</option>
+            <option value="unadjusted">No adjustment</option>
+            <option value="accepted">Accepted recommendation</option>
+            <option value="rejected">Rejected recommendation</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="pkg-adv-section">
+      <div class="pkg-adv-section-title">Margins</div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advCurrMarginMin">Current margin min</label>
+          <input type="number" id="advCurrMarginMin" placeholder="$" />
+        </div>
+        <div class="pkg-adv-field">
+          <label for="advCurrMarginMax">Current margin max</label>
+          <input type="number" id="advCurrMarginMax" placeholder="$" />
+        </div>
+      </div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advRecMarginMin">Recommended margin min</label>
+          <input type="number" id="advRecMarginMin" placeholder="$" />
+        </div>
+        <div class="pkg-adv-field">
+          <label for="advRecMarginMax">Recommended margin max</label>
+          <input type="number" id="advRecMarginMax" placeholder="$" />
+        </div>
+      </div>
+    </div>
+    <div class="pkg-adv-section">
+      <div class="pkg-adv-section-title">Forecasts</div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advLfMin">Flight LF min (%)</label>
+          <input type="number" id="advLfMin" min="0" max="100" step="1" />
+        </div>
+        <div class="pkg-adv-field">
+          <label for="advLfMax">Flight LF max (%)</label>
+          <input type="number" id="advLfMax" min="0" max="100" step="1" />
+        </div>
+      </div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advHotelFcstMin">Hotel forecast min</label>
+          <input type="number" id="advHotelFcstMin" step="1" />
+        </div>
+        <div class="pkg-adv-field">
+          <label for="advHotelFcstMax">Hotel forecast max</label>
+          <input type="number" id="advHotelFcstMax" step="1" />
+        </div>
+      </div>
+    </div>
+    <div class="pkg-adv-section">
+      <div class="pkg-adv-section-title">Price</div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advPriceMin">Price from min</label>
+          <input type="number" id="advPriceMin" placeholder="$" />
+        </div>
+        <div class="pkg-adv-field">
+          <label for="advPriceMax">Price from max</label>
+          <input type="number" id="advPriceMax" placeholder="$" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pkg-adv-foot">
+    <button class="btn btn-ghost" type="button" onclick="clearPackageAdvancedFilters()">Clear</button>
+    <button class="btn btn-primary" type="button" onclick="applyPackageAdvancedFilters()">Apply</button>
+  </div>
+</aside>
+
+<!-- Run Evaluation Modal + Toast -->
 <div class="re-backdrop" id="reBackdrop">
   <div class="re-modal" role="dialog" aria-labelledby="reModalTitle">
     <div class="re-modal-head">
@@ -1012,18 +1698,27 @@ const priceOverrides   = {};         // pkgId → price (user edits / accepted r
 const lockedPkgs       = new Set();  // pkgId (🔒 fixed)
 const acceptedRecs     = new Set();  // pkgId (rec was accepted)
 const rejectedRecs     = new Set();  // pkgId (rec was rejected)
-const pkgRules         = {};         // pkgId → { minPrice, maxPrice, minMargin, maxMargin, lock, flag, modifiedAt, modifiedBy }
+const publishedPkgs    = new Set();  // pkgId (price action has been published)
+const pkgRules         = {};         // Legacy drawer state retained for stale localStorage-safe no-op code.
 const notes            = {};         // pkgId → { text, expires, createdBy, createdAt }
+
+const selectedPackageIds = new Set();
 
 let activeRuleKey = null;
 let activeNoteKey = null;
+let packageAlertModalSeq = 0;
+const packageAlertModalData = new Map();
 let priceRevision = 0;
+let packageDateRange = { start: '', end: '' };
+let packageDateViewIso = '';
+let advancedPackageFilters = {};
 let packageFilterKey = '';
 let visibleRowLimit = 250;
 const expandedOfferings = new Set();   // offering keys currently expanded
 let currentOfferings = new Map();      // key → offering (rebuilt each render)
 let currentPackageGroups = new Map();  // key → accordion group (rebuilt each render)
 let packageSort = { key: null, dir: 'asc' };
+let packageParamState = window.PackageParameters ? PackageParameters.load() : null;
 
 const ROW_RENDER_BATCH = 250;
 const packageIndex = {
@@ -1150,6 +1845,17 @@ function esc(value) {
 function jsArg(value) {
   return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
+function refreshPackageParamState() {
+  packageParamState = window.PackageParameters ? PackageParameters.load() : null;
+}
+function packageAlertsFor(pkg, metrics) {
+  if (!window.PackageParameters || !packageParamState || !pkg) return [];
+  return PackageParameters.evaluateAlerts(pkg, metrics, packageParamState);
+}
+function packageMetricClass(kind, value, pkg) {
+  if (!window.PackageParameters || !packageParamState || !pkg) return '';
+  return PackageParameters.metricClass(kind, value, pkg, packageParamState);
+}
 
 /* ══════════════════════════════════════════════════════════════════
    Filter matching + tree walkers
@@ -1164,6 +1870,60 @@ function mondayOf(isoOrDate) {
   d.setDate(d.getDate() + offset);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+function activePackageDateRangeMs() {
+  const start = packageDateRange.start ? packageDateValue(packageDateRange.start) : null;
+  const end = packageDateRange.end ? packageDateValue(packageDateRange.end) : null;
+  if (start == null && end == null) return null;
+  const lo = start == null ? end : (end == null ? start : Math.min(start, end));
+  const hi = end == null ? start : (start == null ? end : Math.max(start, end));
+  return { lo, hi };
+}
+
+function numOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function inNumberRange(value, min, max) {
+  const n = numOrNull(value);
+  if (n == null) return false;
+  if (min != null && n < min) return false;
+  if (max != null && n > max) return false;
+  return true;
+}
+
+function avgPackageFlightLfPct(pkg) {
+  const vals = [pkg.outboundForecastLf, pkg.returnForecastLf].map(numOrNull).filter(v => v != null);
+  return vals.length ? (vals.reduce((total, v) => total + v, 0) / vals.length) * 100 : null;
+}
+
+function packageDailyPickup(pkg) {
+  const oneDay = numOrNull(pkg.pickupPax1d);
+  if (oneDay != null) return oneDay;
+  const sevenDay = numOrNull(pkg.pickupPax7d);
+  return sevenDay == null ? null : sevenDay / 7;
+}
+
+function passesAdvancedPackageFilters(pkg) {
+  const f = advancedPackageFilters || {};
+  const adjustment = Math.abs(getPackagePriceChange(pkg)) >= 0.5;
+  if (f.publishedState && packagePublishedStatus(pkg) !== f.publishedState) return false;
+  if (f.recommendationState === 'yes' && !packageHasRecommendation(pkg)) return false;
+  if (f.recommendationState === 'no' && packageHasRecommendation(pkg)) return false;
+  if (f.adjustmentState === 'adjusted' && !adjustment) return false;
+  if (f.adjustmentState === 'unadjusted' && adjustment) return false;
+  if (f.adjustmentState === 'accepted' && !acceptedRecs.has(pkg.id)) return false;
+  if (f.adjustmentState === 'rejected' && !rejectedRecs.has(pkg.id)) return false;
+  if (f.paceState && String(pkg.bookingPace || '').toLowerCase() !== f.paceState) return false;
+  if ((f.currMarginMin != null || f.currMarginMax != null) && !inNumberRange(getEffectiveMargin(pkg), f.currMarginMin, f.currMarginMax)) return false;
+  if ((f.recMarginMin != null || f.recMarginMax != null) && !inNumberRange(pkg.recMargin, f.recMarginMin, f.recMarginMax)) return false;
+  if ((f.lfMin != null || f.lfMax != null) && !inNumberRange(avgPackageFlightLfPct(pkg), f.lfMin, f.lfMax)) return false;
+  if ((f.hotelFcstMin != null || f.hotelFcstMax != null) && !inNumberRange(pkg.hotelForecast, f.hotelFcstMin, f.hotelFcstMax)) return false;
+  if ((f.priceMin != null || f.priceMax != null) && !inNumberRange(getEffectivePrice(pkg), f.priceMin, f.priceMax)) return false;
+  return true;
 }
 
 function passesHeaderFilters(pkg) {
@@ -1181,17 +1941,13 @@ function passesHeaderFilters(pkg) {
   if (gateways.length && !gateways.includes(pkg.gatewayCity)) return false;
   const nights = Filters.getSelected('fNights');
   if (nights.length && !nights.includes(`${pkg.duration}N`)) return false;
-  // Week range — compare on the picker's Monday anchor so the Sunday-based
-  // package week_start lines up with the selected calendar weeks.
-  if (f.dates && f.dates.start) {
-    const wkMon = mondayOf(pkg.weekStartIso);
-    const lo = mondayOf(f.dates.start);
-    const hi = mondayOf(f.dates.end || f.dates.start);
-    if (!wkMon || !lo || !hi) return false;
-    const t = wkMon.getTime();
-    if (t < lo.getTime() || t > hi.getTime()) return false;
+  // Package date range filters on the actual departure date, not week_start.
+  const dateRange = activePackageDateRangeMs();
+  if (dateRange) {
+    const dep = packageDateValue(pkg.departureDate);
+    if (dep == null || dep < dateRange.lo || dep > dateRange.hi) return false;
   }
-  return true;
+  return passesAdvancedPackageFilters(pkg);
 }
 
 function rebuildPackageIndex() {
@@ -1235,9 +1991,12 @@ function currentFilterKey() {
     hotel: Filters.getSelected('fHotel').slice().sort(),
     gateway: Filters.getSelected('fGateway').slice().sort(),
     nights: Filters.getSelected('fNights').slice().sort(),
-    dates: f.dates && f.dates.start
-      ? [f.dates.start.getTime(), (f.dates.end || f.dates.start).getTime()]
+    dates: packageDateRange.start || packageDateRange.end
+      ? [packageDateRange.start || null, packageDateRange.end || null]
       : null,
+    advanced: advancedPackageFilters,
+    priceRevision,
+    published: Array.from(publishedPkgs).sort(),
   });
 }
 
@@ -1275,9 +2034,10 @@ function allLeaves() {
    NOTE: the Flight # column is intentionally blank — the package CSV
    carries no per-flight schedule data, so we never fabricate a value.
    ══════════════════════════════════════════════════════════════════ */
+const PACKAGE_SELECT_COLS = 1;
 const PACKAGE_GROUP_COLS = 3;
-const PACKAGE_METRIC_COLS = 16;
-const COLSPAN = PACKAGE_GROUP_COLS + PACKAGE_METRIC_COLS;
+const PACKAGE_METRIC_COLS = 18;
+const COLSPAN = PACKAGE_SELECT_COLS + PACKAGE_GROUP_COLS + PACKAGE_METRIC_COLS;
 const PACKAGE_SORTERS = {
   gateway: { type: 'text', groupType: 'itinerary', value: p => p.gatewayCity || p.gateway },
   destination: { type: 'text', groupType: 'itinerary', value: p => p.destination },
@@ -1298,6 +2058,8 @@ const PACKAGE_SORTERS = {
   currMargin: { type: 'number', value: p => getEffectiveMargin(p) },
   recMargin: { type: 'number', value: p => p.recMargin },
   marginDelta: { type: 'number', value: p => p.recMargin - getEffectiveMargin(p) },
+  alerts: { type: 'number', value: p => packageAlertsFor(p, packageLeafMetrics(p)).length },
+  status: { type: 'number', value: p => packageStatusRank(packagePublishedStatus(p)) },
   pace: { type: 'number', value: p => ({ behind: 0, 'on track': 1, ahead: 2 }[p.bookingPace] ?? 1) },
 };
 
@@ -1342,9 +2104,13 @@ function packageHeaderCell(key, label, opts = {}) {
 function renderPackagesHead() {
   document.getElementById('packagesHead').innerHTML = `
     <tr>
-      ${packageHeaderCell('gateway', 'Gateway', { width: '92px' })}
-      ${packageHeaderCell('destination', 'Destination', { width: '118px' })}
-      ${packageHeaderCell('dates', 'Dates', { width: '220px', title: 'Dates / Hotel / Room Category' })}
+      <th class="pkg-select-head" style="width:34px;" title="Select visible packages">
+        <input class="pkg-select-box" id="pkgSelectAllVisible" type="checkbox"
+               onclick="event.stopPropagation()" onchange="toggleVisiblePackageSelection(this.checked)" />
+      </th>
+      ${packageHeaderCell('gateway', 'Gateway', { width: '84px' })}
+      ${packageHeaderCell('destination', 'Destination', { width: '110px' })}
+      ${packageHeaderCell('dates', 'Dates', { width: '206px', title: 'Dates / Hotel / Room Category' })}
       ${packageHeaderCell('soldStly', 'Sold<br>STLY', { width: '50px', className: 'text-right', align: 'right', title: 'Room nights - target, same time last year' })}
       ${packageHeaderCell('sold', 'Sold', { width: '50px', className: 'text-right', align: 'right', title: 'Room nights' })}
       ${packageHeaderCell('outboundForecast', 'Out<br>Fcst', { width: '52px', className: 'text-right', align: 'right', title: 'Outbound flight forecast load factor' })}
@@ -1359,6 +2125,8 @@ function renderPackagesHead() {
       ${packageHeaderCell('currMargin', 'Curr<br>Margin', { width: '72px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('recMargin', 'Rec<br>Margin', { width: '72px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('marginDelta', 'Margin<br>Delta', { width: '58px', className: 'text-right', align: 'right' })}
+      ${packageHeaderCell('alerts', 'Alerts', { width: '70px' })}
+      ${packageHeaderCell('status', 'Status', { width: '84px' })}
       ${packageHeaderCell('pace', 'Pace', { width: '70px' })}
       <th style="width:72px;text-align:center;">Actions</th>
     </tr>
@@ -1408,6 +2176,30 @@ function packageRoomLabel(pkg) {
 function packageScopeCount(leaves) {
   const n = leaves.length;
   return `${n.toLocaleString()} package${n === 1 ? '' : 's'}`;
+}
+
+function packageSelectionState(leaves) {
+  const ids = leaves.map(pkg => pkg.id);
+  const selected = ids.filter(id => selectedPackageIds.has(id)).length;
+  return {
+    selected,
+    total: ids.length,
+    checked: ids.length > 0 && selected === ids.length,
+    indeterminate: selected > 0 && selected < ids.length,
+  };
+}
+
+function packageSelectionCell(scopeKey, leaves) {
+  const state = packageSelectionState(leaves);
+  const safeKey = jsArg(scopeKey);
+  const title = state.total ? `${state.selected} of ${state.total} selected` : 'No packages to select';
+  return `
+    <td class="pkg-select-cell" title="${title}">
+      <input class="pkg-select-box" type="checkbox" data-pkg-select-key="${esc(scopeKey)}"
+             onclick="event.stopPropagation()" onchange="togglePackageSelection('${safeKey}', this.checked)"
+             ${state.checked ? 'checked' : ''} ${state.total ? '' : 'disabled'} />
+    </td>
+  `;
 }
 
 function newPackageGroup(type, level, key, label, sub, sortValue, sortType, rep) {
@@ -1546,9 +2338,12 @@ function packagePriceChangeCellForScope(scopeKey, leaves, editable = true) {
   const safeKey = jsArg(scopeKey);
   const disabledAttr = disabled ? 'disabled' : '';
   const disabledClass = disabled ? ' disabled' : '';
+  const changeClass = Math.abs(avgChange) >= 0.5
+    ? (avgChange < 0 ? ' has-adjustment adjust-down' : ' has-adjustment adjust-up')
+    : '';
   const title = disabled ? 'All descendant packages are locked' : 'Adjust package price by percentage or dollars';
   return `
-    <td class="pkg-change-cell" title="${title}">
+    <td class="pkg-change-cell${changeClass}" title="${title}">
       <div class="pkg-change-pair" onclick="event.stopPropagation()">
         <span class="pkg-change-wrap${disabledClass}">
           <input class="pkg-change-input" type="number" step="0.1" value="${pctValue}" placeholder=""
@@ -1601,13 +2396,54 @@ function packageActionCell(pkg, opts) {
   return packageActionCellForScope(pkg.id, [pkg]);
 }
 
+function packageHasRecommendation(pkg) {
+  return Number.isFinite(Number(pkg && pkg.recPrice)) || Number.isFinite(Number(pkg && pkg.recMargin));
+}
+
+function packagePublishedStatus(pkg) {
+  if (!pkg) return '';
+  if (publishedPkgs.has(pkg.id)) return 'published';
+  if (acceptedRecs.has(pkg.id)) return 'approved';
+  if (rejectedRecs.has(pkg.id) || Math.abs(getPackagePriceChange(pkg)) >= 0.5 || packageHasRecommendation(pkg)) return 'unapproved';
+  return '';
+}
+
+function packageStatusRank(status) {
+  return { '': 0, published: 1, approved: 2, unapproved: 3 }[status || ''] ?? 0;
+}
+
+function packageScopePublishedStatus(leaves) {
+  const statuses = (leaves || []).map(packagePublishedStatus).filter(Boolean);
+  if (!statuses.length) return '';
+  if (statuses.includes('unapproved')) return 'unapproved';
+  if (statuses.includes('approved')) return 'approved';
+  return 'published';
+}
+
+function packageStatusCellForScope(leaves) {
+  const list = leaves || [];
+  const recCount = list.filter(packageHasRecommendation).length;
+  const status = packageScopePublishedStatus(list);
+  const label = status ? status : '';
+  const title = `Recommendation: ${recCount ? 'Yes' : 'No'}${status ? `\nPublished status: ${status}` : '\nPublished status: blank'}`;
+  return `
+    <td class="pkg-status-cell" title="${esc(title)}">
+      <span class="pkg-status-stack">
+        <span class="pkg-rec-flag ${recCount ? 'has-rec' : 'no-rec'}" aria-label="Recommendation ${recCount ? 'yes' : 'no'}">${recCount ? 'Yes' : 'No'}</span>
+        ${label ? `<span class="pkg-status-pill ${status}">${esc(label)}</span>` : '<span class="pkg-status-pill">&nbsp;</span>'}
+      </span>
+    </td>
+  `;
+}
+
 function packageLeafMetrics(pkg) {
-  return {
+  const metrics = {
     soldStly: pkg.soldStly,
     sold: pkg.soldPackages,
     outboundForecast: pkg.outboundForecastLf,
     returnForecast: pkg.returnForecastLf,
     hotelForecast: pkg.hotelForecast,
+    pickup1d: pkg.pickupPax1d,
     pickup7d: pkg.pickupPax7d,
     pickup14d: pkg.pickupPax14d,
     price: getEffectivePrice(pkg),
@@ -1617,8 +2453,13 @@ function packageLeafMetrics(pkg) {
     currMargin: getEffectiveMargin(pkg),
     recMargin: pkg.recMargin,
     marginDelta: pkg.recMargin - getEffectiveMargin(pkg),
+    costChange: null,
+    pickupDaily: packageDailyPickup(pkg),
+    status: packageStatusRank(packagePublishedStatus(pkg)),
     pace: paceRank(pkg.bookingPace),
   };
+  metrics.alerts = packageAlertsFor(pkg, metrics).length;
+  return metrics;
 }
 
 function packageMetricValue(metric, key) {
@@ -1632,6 +2473,7 @@ function aggregateMetricValues(metrics, key, method) {
   if (method === 'sum') return values.reduce((total, value) => total + value, 0);
   if (method === 'avg') return values.reduce((total, value) => total + value, 0) / values.length;
   if (method === 'min') return Math.min(...values);
+  if (method === 'max') return Math.max(...values);
   return null;
 }
 
@@ -1644,6 +2486,7 @@ function packageAggregatedMetrics(node) {
     outboundForecast: aggregateMetricValues(childMetrics, 'outboundForecast', 'avg'),
     returnForecast: aggregateMetricValues(childMetrics, 'returnForecast', 'avg'),
     hotelForecast: aggregateMetricValues(childMetrics, 'hotelForecast', 'sum'),
+    pickup1d: aggregateMetricValues(childMetrics, 'pickup1d', 'sum'),
     pickup7d: aggregateMetricValues(childMetrics, 'pickup7d', 'sum'),
     pickup14d: aggregateMetricValues(childMetrics, 'pickup14d', 'sum'),
     price: aggregateMetricValues(childMetrics, 'price', 'min'),
@@ -1653,22 +2496,30 @@ function packageAggregatedMetrics(node) {
     currMargin: aggregateMetricValues(childMetrics, 'currMargin', 'avg'),
     recMargin: aggregateMetricValues(childMetrics, 'recMargin', 'avg'),
     marginDelta: aggregateMetricValues(childMetrics, 'marginDelta', 'avg'),
+    costChange: aggregateMetricValues(childMetrics, 'costChange', 'max'),
+    pickupDaily: aggregateMetricValues(childMetrics, 'pickupDaily', 'sum'),
+    alerts: aggregateMetricValues(childMetrics, 'alerts', 'sum'),
+    status: aggregateMetricValues(childMetrics, 'status', 'max'),
     pace: aggregateMetricValues(childMetrics, 'pace', 'min'),
   };
 }
 
-function metricNumCell(value) {
-  return value == null ? BLANK_NUM : `<td class="text-right num">${Math.round(value).toLocaleString()}</td>`;
+function metricNumCell(value, opts = {}) {
+  if (value == null) return BLANK_NUM;
+  const cls = opts.className ? ` ${opts.className}` : '';
+  return `<td class="text-right num${cls}">${Math.round(value).toLocaleString()}</td>`;
 }
 
-function metricPctCell(value) {
-  return value == null ? BLANK_NUM : `<td class="text-right num">${fmtPct(value)}</td>`;
+function metricPctCell(value, opts = {}) {
+  if (value == null) return BLANK_NUM;
+  const cls = opts.className ? ` ${opts.className}` : '';
+  return `<td class="text-right num${cls}">${fmtPct(value)}</td>`;
 }
 
 function metricMoneyCell(value, opts = {}) {
   if (value == null) return BLANK_NUM;
   const sign = opts.sign && value >= 0 ? '+' : '';
-  const cls = opts.delta ? ` ${deltaColor(value)}` : '';
+  const cls = `${opts.delta ? ` ${deltaColor(value)}` : ''}${opts.className ? ` ${opts.className}` : ''}`;
   return `<td class="text-right num${cls}">${sign}${fmt$(value)}</td>`;
 }
 
@@ -1677,14 +2528,76 @@ function metricPaceCell(value) {
   return pace ? `<td>${paceBadge(pace)}</td>` : BLANK_TEXT;
 }
 
+function packageAlertCell(pkg, metrics) {
+  const alerts = packageAlertsFor(pkg, metrics);
+  const cls = alerts.length ? 'has-alerts' : 'muted';
+  const modalId = `pkg-alert-${++packageAlertModalSeq}`;
+  const sub = pkg
+    ? `${pkg.gatewayCity || pkg.gateway || '-'} (${pkg.gateway || '-'}) to ${pkg.destination || pkg.destId || '-'}`
+    : 'Package group';
+  packageAlertModalData.set(modalId, { pkg, alerts, sub });
+  if (!alerts.length) {
+    return `
+      <td class="pkg-alert-cell">
+        <button type="button" class="pkg-alert-bell ${cls}" aria-label="Open alerts" onclick="event.stopPropagation();openPackageAlertModal('${modalId}')">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+            <path d="M8 2.5c-2 0-3.2 1.4-3.2 3.4v2.4L3.5 10v1h9v-1l-1.3-1.7V5.9c0-2-1.2-3.4-3.2-3.4Z"/>
+            <path d="M6.7 12.1c.2.8.6 1.2 1.3 1.2s1.1-.4 1.3-1.2"/>
+          </svg>
+          <span class="pkg-alert-count">0</span>
+        </button>
+      </td>
+    `;
+  }
+  return `
+    <td class="pkg-alert-cell">
+      <button type="button" class="pkg-alert-bell ${cls}" aria-label="Open alerts" onclick="event.stopPropagation();openPackageAlertModal('${modalId}')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+          <path d="M8 2.5c-2 0-3.2 1.4-3.2 3.4v2.4L3.5 10v1h9v-1l-1.3-1.7V5.9c0-2-1.2-3.4-3.2-3.4Z"/>
+          <path d="M6.7 12.1c.2.8.6 1.2 1.3 1.2s1.1-.4 1.3-1.2"/>
+        </svg>
+        <span class="pkg-alert-count">${alerts.length}</span>
+      </button>
+    </td>
+  `;
+}
+
+function openPackageAlertModal(modalId) {
+  const data = packageAlertModalData.get(modalId);
+  if (!data) return;
+  const title = document.getElementById('pkgAlertModalTitle');
+  const sub = document.getElementById('pkgAlertModalSub');
+  const body = document.getElementById('pkgAlertModalBody');
+  const p = data.pkg || {};
+  title.textContent = data.alerts.length
+    ? `${data.alerts.length} active alert${data.alerts.length === 1 ? '' : 's'}`
+    : 'No active alerts';
+  sub.textContent = p.hotel
+    ? `${p.hotel} - ${data.sub}`
+    : data.sub;
+  body.innerHTML = data.alerts.length
+    ? data.alerts.map(alert => `
+      <div class="pkg-alert-modal-row">
+        <div class="pkg-alert-modal-key">${esc(alert.label || alert.key)}</div>
+        <div class="pkg-alert-modal-text">${esc(alert.title || alert.label || alert.key)}</div>
+      </div>
+    `).join('')
+    : '<div class="pkg-alert-modal-text">No configured alert thresholds are currently breached for this row.</div>';
+  document.getElementById('pkgAlertModalBackdrop').classList.add('open');
+}
+
+function closePackageAlertModal() {
+  document.getElementById('pkgAlertModalBackdrop').classList.remove('open');
+}
+
 function packageGroupMetricCells(node) {
   const metrics = packageAggregatedMetrics(node);
   return `
     ${metricNumCell(metrics.soldStly)}
     ${metricNumCell(metrics.sold)}
-    ${metricPctCell(metrics.outboundForecast)}
-    ${metricPctCell(metrics.returnForecast)}
-    ${metricNumCell(metrics.hotelForecast)}
+    ${metricPctCell(metrics.outboundForecast, { className: packageMetricClass('outboundForecast', metrics.outboundForecast, node.rep) })}
+    ${metricPctCell(metrics.returnForecast, { className: packageMetricClass('returnForecast', metrics.returnForecast, node.rep) })}
+    ${metricNumCell(metrics.hotelForecast, { className: packageMetricClass('hotelForecast', metrics.hotelForecast, node.rep) })}
     ${metricNumCell(metrics.pickup7d)}
     ${metricNumCell(metrics.pickup14d)}
     ${metricMoneyCell(metrics.price)}
@@ -1693,9 +2606,28 @@ function packageGroupMetricCells(node) {
     ${metricMoneyCell(metrics.priceDelta, { delta: true, sign: true })}
     ${metricMoneyCell(metrics.currMargin)}
     ${metricMoneyCell(metrics.recMargin)}
-    ${metricMoneyCell(metrics.marginDelta, { delta: true, sign: true })}
+    ${metricMoneyCell(metrics.marginDelta, { delta: true, sign: true, className: packageMetricClass('marginDelta', metrics.marginDelta, node.rep) })}
+    ${packageAlertCell(node.rep, metrics)}
+    ${packageStatusCellForScope(node.leaves)}
     ${metricPaceCell(metrics.pace)}
     ${packageActionCellForScope(node.key, node.leaves)}
+  `;
+}
+
+function changedMoneyCell(current, previous, changed, opts = {}) {
+  const delta = current - previous;
+  const directionClass = changed
+    ? (delta < 0 ? ' pkg-adjust-down' : ' pkg-adjust-up')
+    : '';
+  const alignClass = opts.delta ? ` ${deltaColor(current)}` : '';
+  if (!changed) return `<td class="text-right num${alignClass}">${fmt$(current)}</td>`;
+  return `
+    <td class="text-right num pkg-adjusted-cell${directionClass}${alignClass}">
+      <span class="pkg-value-stack">
+        <span class="pkg-new-value">${fmt$(current)}</span>
+        <span class="pkg-old-value">${fmt$(previous)}</span>
+      </span>
+    </td>
   `;
 }
 
@@ -1704,25 +2636,34 @@ function metricCells(p, opts) {
   const editable = !!opts.editable;
   const currP  = getEffectivePrice(p);
   const currM  = getEffectiveMargin(p);
+  const originalM = p.currentPrice - p.totalCost;
   const deltaP = p.recPrice - currP;
   const deltaM = p.recMargin - currM;
   const changed = Math.abs(getPackagePriceChange(p)) >= 0.5;
-  const fcst = (v) => `<td class="text-right num">${v == null ? '-' : fmtPct(v)}</td>`;
-  const numCell = (v) => (v == null ? BLANK_NUM : `<td class="text-right num">${Math.round(v).toLocaleString()}</td>`);
+  const fcst = (v, kind) => {
+    if (v == null) return BLANK_NUM;
+    const cls = packageMetricClass(kind, v, p);
+    return `<td class="text-right num${cls ? ` ${cls}` : ''}">${fmtPct(v)}</td>`;
+  };
+  const numCell = (v, kind) => {
+    if (v == null) return BLANK_NUM;
+    const cls = kind ? packageMetricClass(kind, v, p) : '';
+    return `<td class="text-right num${cls ? ` ${cls}` : ''}">${Math.round(v).toLocaleString()}</td>`;
+  };
   const soldCell = numCell(opts.sold);
   const stlyCell = numCell(opts.stly);
-  const hotelFcstCell = numCell(opts.hotelFcst);
-  const priceCell = `<td class="text-right num ${changed ? 'cur-pink' : ''}">${fmt$(currP)}</td>`;
+  const hotelFcstCell = numCell(opts.hotelFcst, 'hotelForecast');
+  const priceCell = changedMoneyCell(currP, p.currentPrice, changed);
   const priceChangeCell = packagePriceChangeCell(p, editable);
-  const marginCell = `<td class="text-right num ${changed ? 'cur-pink' : ''}">${fmt$(currM)}</td>`;
+  const marginCell = changedMoneyCell(currM, originalM, changed);
   const recClass = acceptedRecs.has(p.id) ? 'accepted' : (rejectedRecs.has(p.id) ? 'rejected' : '');
   const recCell = `<td class="text-right"><span class="pkg-rec-value ${recClass}">${fmt$(p.recPrice)}</span></td>`;
   const recMarginCell = `<td class="text-right"><span class="pkg-rec-value ${recClass}">${fmt$(p.recMargin)}</span></td>`;
   return `
     ${stlyCell}
     ${soldCell}
-    ${fcst(p.outboundForecastLf)}
-    ${fcst(p.returnForecastLf)}
+    ${fcst(p.outboundForecastLf, 'outboundForecast')}
+    ${fcst(p.returnForecastLf, 'returnForecast')}
     ${hotelFcstCell}
     <td class="text-right num">${p.pickupPax7d == null ? '-' : p.pickupPax7d}</td>
     <td class="text-right num">${p.pickupPax14d == null ? '-' : p.pickupPax14d}</td>
@@ -1732,7 +2673,9 @@ function metricCells(p, opts) {
     <td class="text-right num ${deltaColor(deltaP)}">${deltaP>=0?'+':''}${fmt$(deltaP)}</td>
     ${marginCell}
     ${recMarginCell}
-    <td class="text-right num ${deltaColor(deltaM)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
+    <td class="text-right num ${deltaColor(deltaM)} ${packageMetricClass('marginDelta', deltaM, p)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
+    ${packageAlertCell(p, packageLeafMetrics(p))}
+    ${packageStatusCellForScope([p])}
     <td>${paceBadge(p.bookingPace)}</td>
     ${packageActionCell(p, opts)}
   `;
@@ -1798,6 +2741,7 @@ function packageGroupRow(node) {
   currentPackageGroups.set(node.key, node);
   return `
     <tr class="pkg-group pkg-level-${node.level}" onclick="togglePackageGroup('${jsArg(node.key)}')">
+      ${packageSelectionCell(node.key, node.leaves)}
       ${packageGroupCells(node, packageGroupContent(node))}
       ${packageGroupMetricCells(node)}
     </tr>
@@ -1815,12 +2759,13 @@ function packageRoomRow(node) {
     : '';
   const content = `
     <div class="pkg-room-cell">
-      <div class="pkg-h-title">${room.hasCostChange ? '<span class="cost-change-icon" title="Cost change since last evaluation" style="margin-right:5px;">&#9888;</span>' : ''}${desc}</div>
+      <div class="pkg-h-title">${desc}</div>
       ${sub}
     </div>
   `;
   return `
     <tr class="pkg-room-row" onclick="openBookingPanel('${jsArg(node.key)}')">
+      ${packageSelectionCell(room.id, [room])}
       ${packageGroupCells(node, content)}
       ${metricCells(room, { editable: true, sold: room.soldPackages, stly: room.soldStly, hotelFcst: room.hotelForecast })}
     </tr>
@@ -1853,16 +2798,31 @@ function renderPackagesTable() {
   const leaves = allLeaves();
   if (!leaves.length) {
     tbody.innerHTML = `<tr><td colspan="${COLSPAN}" style="padding:28px;text-align:center;color:var(--text-muted);">No packages match the current filters.</td></tr>`;
+    syncPackageSelectionUi();
     return;
   }
 
   const tree = sortPackageNodes(buildPackageTree(leaves));
   currentOfferings = new Map();
   currentPackageGroups = new Map();
+  packageAlertModalSeq = 0;
+  packageAlertModalData.clear();
   const rows = [];
   renderPackageNodes(tree, rows);
 
-  tbody.innerHTML = rows.join('');
+  const visibleRows = rows.slice(0, visibleRowLimit);
+  if (rows.length > visibleRows.length) {
+    visibleRows.push(`
+      <tr class="pkg-pager-row">
+        <td colspan="${COLSPAN}">
+          Showing ${visibleRows.length.toLocaleString()} of ${rows.length.toLocaleString()} rows
+          <button type="button" class="pkg-show-more-btn" onclick="showMorePackages()">Show ${Math.min(ROW_RENDER_BATCH, rows.length - visibleRows.length).toLocaleString()} more</button>
+        </td>
+      </tr>
+    `);
+  }
+  tbody.innerHTML = visibleRows.join('');
+  syncPackageSelectionUi();
 }
 
 function togglePackageGroup(key) {
@@ -1900,10 +2860,11 @@ function loadCurveData() {
 function destroyBpCharts() {
   bpCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
   bpCharts = [];
+  ['bpChartOutbound', 'bpChartInbound', 'bpChartHotel'].forEach(id => clearCurveHover(document.getElementById(id)));
 }
 
 const BP_DAY_MS = 24 * 60 * 60 * 1000;
-const BP_DEMO_TODAY_ISO = '2026-06-01';
+const BP_DEMO_TODAY_ISO = '2026-05-27';
 function daysUntilDeparture(dateText) {
   const m = String(dateText || '').trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (!m) return null;
@@ -1930,15 +2891,101 @@ function curveValueAt(map, day) {
   return null;
 }
 
+function scaleCurveSeries(series, factor) {
+  const scale = Number(factor);
+  if (!series || !Number.isFinite(scale) || scale <= 0) return series;
+  const next = {};
+  ['ACTUAL', 'TARGET', 'FORECAST'].forEach(type => {
+    next[type] = (series[type] || []).map(pt => [pt[0], Number(pt[1]) * scale]);
+  });
+  return next;
+}
+
+function clearCurveHover(canvas) {
+  if (!canvas) return;
+  canvas.onmousemove = null;
+  canvas.onmouseleave = null;
+  const wrap = canvas.parentNode;
+  if (!wrap) return;
+  const line = wrap.querySelector('.bp-hoverline');
+  const tip = wrap.querySelector('.bp-tooltip');
+  if (line) line.style.display = 'none';
+  if (tip) tip.style.display = 'none';
+}
+
+function curveTooltipLayer(canvas) {
+  const wrap = canvas.parentNode;
+  let line = wrap.querySelector('.bp-hoverline');
+  let tip = wrap.querySelector('.bp-tooltip');
+  if (!line) {
+    line = document.createElement('div');
+    line.className = 'bp-hoverline';
+    wrap.appendChild(line);
+  }
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.className = 'bp-tooltip';
+    wrap.appendChild(tip);
+  }
+  return { line, tip };
+}
+
+function formatCurveTooltipValue(value, percent) {
+  if (value == null || !Number.isFinite(Number(value))) return '-';
+  return percent
+    ? `${Math.round(Number(value) * 100)}%`
+    : Math.round(Number(value)).toLocaleString();
+}
+
+function attachCurveTooltip(canvas, rawMaps, xMax, options) {
+  const percent = options.percent !== false;
+  const labels = options.labels || ['Actual', 'Target', 'Forecast'];
+  const wrap = canvas.parentNode;
+  const plot = { left: 44, right: 16, top: 18, bottom: 34 };
+  const { line, tip } = curveTooltipLayer(canvas);
+  const hide = () => {
+    line.style.display = 'none';
+    tip.style.display = 'none';
+  };
+  canvas.onmouseleave = hide;
+  canvas.onmousemove = (e) => {
+    const width = canvas.clientWidth || wrap.clientWidth || 1;
+    const height = canvas.clientHeight || wrap.clientHeight || 1;
+    const plotWidth = Math.max(10, width - plot.left - plot.right);
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < plot.left || x > plot.left + plotWidth) {
+      hide();
+      return;
+    }
+    const ratio = (x - plot.left) / plotWidth;
+    const day = Math.max(0, Math.min(xMax, Math.round(xMax - (ratio * xMax))));
+    const rows = ['ACTUAL', 'TARGET', 'FORECAST'].map((type, idx) => {
+      const value = curveValueAt(rawMaps[type], day);
+      return `<div class="bp-tooltip-row"><span>${labels[idx]}</span><strong>${formatCurveTooltipValue(value, percent)}</strong></div>`;
+    }).join('');
+    line.style.display = 'block';
+    line.style.left = `${Math.round(x)}px`;
+    tip.innerHTML = `<div class="bp-tooltip-title">${day.toLocaleString()} days before service</div>${rows}`;
+    tip.style.display = 'block';
+    const preferredLeft = x + 10;
+    const tipWidth = tip.offsetWidth || 180;
+    const left = preferredLeft + tipWidth > width - 8 ? x - tipWidth - 10 : preferredLeft;
+    tip.style.left = `${Math.max(8, left)}px`;
+    tip.style.top = `${Math.max(6, Math.min(height - 86, plot.top - 10))}px`;
+  };
+}
+
 // Render one stacked chart (ACTUAL solid / TARGET dashed / FORECAST dotted),
 // or an honest "no data" note when this offering has no matching curve.
-function renderCurve(canvasId, series, xMax, todayDtc) {
+function renderCurve(canvasId, series, xMax, todayDtc, opts = {}) {
   const canvas = document.getElementById(canvasId);
   const wrap = canvas.parentNode;
   const oldNote = wrap.querySelector('.bp-nodata');
   if (oldNote) oldNote.remove();
   if (!series || !series.ACTUAL || !series.ACTUAL.length) {
     canvas.style.display = 'none';
+    clearCurveHover(canvas);
     const note = document.createElement('div');
     note.className = 'bp-nodata';
     note.textContent = 'No booking-curve data for this offering';
@@ -1946,9 +2993,14 @@ function renderCurve(canvasId, series, xMax, todayDtc) {
     return;
   }
   canvas.style.display = '';
+  const percent = opts.percent !== false;
   const clampPct = (v) => {
     const n = Number(v);
     return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : null;
+  };
+  const rawNumber = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, n) : null;
   };
   const visibleAt = (type, x) => (
     !Number.isFinite(todayDtc) ||
@@ -1961,10 +3013,15 @@ function renderCurve(canvasId, series, xMax, todayDtc) {
     rawMaps[t] = new Map();
     (series[t] || []).forEach(pt => {
       const x = Number(pt[0]);
-      const y = clampPct(pt[1]);
+      const y = percent ? clampPct(pt[1]) : rawNumber(pt[1]);
       if (Number.isFinite(x) && y != null) rawMaps[t].set(x, y);
     });
   });
+  const yValues = [];
+  Object.values(rawMaps).forEach(m => m.forEach(v => yValues.push(v)));
+  const yMax = percent
+    ? 1
+    : Math.max(1, Math.ceil(Math.max(...yValues, Number(opts.yMax) || 0) * 1.1));
   const xs = new Set();
   Object.values(rawMaps).forEach(m => m.forEach((_, x) => xs.add(x)));
   if (Number.isFinite(todayDtc)) xs.add(todayDtc);
@@ -1998,10 +3055,16 @@ function renderCurve(canvasId, series, xMax, todayDtc) {
       plugins,
       scales: {
         x: { min: 0, max: xMax, reverse: true, grid: { color: '#2a2d35' }, ticks: { color: '#9ca3af' } },
-        y: { min: 0, max: 1, grid: { color: '#2a2d35' }, ticks: { callback: (v) => Math.round(v * 100) + '%' } },
+        y: {
+          min: 0,
+          max: yMax,
+          grid: { color: '#2a2d35' },
+          ticks: { callback: (v) => percent ? `${Math.round(v * 100)}%` : Math.round(v).toLocaleString() },
+        },
       },
     },
   }));
+  attachCurveTooltip(canvas, rawMaps, xMax, { percent });
 }
 
 function openBookingPanel(key) {
@@ -2017,17 +3080,22 @@ function openBookingPanel(key) {
     if (!document.getElementById('bookingPanel').classList.contains('open')) return;  // closed already
     const ob = cd.outbound[`${p.gateway}|${p.destId}|${p.departureDate}|${p.duration}`];
     const ib = cd.inbound[`${p.gateway}|${p.destId}|${p.returnDate}|${p.duration}`];
-    const ht = cd.hotel[`${p.destId}|${p.weekStartIso}|${p.duration}`];
-    const todayDtc = daysUntilDeparture(p.departureDate);
+    const ht = cd.hotel[`${p.destId}|${p.hotelId}|${p.weekStartIso}|${p.duration}`]
+      || cd.hotel[`${p.destId}|${p.weekStartIso}|${p.duration}`];
+    const outboundTodayDtc = daysUntilDeparture(p.departureDate);
+    let inboundTodayDtc = daysUntilDeparture(p.returnDate);
+    if (!Number.isFinite(inboundTodayDtc) && Number.isFinite(outboundTodayDtc)) {
+      inboundTodayDtc = outboundTodayDtc + Number(p.duration || 0);
+    }
     // One shared x-axis (days) across all three stacked charts.
     let xMax = 0;
     [ob, ib, ht].forEach(s => s && Object.values(s).forEach(arr => arr.forEach(pt => { if (pt[0] > xMax) xMax = pt[0]; })));
-    if (Number.isFinite(todayDtc) && todayDtc > xMax) xMax = todayDtc;
+    [outboundTodayDtc, inboundTodayDtc].forEach(day => { if (Number.isFinite(day) && day > xMax) xMax = day; });
     if (!xMax) xMax = 200;
     destroyBpCharts();
-    renderCurve('bpChartOutbound', ob, xMax, todayDtc);
-    renderCurve('bpChartInbound', ib, xMax, todayDtc);
-    renderCurve('bpChartHotel', ht, xMax, todayDtc);
+    renderCurve('bpChartOutbound', ob, xMax, outboundTodayDtc);
+    renderCurve('bpChartInbound', ib, xMax, inboundTodayDtc);
+    renderCurve('bpChartHotel', ht, xMax, outboundTodayDtc, { percent: false });
   });
 }
 
@@ -2052,8 +3120,59 @@ function packageScopeLeaves(scopeKey) {
   return p ? [p] : [];
 }
 
-function applyPackagePriceChange(scopeKey, changeOrFn) {
-  const leaves = packageScopeLeaves(scopeKey).filter(pkg => !lockedPkgs.has(pkg.id));
+function syncPackageSelectionUi() {
+  document.querySelectorAll('[data-pkg-select-key]').forEach(cb => {
+    const leaves = packageScopeLeaves(cb.dataset.pkgSelectKey);
+    const state = packageSelectionState(leaves);
+    cb.checked = state.checked;
+    cb.indeterminate = state.indeterminate;
+    cb.disabled = !state.total;
+  });
+  const visibleState = packageSelectionState(allLeaves());
+  const header = document.getElementById('pkgSelectAllVisible');
+  if (header) {
+    header.checked = visibleState.checked;
+    header.indeterminate = visibleState.indeterminate;
+    header.disabled = !visibleState.total;
+  }
+  const count = selectedPackageIds.size;
+  const label = document.getElementById('pkgSelectionCount');
+  if (label) label.textContent = `${count.toLocaleString()} selected`;
+  const bulkBtn = document.getElementById('pkgBulkChangeBtn');
+  const clearBtn = document.getElementById('pkgClearSelectionBtn');
+  if (bulkBtn) bulkBtn.disabled = count === 0;
+  if (clearBtn) clearBtn.disabled = count === 0;
+}
+
+function togglePackageSelection(scopeKey, checked) {
+  packageScopeLeaves(scopeKey).forEach(pkg => {
+    if (checked) selectedPackageIds.add(pkg.id);
+    else selectedPackageIds.delete(pkg.id);
+  });
+  syncPackageSelectionUi();
+}
+
+function toggleVisiblePackageSelection(checked) {
+  allLeaves().forEach(pkg => {
+    if (checked) selectedPackageIds.add(pkg.id);
+    else selectedPackageIds.delete(pkg.id);
+  });
+  syncPackageSelectionUi();
+}
+
+function clearPackageSelection() {
+  selectedPackageIds.clear();
+  syncPackageSelectionUi();
+}
+
+function selectedPackageLeaves() {
+  return Array.from(selectedPackageIds)
+    .map(id => packageIndex.byId.get(id))
+    .filter(Boolean);
+}
+
+function applyPackagePriceChangeToLeaves(rawLeaves, changeOrFn) {
+  const leaves = rawLeaves.filter(pkg => !lockedPkgs.has(pkg.id));
   if (!leaves.length) return;
   leaves.forEach(pkg => {
     const rawChange = typeof changeOrFn === 'function' ? changeOrFn(pkg) : changeOrFn;
@@ -2062,9 +3181,14 @@ function applyPackagePriceChange(scopeKey, changeOrFn) {
     else priceOverrides[pkg.id] = Math.max(0, Math.round(pkg.currentPrice + change));
     acceptedRecs.delete(pkg.id);
     rejectedRecs.delete(pkg.id);
+    publishedPkgs.delete(pkg.id);
   });
   priceRevision++;
   renderPackagesTable();
+}
+
+function applyPackagePriceChange(scopeKey, changeOrFn) {
+  applyPackagePriceChangeToLeaves(packageScopeLeaves(scopeKey), changeOrFn);
 }
 
 function updatePackagePriceChangeDollar(scopeKey, value) {
@@ -2079,6 +3203,138 @@ function updatePackagePriceChangePct(scopeKey, value) {
   applyPackagePriceChange(scopeKey, pkg => pkg.currentPrice * (pct / 100));
 }
 
+function syncBulkChangeMode() {
+  const mode = document.querySelector('input[name="bulkChangeMode"]:checked')?.value || 'pct';
+  const amount = document.getElementById('bulkChangeAmount');
+  const label = document.getElementById('bulkChangeAmountLabel');
+  if (!amount || !label) return;
+  if (mode === 'pct') {
+    amount.step = '0.1';
+    label.textContent = 'Percent change';
+  } else {
+    amount.step = '1';
+    label.textContent = 'Dollar change';
+  }
+}
+
+function openBulkChangeModal() {
+  const leaves = selectedPackageLeaves();
+  if (!leaves.length) return;
+  const unlocked = leaves.filter(pkg => !lockedPkgs.has(pkg.id)).length;
+  document.getElementById('bulkChangeSub').textContent =
+    `${leaves.length.toLocaleString()} package${leaves.length === 1 ? '' : 's'} selected`;
+  document.getElementById('bulkChangeSummary').textContent =
+    `${unlocked.toLocaleString()} unlocked package${unlocked === 1 ? '' : 's'} will receive this price change. Locked packages are skipped.`;
+  document.getElementById('bulkChangeAmount').value = '0';
+  document.getElementById('bulkApplyBtn').disabled = unlocked === 0;
+  syncBulkChangeMode();
+  document.getElementById('bulkChangeModalBackdrop').classList.add('open');
+}
+
+function closeBulkChangeModal() {
+  document.getElementById('bulkChangeModalBackdrop').classList.remove('open');
+}
+
+function applyBulkChange() {
+  const leaves = selectedPackageLeaves();
+  const raw = document.getElementById('bulkChangeAmount').value;
+  const amount = raw === '' ? 0 : Number(raw);
+  if (!leaves.length || !Number.isFinite(amount)) return;
+  const mode = document.querySelector('input[name="bulkChangeMode"]:checked')?.value || 'pct';
+  closeBulkChangeModal();
+  applyPackagePriceChangeToLeaves(leaves, mode === 'pct'
+    ? (pkg => pkg.currentPrice * (amount / 100))
+    : amount);
+}
+
+function readAdvancedNumber(id) {
+  const el = document.getElementById(id);
+  if (!el || el.value === '') return null;
+  const n = Number(el.value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function openPackageAdvancedFilters() {
+  document.getElementById('advPublishedState').value = advancedPackageFilters.publishedState || '';
+  document.getElementById('advRecommendationState').value = advancedPackageFilters.recommendationState || '';
+  document.getElementById('advAdjustmentState').value = advancedPackageFilters.adjustmentState || '';
+  document.getElementById('advPaceState').value = advancedPackageFilters.paceState || '';
+  const setVal = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value == null ? '' : value;
+  };
+  setVal('advCurrMarginMin', advancedPackageFilters.currMarginMin);
+  setVal('advCurrMarginMax', advancedPackageFilters.currMarginMax);
+  setVal('advRecMarginMin', advancedPackageFilters.recMarginMin);
+  setVal('advRecMarginMax', advancedPackageFilters.recMarginMax);
+  setVal('advLfMin', advancedPackageFilters.lfMin);
+  setVal('advLfMax', advancedPackageFilters.lfMax);
+  setVal('advHotelFcstMin', advancedPackageFilters.hotelFcstMin);
+  setVal('advHotelFcstMax', advancedPackageFilters.hotelFcstMax);
+  setVal('advPriceMin', advancedPackageFilters.priceMin);
+  setVal('advPriceMax', advancedPackageFilters.priceMax);
+  document.getElementById('pkgAdvancedPanel').classList.add('open');
+  document.getElementById('pkgAdvancedBackdrop').classList.add('open');
+}
+
+function closePackageAdvancedFilters() {
+  document.getElementById('pkgAdvancedPanel').classList.remove('open');
+  document.getElementById('pkgAdvancedBackdrop').classList.remove('open');
+}
+
+function packageAdvancedFilterCount() {
+  return Object.values(advancedPackageFilters).filter(v => v !== null && v !== undefined && v !== '').length;
+}
+
+function updateAdvancedFilterButton() {
+  const btn = document.getElementById('pkgAdvancedFiltersBtn');
+  if (!btn) return;
+  const n = packageAdvancedFilterCount();
+  btn.textContent = n ? `Advanced Filters (${n})` : 'Advanced Filters';
+}
+
+function applyPackageAdvancedFilters() {
+  const next = {
+    publishedState: document.getElementById('advPublishedState').value || '',
+    recommendationState: document.getElementById('advRecommendationState').value || '',
+    adjustmentState: document.getElementById('advAdjustmentState').value || '',
+    paceState: document.getElementById('advPaceState').value || '',
+    currMarginMin: readAdvancedNumber('advCurrMarginMin'),
+    currMarginMax: readAdvancedNumber('advCurrMarginMax'),
+    recMarginMin: readAdvancedNumber('advRecMarginMin'),
+    recMarginMax: readAdvancedNumber('advRecMarginMax'),
+    lfMin: readAdvancedNumber('advLfMin'),
+    lfMax: readAdvancedNumber('advLfMax'),
+    hotelFcstMin: readAdvancedNumber('advHotelFcstMin'),
+    hotelFcstMax: readAdvancedNumber('advHotelFcstMax'),
+    priceMin: readAdvancedNumber('advPriceMin'),
+    priceMax: readAdvancedNumber('advPriceMax'),
+  };
+  advancedPackageFilters = Object.fromEntries(
+    Object.entries(next).filter(([, value]) => value !== null && value !== '')
+  );
+  visibleRowLimit = ROW_RENDER_BATCH;
+  closePackageAdvancedFilters();
+  updateAdvancedFilterButton();
+  renderPackagesTable();
+}
+
+function clearPackageAdvancedFilters() {
+  advancedPackageFilters = {};
+  [
+    'advPublishedState', 'advRecommendationState', 'advAdjustmentState', 'advPaceState', 'advCurrMarginMin', 'advCurrMarginMax',
+    'advRecMarginMin', 'advRecMarginMax', 'advLfMin', 'advLfMax',
+    'advHotelFcstMin', 'advHotelFcstMax', 'advPriceMin', 'advPriceMax',
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  visibleRowLimit = ROW_RENDER_BATCH;
+  closePackageAdvancedFilters();
+  updateAdvancedFilterButton();
+  renderPackagesTable();
+}
+
 function acceptRec(scopeKey) {
   const leaves = packageScopeLeaves(scopeKey).filter(pkg => !lockedPkgs.has(pkg.id));
   if (!leaves.length) return;
@@ -2086,6 +3342,7 @@ function acceptRec(scopeKey) {
     priceOverrides[pkg.id] = pkg.recPrice;
     acceptedRecs.add(pkg.id);
     rejectedRecs.delete(pkg.id);
+    publishedPkgs.delete(pkg.id);
   });
   priceRevision++;
   renderPackagesTable();
@@ -2098,6 +3355,7 @@ function rejectRec(scopeKey) {
     delete priceOverrides[pkg.id];
     acceptedRecs.delete(pkg.id);
     rejectedRecs.add(pkg.id);
+    publishedPkgs.delete(pkg.id);
   });
   priceRevision++;
   renderPackagesTable();
@@ -2118,6 +3376,8 @@ function toggleLock(scopeKey) {
    Per-package Rules Drawer
    ══════════════════════════════════════════════════════════════════ */
 function openPkgRules(pkgId) {
+  window.location.href = 'parameters.html';
+  return;
   activeRuleKey = pkgId;
   const p = packageIndex.byId.get(pkgId);
   if (!p) return;
@@ -2291,7 +3551,9 @@ function bookVia(channel) {
 }
 
 function publishChanges() {
-  const n = Object.keys(priceOverrides).length;
+  const publishIds = Object.keys(priceOverrides).filter(id => Math.abs(getPackagePriceChange(packageIndex.byId.get(id) || {})) >= 0.5);
+  publishIds.forEach(id => publishedPkgs.add(id));
+  const n = publishIds.length;
   const toast = document.getElementById('reToast');
   const text  = document.getElementById('reToastText');
   if (n === 0) {
@@ -2302,6 +3564,7 @@ function publishChanges() {
     text.textContent = `✓ Published ${n} price change${n===1?'':'s'}`;
   }
   toast.classList.add('shown');
+  renderPackagesTable();
   setTimeout(() => { toast.classList.remove('shown'); toast.classList.remove('success'); }, 2500);
 }
 
@@ -2317,6 +3580,13 @@ function toggleFilter(id) {
 }
 function toggleMenu() { document.getElementById('navDropdown').classList.toggle('open'); }
 
+function refreshPackageParametersFromStorage() {
+  if (!window.PackageParameters) return;
+  refreshPackageParamState();
+  renderPackagesHead();
+  renderPackagesTable();
+}
+
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.ms-wrap')) {
     document.querySelectorAll('.ms-wrap.open').forEach(w => w.classList.remove('open'));
@@ -2326,9 +3596,197 @@ document.addEventListener('click', (e) => {
   }
 });
 
+window.addEventListener('storage', (e) => {
+  if (!window.PackageParameters || e.key !== PackageParameters.STORAGE_KEY) return;
+  refreshPackageParametersFromStorage();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshPackageParametersFromStorage();
+});
+
 /* ══════════════════════════════════════════════════════════════════
    Init
    ══════════════════════════════════════════════════════════════════ */
+function packageDateLabelFromIso(iso) {
+  const s = String(iso || '').trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return s;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[Number(m[2]) - 1]} ${Number(m[3])} ${m[1]}`;
+}
+
+function updatePackageDateLabel() {
+  const wrap = document.getElementById('fDates');
+  const label = document.getElementById('fDatesLabel');
+  if (!wrap || !label) return;
+  if (!packageDateRange.start && !packageDateRange.end) {
+    label.textContent = 'Select dates';
+    wrap.classList.remove('has-selection');
+    return;
+  }
+  const start = packageDateRange.start || packageDateRange.end;
+  const end = packageDateRange.end || packageDateRange.start;
+  label.textContent = start === end
+    ? packageDateLabelFromIso(start)
+    : `${packageDateLabelFromIso(start)} - ${packageDateLabelFromIso(end)}`;
+  wrap.classList.add('has-selection');
+}
+
+function clearPackageDateRange() {
+  packageDateRange = { start: '', end: '' };
+  updatePackageDateLabel();
+  renderPackageDatePicker();
+  visibleRowLimit = ROW_RENDER_BATCH;
+  renderPackagesTable();
+}
+
+function isoDateFromMs(ms) {
+  if (ms == null) return '';
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+function monthIso(iso) {
+  const ms = packageDateValue(iso);
+  if (ms == null) return '';
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function addMonthsIso(iso, delta) {
+  const ms = packageDateValue(monthIso(iso));
+  const d = ms == null ? new Date() : new Date(ms);
+  d.setUTCMonth(d.getUTCMonth() + delta, 1);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function packageDateBounds() {
+  const leaves = packageIndex.root._leaves || [];
+  const dates = leaves.map(pkg => pkg.departureDate).filter(Boolean).sort();
+  return { min: dates[0] || '', max: dates[dates.length - 1] || '' };
+}
+
+function packageCalendarMonthLabel(iso) {
+  const ms = packageDateValue(iso);
+  if (ms == null) return '';
+  const d = new Date(ms);
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+function packageCalendarDayButton(iso, bounds) {
+  if (!iso) return '<button type="button" class="pkg-calendar-day empty" tabindex="-1"></button>';
+  const ms = packageDateValue(iso);
+  const minMs = packageDateValue(bounds.min);
+  const maxMs = packageDateValue(bounds.max);
+  const startMs = packageDateValue(packageDateRange.start || packageDateRange.end);
+  const endMs = packageDateValue(packageDateRange.end || packageDateRange.start);
+  const lo = startMs == null || endMs == null ? startMs : Math.min(startMs, endMs);
+  const hi = startMs == null || endMs == null ? startMs : Math.max(startMs, endMs);
+  const disabled = (minMs != null && ms < minMs) || (maxMs != null && ms > maxMs);
+  const inRange = lo != null && hi != null && ms > lo && ms < hi;
+  const isStart = lo != null && ms === lo;
+  const isEnd = hi != null && ms === hi && hi !== lo;
+  const now = new Date();
+  const todayIso = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+  const cls = [
+    'pkg-calendar-day',
+    disabled ? 'disabled' : '',
+    inRange ? 'in-range' : '',
+    isStart ? 'range-start' : '',
+    isEnd ? 'range-end' : '',
+    iso === todayIso ? 'today' : '',
+  ].filter(Boolean).join(' ');
+  const day = Number(iso.slice(-2));
+  return `<button type="button" class="${cls}" ${disabled ? 'disabled' : `onclick="selectPackageCalendarDate('${iso}')"`}>${day}</button>`;
+}
+
+function renderPackageCalendarMonth(monthStartIso, bounds) {
+  const ms = packageDateValue(monthStartIso);
+  if (ms == null) return '';
+  const first = new Date(ms);
+  const year = first.getUTCFullYear();
+  const month = first.getUTCMonth();
+  const firstDow = (first.getUTCDay() + 6) % 7; // Monday first.
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i += 1) cells.push('');
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+  }
+  while (cells.length % 7) cells.push('');
+  return `
+    <div class="pkg-calendar-month">
+      <div class="pkg-calendar-month-title">${packageCalendarMonthLabel(monthStartIso)}</div>
+      <div class="pkg-calendar-weekdays">
+        <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+      </div>
+      <div class="pkg-calendar-grid">
+        ${cells.map(iso => packageCalendarDayButton(iso, bounds)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderPackageDatePicker() {
+  const wrap = document.getElementById('fDates');
+  const popover = wrap && wrap.querySelector('.date-pill-popover');
+  if (!popover) return;
+  const bounds = packageDateBounds();
+  const focus = packageDateRange.start || packageDateRange.end || bounds.min || isoDateFromMs(Date.now());
+  if (!packageDateViewIso) packageDateViewIso = monthIso(focus);
+  popover.innerHTML = `
+    <div class="pkg-date-range-popover">
+      <div class="pkg-calendar-head">
+        <div>
+          <div class="pkg-date-range-title">Departure date range</div>
+        </div>
+        <div class="pkg-calendar-navs">
+          <button type="button" class="pkg-calendar-nav" onclick="movePackageCalendar(-1)" aria-label="Previous months">&lt;</button>
+          <button type="button" class="pkg-calendar-nav" onclick="movePackageCalendar(1)" aria-label="Next months">&gt;</button>
+        </div>
+      </div>
+      <div class="pkg-calendar-months">
+        ${renderPackageCalendarMonth(packageDateViewIso, bounds)}
+        ${renderPackageCalendarMonth(addMonthsIso(packageDateViewIso, 1), bounds)}
+      </div>
+      <div class="pkg-date-actions">
+        <button type="button" onclick="clearPackageDateRange()">Clear</button>
+      </div>
+    </div>
+  `;
+  popover.onclick = e => e.stopPropagation();
+  updatePackageDateLabel();
+}
+
+function movePackageCalendar(delta) {
+  packageDateViewIso = addMonthsIso(packageDateViewIso || monthIso(packageDateRange.start || packageDateRange.end || packageDateBounds().min || isoDateFromMs(Date.now())), delta);
+  renderPackageDatePicker();
+}
+
+function selectPackageCalendarDate(iso) {
+  if (!packageDateRange.start || packageDateRange.end) {
+    packageDateRange = { start: iso, end: '' };
+  } else if (packageDateValue(iso) < packageDateValue(packageDateRange.start)) {
+    packageDateRange = { start: iso, end: packageDateRange.start };
+  } else {
+    packageDateRange = { start: packageDateRange.start, end: iso };
+    document.getElementById('fDates')?.classList.remove('open');
+  }
+  packageDateViewIso = monthIso(packageDateRange.start || iso);
+  updatePackageDateLabel();
+  renderPackageDatePicker();
+  visibleRowLimit = ROW_RENDER_BATCH;
+  renderPackagesTable();
+}
+
+function initPackageDateRangePicker() {
+  const bounds = packageDateBounds();
+  packageDateViewIso = monthIso(packageDateRange.start || packageDateRange.end || bounds.min || isoDateFromMs(Date.now()));
+  renderPackageDatePicker();
+}
+
 function _initPricing() {
   rebuildPackageIndex();
   Filters.populateStandard({
@@ -2341,7 +3799,9 @@ function _initPricing() {
   if (window.__filterRegions && window.__filterRegions.length && Filters.setMultiSelectValues) {
     Filters.setMultiSelectValues('fRegion', window.__filterRegions);
   }
+  initPackageDateRangePicker();
   _initPackageFilters();
+  updateAdvancedFilterButton();
   renderPackagesHead();
   renderPackagesTable();
 }

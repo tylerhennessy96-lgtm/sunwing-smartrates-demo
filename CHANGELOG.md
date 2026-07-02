@@ -12,6 +12,100 @@ Format:
 
 ---
 
+## 2026-07-01 - New CSV schema support and hotel curve aggregation fix
+- Updated the flight CSV normalization to support the latest
+  `v_flight_pricing_pg.csv` schema, including `flight_date`, missing
+  `week_start` / `week_label`, derived capacity/sold totals, and 0-1 load-factor
+  fields.
+- Rebuilt compact booking-curve JSONs from the new raw curve CSVs.
+- Changed hotel booking-curve aggregation from destination-week-duration to
+  destination-hotel-week-duration and used `weeks_to_stay` as the hotel bucket
+  source when present.
+- Updated the Packages booking-curve lookup to use hotel-level curve keys so
+  hotel targets no longer sum across every hotel in a destination week.
+- Why: restore the Flights tab after the export schema changed and fix inflated
+  hotel target curves caused by over-broad aggregation.
+
+## 2026-06-30 - Flight calendar data and package alert modal
+- Populated the Flights page from `data/v_flight_pricing_pg.csv` via the
+  existing CSV loader and updated the calendar view to show Destination ->
+  Flight rows with week/month toggles.
+- Changed flight calendar cells to display forecast LF plus current-vs-benchmark
+  LF delta, with conditional formatting driven by forecast LF and the existing
+  side panel retained for detail.
+- Reworked package alert bells so click opens a dark formatted alert modal
+  instead of hover text, removed the shaded bell background, and replaced the
+  rough `Rec Y` display with compact recommendation/status chips.
+- Replaced the Parameters -> Packages -> Package Rules table with an old-style
+  two-pane rule builder that keeps date windows, trigger conditions, actions,
+  guardrails, review threshold, and priority under Parameters.
+- Why: make the new flight pricing export demoable, improve package alert/status
+  presentation, and keep package rules in the Parameters workflow.
+
+## 2026-06-29 - Advanced filters, rule migration, and hotel curve lead time
+- Added Packages advanced filters for Published Status (`published` /
+  `unapproved`) and Recommendation Y/N.
+- Renamed the visible flight/hotel subtabs to `Flights` and `Hotels`, removed
+  the visible Package Rules subtab/action from the Flights page, and expanded
+  Parameters -> Packages -> Package Rules to carry the old rule concepts
+  (date window, flight category, hotel class, commitment, trigger, action,
+  guardrails, review threshold, and priority).
+- Reduced package price controls to min/max price and min/max margin only.
+- Added package alert thresholds for cost-change amount and pickup pace
+  (bookings per day), while leaving cost-change amount inactive until a real
+  amount field exists in the CSV.
+- Changed package booking curves to treat the demo date as 2026-05-27 and
+  rebuilt `curves_hotel.json` so hotel lead time is computed from Sunday
+  `week_start - snapshot_date` with absolute room-night values by curve type.
+- Why: align the package workflow with the requested demo date/rule model and
+  make the advanced filters/status workflow easier to demo.
+
+## 2026-06-29 - Package rules, booking curves, and package status
+- Moved Package Rules into the Parameters Packages sidebar as a dedicated
+  Region -> Destination -> Date -> Hotel configuration page with date-window,
+  guardrail, lock, and review-threshold fields backed by `package-parameters.js`.
+- Updated package booking curves so the inbound Today marker is based on the
+  return date, hotel curves display absolute room-night values, and chart hover
+  shows a crosshair plus Actual/Target/Forecast values.
+- Replaced package alert pills with a bell icon and notification counter, added
+  a compact package status column for recommendation and publish state, and
+  restored batched table rendering with a Show More row.
+- Cleaned local `.tmp-chrome-profile*` folders and documented the localhost
+  Python server fallback alongside `serve-demo.ps1`.
+- Why: make package rules configurable in the right Parameters area, make the
+  booking-curve time axes/data scale clearer, and keep the large package table
+  responsive.
+
+## 2026-06-25 - Package parameters, alerts, and calendar picker
+- Added `data/package-parameters.js` as the shared client-side package
+  parameter store for alert thresholds and price-control guardrails.
+- Re-enabled the Parameters tab for Packages: alert thresholds now render by
+  Region -> Destination, and package price controls render by Region ->
+  Destination -> Date -> Hotel with a supplemental margin-over-group control.
+- Added a package Alerts column plus conditional formatting for OUT FCST, RET
+  FCST, HOTEL FCST, and MARGIN DELTA based on the saved package alert config.
+- Replaced the Packages date filter inputs with a two-month calendar range
+  picker using departure dates.
+- Why: let the static demo configure package alerts/guardrails and show those
+  alerts directly in the package pricing workflow without adding external
+  libraries or backend persistence.
+
+## 2026-06-24 - Package date range, advanced filters, and bulk selection
+- Updated `data/pricing.html` so the Packages date control is a package-local
+  departure-date range picker. It no longer filters package rows by the shared
+  week-start picker.
+- Added row selection to package itinerary, hotel, and room rows, plus a Bulk
+  Change modal that applies percentage or absolute dollar price adjustments to
+  only the selected package leaves.
+- Added a Packages advanced filter drawer for price-adjustment state,
+  alert/pace status, current/recommended margin ranges, flight LF ranges, hotel
+  forecast ranges, and price ranges.
+- Improved pending price-adjustment styling: adjusted prices/margins now show
+  the new value with the previous value greyed and struck through until publish.
+  Removed the visible cost-change warning icon from room rows.
+- Why: support targeted bulk overrides and richer RM filtering while keeping the
+  package table compact and demo-data honest.
+
 ## 2026-06-24 — Package accordion, bulk controls, and data refresh
 - Reworked `data/pricing.html` around the Packages workflow: the accordion now
   groups by Gateway / Destination / Dates, then expands to hotels and room
