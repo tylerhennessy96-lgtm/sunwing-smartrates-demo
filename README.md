@@ -90,9 +90,11 @@ parameter sections remain blank until they have backing configuration data.
 
 ## Flight Calendar
 
-`data/flight.html` loads `data/v_flight_pricing_pg.csv` and supports both list
-and week/month calendar views. Calendar cells show forecast LF plus the current
-LF delta versus the available benchmark LF in the flight export.
+`data/flight.html` is read-only and loads `data/v_flight_pricing_pg.csv` for
+both list and week/month calendar views. Calendar/list LF values use
+`curve_current_lf`, `curve_forecast_final_lf`, and
+`curve_target_same_time_last_year_lf`; booked seats use
+`curve_current_booked_seats`.
 
 ## Data Refresh Process
 
@@ -104,7 +106,7 @@ LF delta versus the available benchmark LF in the flight export.
    flight pricing changes, and the local raw curve CSVs in `data/`.
 4. Run `python .\scripts\build_booking_curves.py`.
 5. Run `python .\scripts\validate_csv_contract.py`.
-6. Start the local server and smoke-test `pricing.html`.
+6. Start the local server and smoke-test `flight.html` and `pricing.html`.
 
 No real database credentials, AWS values, secret ARNs, or personal-user details
 belong in this repository.
@@ -127,4 +129,5 @@ The UI intentionally shows only values present in the CSVs. Features without
 CSV backing render as empty states or explain the missing data in the RM
 Copilot. Examples include persistent notes, publish/audit history, detailed
 cost-change history, package autopilot rules, and persistence for in-browser
-package selections or price overrides before publish.
+package selections or price overrides before publish. The package price-history
+chart is mock demo data with margin-change dots, not a committed time series.

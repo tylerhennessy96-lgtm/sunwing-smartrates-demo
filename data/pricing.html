@@ -402,19 +402,9 @@
       background: #d1d5db;
       color: #6b7280;
     }
-    .pkg-metric-bad {
-      background: rgba(231, 76, 60, .075) !important;
-      color: #b91c1c !important;
-      font-weight: 600;
-    }
-    .pkg-metric-warn {
-      background: rgba(245, 166, 35, .12) !important;
-      color: #92400e !important;
-      font-weight: 600;
-    }
-    .pkg-metric-good {
-      color: var(--text-primary);
-    }
+    .pkg-metric-bad { color: var(--danger) !important; font-weight: 600; }
+    .pkg-metric-warn { color: #b45309 !important; font-weight: 600; }
+    .pkg-metric-good { color: #047857 !important; font-weight: 600; }
 
     /* ── Booking-curve panel (dark, slides up from the bottom) ── */
     /* Mirrors the Flight tab's analytics panel: dark gradient sheet that
@@ -513,6 +503,8 @@
     .bp-k-target   { border-top-color: #9ca3af; border-top-style: dashed; }
     .bp-k-forecast { border-top-color: #9ca3af; border-top-style: dotted; }
     .bp-k-today    { border-top-color: #ffffff; border-top-style: dashed; }
+    .bp-k-price    { border-top-color: #e91e8c; }
+    .bp-k-margin   { border-top-color: #f5a623; border-top-width: 0; height: 8px; width: 8px; border-radius: 50%; background: #f5a623; }
     .bp-xaxis-label { text-align: center; font-size: 10.5px; color: #6b7280; margin-top: 4px; }
 
     .pkg-alert-modal-backdrop {
@@ -1257,6 +1249,49 @@
       transition: border-color .12s, color .12s;
     }
     .book-btns button:hover { border-color: var(--accent); color: var(--accent); }
+
+    .columns-popover {
+      position: fixed;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+      padding: 4px 0;
+      min-width: 220px;
+      max-height: 420px;
+      overflow-y: auto;
+      z-index: 1000;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+    .columns-popover[hidden] { display: none; }
+    .col-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .col-row:hover { background: #f5f6f8; }
+    .col-row.locked { cursor: not-allowed; color: var(--text-muted); }
+    .col-row.locked:hover { background: transparent; }
+    .col-row input[type="checkbox"] { margin: 0; cursor: inherit; }
+    .col-row .col-lock { margin-left: auto; font-size: 11px; opacity: 0.55; }
+    .col-popover-footer {
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      padding: 6px 14px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .col-popover-footer a {
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .col-popover-footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -1372,6 +1407,10 @@
       <button class="btn btn-ghost" id="pkgAdvancedFiltersBtn" onclick="openPackageAdvancedFilters()">
         Advanced Filters
       </button>
+      <button class="btn btn-ghost" id="pkgColumnsBtn" type="button" onclick="togglePackageColumnsPopover(event)">
+        Columns
+      </button>
+      <div class="columns-popover" id="pkgColumnsPopover" hidden></div>
     </div>
     <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
@@ -1419,6 +1458,8 @@
       <span class="bp-li"><span class="bp-k bp-k-target"></span>Target</span>
       <span class="bp-li"><span class="bp-k bp-k-forecast"></span>Forecast</span>
       <span class="bp-li"><span class="bp-k bp-k-today"></span>Today</span>
+      <span class="bp-li"><span class="bp-k bp-k-price"></span>Price</span>
+      <span class="bp-li"><span class="bp-k bp-k-margin"></span>Margin change</span>
     </div>
     <div class="bp-charts">
       <div class="bp-chart">
@@ -1432,6 +1473,10 @@
       <div class="bp-chart">
         <div class="bp-chart-title">Hotel — cumulative room nights</div>
         <div class="bp-chart-wrap"><canvas id="bpChartHotel"></canvas></div>
+      </div>
+      <div class="bp-chart">
+        <div class="bp-chart-title">Price history - package price and margin changes</div>
+        <div class="bp-chart-wrap"><canvas id="bpChartPrice"></canvas></div>
       </div>
       <div class="bp-xaxis-label">Days before service date (→ service)</div>
     </div>
@@ -1595,6 +1640,16 @@
           <input type="number" id="advRecMarginMax" placeholder="$" />
         </div>
       </div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advMarginDeltaMin">Margin delta min</label>
+          <input type="number" id="advMarginDeltaMin" placeholder="$" />
+        </div>
+        <div class="pkg-adv-field">
+          <label for="advMarginDeltaMax">Margin delta max</label>
+          <input type="number" id="advMarginDeltaMax" placeholder="$" />
+        </div>
+      </div>
     </div>
     <div class="pkg-adv-section">
       <div class="pkg-adv-section-title">Forecasts</div>
@@ -1732,6 +1787,14 @@ const packageIndex = {
    ══════════════════════════════════════════════════════════════════ */
 function fmt$(n)  { return '$' + Math.round(n).toLocaleString(); }
 function fmtPct(f){ return Math.round(f * 100) + '%'; }
+function pkgLfPill(lf) {
+  if (lf == null || isNaN(lf)) return '<span class="text-muted">-</span>';
+  const pct = Math.round(Number(lf) * 100);
+  let cls = 'occ-mid';
+  if (pct >= 80) cls = 'occ-high';
+  else if (pct < 60) cls = 'occ-low';
+  return `<span class="occ-pill ${cls}">${pct}%</span>`;
+}
 function fmtPctN(n){ return (Math.round(n * 10) / 10) + '%'; }
 function avg(arr, key) {
   if (!arr.length) return 0;
@@ -1903,6 +1966,8 @@ function avgPackageFlightLfPct(pkg) {
 function packageDailyPickup(pkg) {
   const oneDay = numOrNull(pkg.pickupPax1d);
   if (oneDay != null) return oneDay;
+  const threeDay = numOrNull(pkg.pickupPax3d);
+  if (threeDay != null) return threeDay / 3;
   const sevenDay = numOrNull(pkg.pickupPax7d);
   return sevenDay == null ? null : sevenDay / 7;
 }
@@ -1920,6 +1985,7 @@ function passesAdvancedPackageFilters(pkg) {
   if (f.paceState && String(pkg.bookingPace || '').toLowerCase() !== f.paceState) return false;
   if ((f.currMarginMin != null || f.currMarginMax != null) && !inNumberRange(getEffectiveMargin(pkg), f.currMarginMin, f.currMarginMax)) return false;
   if ((f.recMarginMin != null || f.recMarginMax != null) && !inNumberRange(pkg.recMargin, f.recMarginMin, f.recMarginMax)) return false;
+  if ((f.marginDeltaMin != null || f.marginDeltaMax != null) && !inNumberRange(pkg.recMargin - getEffectiveMargin(pkg), f.marginDeltaMin, f.marginDeltaMax)) return false;
   if ((f.lfMin != null || f.lfMax != null) && !inNumberRange(avgPackageFlightLfPct(pkg), f.lfMin, f.lfMax)) return false;
   if ((f.hotelFcstMin != null || f.hotelFcstMax != null) && !inNumberRange(pkg.hotelForecast, f.hotelFcstMin, f.hotelFcstMax)) return false;
   if ((f.priceMin != null || f.priceMax != null) && !inNumberRange(getEffectivePrice(pkg), f.priceMin, f.priceMax)) return false;
@@ -2036,7 +2102,7 @@ function allLeaves() {
    ══════════════════════════════════════════════════════════════════ */
 const PACKAGE_SELECT_COLS = 1;
 const PACKAGE_GROUP_COLS = 3;
-const PACKAGE_METRIC_COLS = 18;
+const PACKAGE_METRIC_COLS = 19;
 const COLSPAN = PACKAGE_SELECT_COLS + PACKAGE_GROUP_COLS + PACKAGE_METRIC_COLS;
 const PACKAGE_SORTERS = {
   gateway: { type: 'text', groupType: 'itinerary', value: p => p.gatewayCity || p.gateway },
@@ -2049,8 +2115,9 @@ const PACKAGE_SORTERS = {
   outboundForecast: { type: 'number', value: p => p.outboundForecastLf },
   returnForecast: { type: 'number', value: p => p.returnForecastLf },
   hotelForecast: { type: 'number', value: p => p.hotelForecast },
+  pickup1d: { type: 'number', value: p => p.pickupPax1d },
+  pickup3d: { type: 'number', value: p => p.pickupPax3d },
   pickup7d: { type: 'number', value: p => p.pickupPax7d },
-  pickup14d: { type: 'number', value: p => p.pickupPax14d },
   price: { type: 'number', value: p => getEffectivePrice(p) },
   priceChange: { type: 'number', value: p => getPackagePriceChange(p) },
   recPrice: { type: 'number', value: p => p.recPrice },
@@ -2116,8 +2183,9 @@ function renderPackagesHead() {
       ${packageHeaderCell('outboundForecast', 'Out<br>Fcst', { width: '52px', className: 'text-right', align: 'right', title: 'Outbound flight forecast load factor' })}
       ${packageHeaderCell('returnForecast', 'Ret<br>Fcst', { width: '52px', className: 'text-right', align: 'right', title: 'Return flight forecast load factor' })}
       ${packageHeaderCell('hotelForecast', 'Hotel<br>Fcst', { width: '58px', className: 'text-right', align: 'right', title: 'Hotel forecast - final room nights' })}
+      ${packageHeaderCell('pickup1d', 'Pick<br>1d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 1 day' })}
+      ${packageHeaderCell('pickup3d', 'Pick<br>3d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 3 days' })}
       ${packageHeaderCell('pickup7d', 'Pick<br>7d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 7 days' })}
-      ${packageHeaderCell('pickup14d', 'Pick<br>14d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 14 days' })}
       ${packageHeaderCell('price', 'Price<br>From', { width: '76px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('priceChange', 'Price Change<br>(% / abs.)', { width: '132px', title: 'Price Change (% / abs.)' })}
       ${packageHeaderCell('recPrice', 'Rec.<br>Price', { width: '76px', className: 'text-right', align: 'right' })}
@@ -2425,11 +2493,10 @@ function packageStatusCellForScope(leaves) {
   const recCount = list.filter(packageHasRecommendation).length;
   const status = packageScopePublishedStatus(list);
   const label = status ? status : '';
-  const title = `Recommendation: ${recCount ? 'Yes' : 'No'}${status ? `\nPublished status: ${status}` : '\nPublished status: blank'}`;
+  const title = `Recommendation: ${recCount ? 'Y' : 'N'}${status ? `\nPublished status: ${status}` : '\nPublished status: blank'}`;
   return `
     <td class="pkg-status-cell" title="${esc(title)}">
       <span class="pkg-status-stack">
-        <span class="pkg-rec-flag ${recCount ? 'has-rec' : 'no-rec'}" aria-label="Recommendation ${recCount ? 'yes' : 'no'}">${recCount ? 'Yes' : 'No'}</span>
         ${label ? `<span class="pkg-status-pill ${status}">${esc(label)}</span>` : '<span class="pkg-status-pill">&nbsp;</span>'}
       </span>
     </td>
@@ -2444,8 +2511,8 @@ function packageLeafMetrics(pkg) {
     returnForecast: pkg.returnForecastLf,
     hotelForecast: pkg.hotelForecast,
     pickup1d: pkg.pickupPax1d,
+    pickup3d: pkg.pickupPax3d,
     pickup7d: pkg.pickupPax7d,
-    pickup14d: pkg.pickupPax14d,
     price: getEffectivePrice(pkg),
     priceChange: getPackagePriceChange(pkg),
     recPrice: pkg.recPrice,
@@ -2487,8 +2554,8 @@ function packageAggregatedMetrics(node) {
     returnForecast: aggregateMetricValues(childMetrics, 'returnForecast', 'avg'),
     hotelForecast: aggregateMetricValues(childMetrics, 'hotelForecast', 'sum'),
     pickup1d: aggregateMetricValues(childMetrics, 'pickup1d', 'sum'),
+    pickup3d: aggregateMetricValues(childMetrics, 'pickup3d', 'sum'),
     pickup7d: aggregateMetricValues(childMetrics, 'pickup7d', 'sum'),
-    pickup14d: aggregateMetricValues(childMetrics, 'pickup14d', 'sum'),
     price: aggregateMetricValues(childMetrics, 'price', 'min'),
     priceChange: aggregateMetricValues(childMetrics, 'priceChange', 'avg'),
     recPrice: aggregateMetricValues(childMetrics, 'recPrice', 'min'),
@@ -2512,6 +2579,7 @@ function metricNumCell(value, opts = {}) {
 
 function metricPctCell(value, opts = {}) {
   if (value == null) return BLANK_NUM;
+  if (opts.pill) return `<td class="text-right">${pkgLfPill(value)}</td>`;
   const cls = opts.className ? ` ${opts.className}` : '';
   return `<td class="text-right num${cls}">${fmtPct(value)}</td>`;
 }
@@ -2595,11 +2663,12 @@ function packageGroupMetricCells(node) {
   return `
     ${metricNumCell(metrics.soldStly)}
     ${metricNumCell(metrics.sold)}
-    ${metricPctCell(metrics.outboundForecast, { className: packageMetricClass('outboundForecast', metrics.outboundForecast, node.rep) })}
-    ${metricPctCell(metrics.returnForecast, { className: packageMetricClass('returnForecast', metrics.returnForecast, node.rep) })}
+    ${metricPctCell(metrics.outboundForecast, { pill: true })}
+    ${metricPctCell(metrics.returnForecast, { pill: true })}
     ${metricNumCell(metrics.hotelForecast, { className: packageMetricClass('hotelForecast', metrics.hotelForecast, node.rep) })}
+    ${metricNumCell(metrics.pickup1d)}
+    ${metricNumCell(metrics.pickup3d)}
     ${metricNumCell(metrics.pickup7d)}
-    ${metricNumCell(metrics.pickup14d)}
     ${metricMoneyCell(metrics.price)}
     ${packagePriceChangeCellForScope(node.key, node.leaves, true)}
     ${metricMoneyCell(metrics.recPrice)}
@@ -2642,8 +2711,7 @@ function metricCells(p, opts) {
   const changed = Math.abs(getPackagePriceChange(p)) >= 0.5;
   const fcst = (v, kind) => {
     if (v == null) return BLANK_NUM;
-    const cls = packageMetricClass(kind, v, p);
-    return `<td class="text-right num${cls ? ` ${cls}` : ''}">${fmtPct(v)}</td>`;
+    return `<td class="text-right">${pkgLfPill(v)}</td>`;
   };
   const numCell = (v, kind) => {
     if (v == null) return BLANK_NUM;
@@ -2665,8 +2733,9 @@ function metricCells(p, opts) {
     ${fcst(p.outboundForecastLf, 'outboundForecast')}
     ${fcst(p.returnForecastLf, 'returnForecast')}
     ${hotelFcstCell}
+    <td class="text-right num">${p.pickupPax1d == null ? '-' : p.pickupPax1d}</td>
+    <td class="text-right num">${p.pickupPax3d == null ? '-' : p.pickupPax3d}</td>
     <td class="text-right num">${p.pickupPax7d == null ? '-' : p.pickupPax7d}</td>
-    <td class="text-right num">${p.pickupPax14d == null ? '-' : p.pickupPax14d}</td>
     ${priceCell}
     ${priceChangeCell}
     ${recCell}
@@ -3067,6 +3136,88 @@ function renderCurve(canvasId, series, xMax, todayDtc, opts = {}) {
   attachCurveTooltip(canvas, rawMaps, xMax, { percent });
 }
 
+function mockPriceHistory(pkg, xMax) {
+  const base = Number(pkg.currentPrice) || 1500;
+  const rec = Number(pkg.recPrice) || base;
+  const days = [Math.min(xMax, 180), 150, 120, 90, 60, 45, 30, 21, 14, 7, 0]
+    .filter((day, idx, arr) => Number.isFinite(day) && day >= 0 && day <= xMax && arr.indexOf(day) === idx)
+    .sort((a, b) => b - a);
+  const seed = String(pkg.id || pkg.hotel || '').split('').reduce((s, ch) => s + ch.charCodeAt(0), 0);
+  const prices = days.map((day, idx) => {
+    const progress = days.length <= 1 ? 1 : idx / (days.length - 1);
+    const trend = base + (rec - base) * progress * 0.65;
+    const wave = Math.sin((seed + day) * 0.09) * 18 + Math.cos((seed + idx) * 0.7) * 11;
+    return Math.max(250, Math.round(trend + wave));
+  });
+  const dotIdxs = [2, 4, 6, 8].filter(i => i < days.length);
+  const dots = days.map((day, idx) => {
+    if (!dotIdxs.includes(idx)) return null;
+    return prices[idx];
+  });
+  const marginDeltas = days.map((day, idx) => {
+    if (!dotIdxs.includes(idx)) return null;
+    const sign = ((seed + idx) % 2) ? 1 : -1;
+    return sign * (8 + ((seed + day + idx) % 28));
+  });
+  return { days, prices, dots, marginDeltas };
+}
+
+function renderPriceHistory(canvasId, pkg, xMax, todayDtc) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  canvas.style.display = '';
+  const { days, prices, dots, marginDeltas } = mockPriceHistory(pkg, xMax);
+  bpCharts.push(new Chart(canvas, {
+    data: {
+      labels: days,
+      datasets: [
+        {
+          label: 'Price',
+          data: prices,
+          borderColor: '#e91e8c',
+          backgroundColor: 'rgba(233, 30, 140, 0.08)',
+          borderWidth: 2,
+          pointRadius: 2,
+          tension: 0.35,
+          fill: true,
+        },
+        {
+          label: 'Margin change',
+          data: dots,
+          borderColor: '#f5a623',
+          backgroundColor: '#f5a623',
+          pointBackgroundColor: marginDeltas.map(v => v == null ? '#f5a623' : (v >= 0 ? '#047857' : '#e74c3c')),
+          pointBorderColor: '#1f2430',
+          pointBorderWidth: 1,
+          pointRadius: dots.map(v => v == null ? 0 : 5),
+          showLine: false,
+        },
+      ],
+    },
+    options: {
+      plugins: Number.isFinite(todayDtc)
+        ? { todayMarker: {
+            x: todayDtc,
+            label: 'Today',
+            shadeSide: 'future',
+            shadeColor: 'rgba(255, 255, 255, 0.035)',
+            color: '#ffffff',
+            labelColor: '#ffffff',
+          } }
+        : {},
+      scales: {
+        x: { min: 0, max: xMax, reverse: true, grid: { color: '#2a2d35' }, ticks: { color: '#9ca3af' } },
+        y: {
+          min: Math.max(0, Math.min(...prices) - 80),
+          max: Math.max(...prices) + 80,
+          grid: { color: '#2a2d35' },
+          ticks: { callback: (v) => `$${Math.round(v).toLocaleString()}` },
+        },
+      },
+    },
+  }));
+}
+
 function openBookingPanel(key) {
   const o = currentOfferings.get(key);
   if (!o) return;
@@ -3096,6 +3247,7 @@ function openBookingPanel(key) {
     renderCurve('bpChartOutbound', ob, xMax, outboundTodayDtc);
     renderCurve('bpChartInbound', ib, xMax, inboundTodayDtc);
     renderCurve('bpChartHotel', ht, xMax, outboundTodayDtc, { percent: false });
+    renderPriceHistory('bpChartPrice', p, xMax, outboundTodayDtc);
   });
 }
 
@@ -3267,6 +3419,8 @@ function openPackageAdvancedFilters() {
   setVal('advCurrMarginMax', advancedPackageFilters.currMarginMax);
   setVal('advRecMarginMin', advancedPackageFilters.recMarginMin);
   setVal('advRecMarginMax', advancedPackageFilters.recMarginMax);
+  setVal('advMarginDeltaMin', advancedPackageFilters.marginDeltaMin);
+  setVal('advMarginDeltaMax', advancedPackageFilters.marginDeltaMax);
   setVal('advLfMin', advancedPackageFilters.lfMin);
   setVal('advLfMax', advancedPackageFilters.lfMax);
   setVal('advHotelFcstMin', advancedPackageFilters.hotelFcstMin);
@@ -3303,6 +3457,8 @@ function applyPackageAdvancedFilters() {
     currMarginMax: readAdvancedNumber('advCurrMarginMax'),
     recMarginMin: readAdvancedNumber('advRecMarginMin'),
     recMarginMax: readAdvancedNumber('advRecMarginMax'),
+    marginDeltaMin: readAdvancedNumber('advMarginDeltaMin'),
+    marginDeltaMax: readAdvancedNumber('advMarginDeltaMax'),
     lfMin: readAdvancedNumber('advLfMin'),
     lfMax: readAdvancedNumber('advLfMax'),
     hotelFcstMin: readAdvancedNumber('advHotelFcstMin'),
@@ -3323,7 +3479,7 @@ function clearPackageAdvancedFilters() {
   advancedPackageFilters = {};
   [
     'advPublishedState', 'advRecommendationState', 'advAdjustmentState', 'advPaceState', 'advCurrMarginMin', 'advCurrMarginMax',
-    'advRecMarginMin', 'advRecMarginMax', 'advLfMin', 'advLfMax',
+    'advRecMarginMin', 'advRecMarginMax', 'advMarginDeltaMin', 'advMarginDeltaMax', 'advLfMin', 'advLfMax',
     'advHotelFcstMin', 'advHotelFcstMax', 'advPriceMin', 'advPriceMax',
   ].forEach(id => {
     const el = document.getElementById(id);
@@ -3567,6 +3723,98 @@ function publishChanges() {
   renderPackagesTable();
   setTimeout(() => { toast.classList.remove('shown'); toast.classList.remove('success'); }, 2500);
 }
+
+(function() {
+  const PACKAGE_COLUMN_DEFS = [
+    { id: 'gateway', label: 'Gateway', col: 2, locked: true },
+    { id: 'destination', label: 'Destination', col: 3, locked: true },
+    { id: 'dates', label: 'Dates / Hotel', col: 4, locked: true },
+    { id: 'soldStly', label: 'Sold STLY', col: 5 },
+    { id: 'sold', label: 'Sold', col: 6 },
+    { id: 'outboundFcst', label: 'Out Fcst', col: 7 },
+    { id: 'returnFcst', label: 'Ret Fcst', col: 8 },
+    { id: 'hotelFcst', label: 'Hotel Fcst', col: 9 },
+    { id: 'pickup1d', label: 'Pick 1d', col: 10 },
+    { id: 'pickup3d', label: 'Pick 3d', col: 11 },
+    { id: 'pickup7d', label: 'Pick 7d', col: 12 },
+    { id: 'price', label: 'Price From', col: 13, locked: true },
+    { id: 'priceChange', label: 'Price Change', col: 14 },
+    { id: 'recPrice', label: 'Rec Price', col: 15 },
+    { id: 'priceDelta', label: 'Delta $', col: 16 },
+    { id: 'currMargin', label: 'Curr Margin', col: 17 },
+    { id: 'recMargin', label: 'Rec Margin', col: 18 },
+    { id: 'marginDelta', label: 'Margin Delta', col: 19 },
+    { id: 'alerts', label: 'Alerts', col: 20 },
+    { id: 'status', label: 'Status', col: 21 },
+    { id: 'pace', label: 'Pace', col: 22 },
+  ];
+  const packageColumnVisibility = Object.fromEntries(PACKAGE_COLUMN_DEFS.map(d => [d.id, true]));
+  let built = false;
+
+  function applyPackageColumnVisibility() {
+    let style = document.getElementById('pkgColVisStyle');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'pkgColVisStyle';
+      document.head.appendChild(style);
+    }
+    style.textContent = PACKAGE_COLUMN_DEFS
+      .filter(d => !packageColumnVisibility[d.id])
+      .map(d => `#packagesTable thead > tr > th:nth-child(${d.col}), #packagesTable tbody > tr > td:nth-child(${d.col}) { display: none !important; }`)
+      .join('\n');
+  }
+
+  function buildPackageColumnsPopover() {
+    const pop = document.getElementById('pkgColumnsPopover');
+    if (!pop) return;
+    const rowsHTML = PACKAGE_COLUMN_DEFS.map(d => `
+      <label class="col-row${d.locked ? ' locked' : ''}">
+        <input type="checkbox" data-pkg-col-id="${d.id}" ${packageColumnVisibility[d.id] ? 'checked' : ''} ${d.locked ? 'disabled' : ''}>
+        <span>${d.label}</span>
+        ${d.locked ? '<span class="col-lock" title="Always visible">Lock</span>' : ''}
+      </label>
+    `).join('');
+    pop.innerHTML = rowsHTML + '<div class="col-popover-footer"><a data-pkg-col-reset>Show all</a></div>';
+    pop.addEventListener('change', e => {
+      if (e.target.matches('input[data-pkg-col-id]')) {
+        packageColumnVisibility[e.target.dataset.pkgColId] = e.target.checked;
+        applyPackageColumnVisibility();
+      }
+    });
+    pop.querySelector('[data-pkg-col-reset]').addEventListener('click', () => {
+      PACKAGE_COLUMN_DEFS.forEach(d => { packageColumnVisibility[d.id] = true; });
+      pop.querySelectorAll('input[data-pkg-col-id]').forEach(cb => { cb.checked = true; });
+      applyPackageColumnVisibility();
+    });
+    built = true;
+  }
+
+  function positionPackageColumnsPopover() {
+    const btn = document.getElementById('pkgColumnsBtn');
+    const pop = document.getElementById('pkgColumnsPopover');
+    if (!btn || !pop) return;
+    const r = btn.getBoundingClientRect();
+    pop.style.top = `${r.bottom + 4}px`;
+    pop.style.right = `${window.innerWidth - r.right}px`;
+  }
+
+  window.togglePackageColumnsPopover = function(e) {
+    if (e) e.stopPropagation();
+    const pop = document.getElementById('pkgColumnsPopover');
+    if (!pop) return;
+    if (!pop.hidden) { pop.hidden = true; return; }
+    if (!built) buildPackageColumnsPopover();
+    positionPackageColumnsPopover();
+    pop.hidden = false;
+  };
+
+  document.addEventListener('click', e => {
+    const pop = document.getElementById('pkgColumnsPopover');
+    if (!pop || pop.hidden) return;
+    if (e.target.closest('#pkgColumnsPopover') || e.target.closest('#pkgColumnsBtn')) return;
+    pop.hidden = true;
+  });
+})();
 
 /* ══════════════════════════════════════════════════════════════════
    Nav / shell wiring

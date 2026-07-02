@@ -1,7 +1,7 @@
 # Dynamica SmartRates - Project Context
 
 Living context document. Keep this current so any teammate or future session can
-get oriented quickly. Verified against the codebase on 2026-07-01.
+get oriented quickly. Verified against the codebase on 2026-07-02.
 
 ## Project
 
@@ -49,6 +49,9 @@ Required committed runtime data:
 | `data/curves_hotel.json` | generated | Hotel booking curves; absolute room nights keyed by destination, hotel, Sunday week start, and duration |
 
 Current committed package export: **29,095 rows**.
+
+Packages currently display pickup from `pickup_pax_1d`, `pickup_pax_3d`, and
+`pickup_pax_7d`; the old 14-day pickup column is no longer shown.
 
 Raw booking-curve exports are local build inputs and are intentionally ignored
 because they are too large for the static image/repo:
@@ -107,9 +110,9 @@ Opening pages via `file://` will not work because the browser must fetch CSVs.
 
 | Page | Purpose |
 | --- | --- |
-| `data/flight.html` | Flights pricing recs, load factor, competitor fares, week/month calendar view, RM Copilot |
+| `data/flight.html` | Read-only flight load factor, competitor fares, week/month calendar view, RM Copilot |
 | `data/hotel.html` | Hotels pricing recs, occupancy, cost-change flags, RM Copilot |
-| `data/pricing.html` | Package pricing accordion, bell alert column, status column, date/advanced filters, selected-row bulk overrides, paginated rendering, booking curves |
+| `data/pricing.html` | Package pricing accordion, bell alert column, status column, date/advanced filters, column selector, selected-row bulk overrides, paginated rendering, booking curves |
 | `data/parameters.html` | Package alert thresholds, package rules, and package price-control guardrails; flights/hotels remain blank |
 | `data/index.html` | Entry point |
 
@@ -131,11 +134,14 @@ Copilot. Known gaps include:
   demo. Package rules now live under Parameters -> Packages as a two-pane rule
   builder carrying the old flight-tab rule concepts plus date windows. They are
   not yet server-side persisted or audited.
-- Flight calendar STLY delta is currently displayed as current LF versus the
-  benchmark/target LF from `v_flight_pricing_pg.csv`; the flight export does not
-  currently include a separate STLY LF field.
+- Flight calendar/list load-factor fields come from `curve_current_lf`,
+  `curve_forecast_final_lf`, and `curve_target_same_time_last_year_lf`; booked
+  seats come from `curve_current_booked_seats`.
+- Flights is currently read-only; package pricing remains the active override
+  workflow.
 - Publish, approval, and audit history.
-- Historical fare/ADR time series.
+- Historical fare/ADR time series. The Packages booking panel includes a mock
+  package price-history chart with margin-change dots for demo storytelling.
 - Detailed cost-change history beyond the CSV flag.
 - Package autopilot/rule execution beyond the visible localStorage
   configuration.
