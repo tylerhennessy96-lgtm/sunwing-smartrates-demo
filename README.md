@@ -39,6 +39,14 @@ python .\scripts\build_booking_curves.py
 Hotel curves should stay keyed at `destination_id|hotel_id|week_start|duration`.
 Using only destination/week/duration will over-aggregate hotel targets.
 
+Current demo interaction notes:
+
+- Flights supports margin-only what-if adjustments in the list view; fare
+  editing remains hidden.
+- Packages supports manual price changes, accepted/rejected recommendations,
+  alert filtering, and a `Sup` column showing cumulative supplementary price
+  adjustment from base price.
+
 ## Local Run
 
 From the repository root:

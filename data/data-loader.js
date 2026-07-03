@@ -95,6 +95,11 @@
     if (n === null) return null;
     return Math.abs(n) <= 1 ? n * 100 : n;
   }
+  function curveLfToPct(v) {
+    const n = num(v);
+    if (n === null) return null;
+    return Math.abs(n) <= 3 ? n * 100 : n;
+  }
   function isWithinActiveDateWindow(s) {
     // Unbounded when no window is configured — read every row the CSV contains.
     if (!ACTIVE_START_DATE_ISO && !ACTIVE_END_DATE_ISO) return true;
@@ -173,10 +178,10 @@
     const comps = [num(r.comp1_fare), num(r.comp2_fare)].filter(v => v !== null && v > 0);
     const cheapest = comps.length ? Math.min.apply(null, comps) : null;
     const ros = num(r.rate_of_sale), rosT = num(r.rate_of_sale_target);
-    const fLf = lfToPct(r.curve_forecast_final_lf) ?? lfToPct(r.forecast_lf);
-    const tLf = lfToPct(r.curve_target_same_time_last_year_lf) ?? lfToPct(r.target_lf);
+    const fLf = curveLfToPct(r.curve_forecast_final_lf) ?? lfToPct(r.forecast_lf);
+    const tLf = curveLfToPct(r.curve_target_same_time_last_year_lf) ?? lfToPct(r.target_lf);
     const fLfBiz = lfToPct(r.forecast_lf_biz), tLfBiz = lfToPct(r.target_lf_biz);
-    const currentLf = lfToPct(r.curve_current_lf)
+    const currentLf = curveLfToPct(r.curve_current_lf)
       ?? lfToPct(r.current_lf_pct)
       ?? lfToPct(r.current_lf_eco)
       ?? (capTot ? (soldTot / capTot) * 100 : null);
