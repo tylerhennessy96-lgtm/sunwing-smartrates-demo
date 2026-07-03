@@ -1,7 +1,7 @@
 # Dynamica SmartRates - Project Context
 
 Living context document. Keep this current so any teammate or future session can
-get oriented quickly. Verified against the codebase on 2026-07-02.
+get oriented quickly. Verified against the codebase on 2026-07-03.
 
 ## Project
 
@@ -52,6 +52,17 @@ Current committed package export: **29,095 rows**.
 
 Packages currently display pickup from `pickup_pax_1d`, `pickup_pax_3d`, and
 `pickup_pax_7d`; the old 14-day pickup column is no longer shown.
+
+Packages also show `Sup`, the cumulative supplementary price adjustment from
+the base price. Manual price changes and accepted recommendations both flow
+into this value.
+
+The Flights page is no longer a fare-editing workflow, but it does support
+margin-only what-if adjustments at destination-week, route, and flight-date
+levels using paired percentage and absolute dollar inputs. Flight calendar load
+factor values should read from `curve_current_lf`, `curve_forecast_final_lf`,
+and `curve_target_same_time_last_year_lf` with ratio-style curve values scaled
+to percentages.
 
 Raw booking-curve exports are local build inputs and are intentionally ignored
 because they are too large for the static image/repo:

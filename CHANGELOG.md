@@ -12,6 +12,19 @@ Format:
 
 ---
 
+## 2026-07-03 - Flight margin controls and package alert filters
+- Restored Flights margin adjustment controls without bringing back fare
+  editing, using the same paired `% / absolute $` pattern as Packages at
+  destination-week, route, and flight-date levels.
+- Fixed flight calendar week subheadings to show week-end dates and normalized
+  curve load-factor fields so ratio values like `1.0041` render around `100%`
+  instead of `1%`.
+- Added Packages alert filters, a `Sup` supplementary price-adjustment column,
+  and a tooltip for the package price-history chart with orange mock
+  margin-change markers.
+- Why: support flight margin what-if workflows while improving package alert
+  triage and price-history explainability in the static demo.
+
 ## 2026-07-02 - Flight read-only cleanup and package table updates
 - Made the Flights tab read-only by removing visible price-adjustment columns
   and accept/lock actions from the list/calendar detail flow.

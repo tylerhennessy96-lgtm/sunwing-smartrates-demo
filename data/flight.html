@@ -1373,6 +1373,59 @@
     /* Effective current fare when there's a pending change */
     .cur-pink { color: var(--accent); font-weight: 600; }
 
+    .flt-margin-change-cell {
+      padding: 4px 6px !important;
+      min-width: 126px;
+    }
+    .flt-margin-change-cell.has-adjustment {
+      background: rgba(232, 0, 125, 0.08) !important;
+    }
+    .flt-change-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      align-items: center;
+    }
+    .flt-change-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: 26px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .flt-change-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(232, 0, 125, 0.10);
+    }
+    .flt-change-input {
+      min-width: 0;
+      width: 100%;
+      border: 0;
+      outline: 0;
+      padding: 3px 6px;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-primary);
+      background: transparent;
+      -moz-appearance: textfield;
+    }
+    .flt-change-input::-webkit-outer-spin-button,
+    .flt-change-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .flt-change-suffix,
+    .flt-change-prefix {
+      flex: 0 0 auto;
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 0 6px;
+      pointer-events: none;
+    }
+    .flt-margin-change-cell.adjust-up .flt-change-input { color: #047857; font-weight: 600; }
+    .flt-margin-change-cell.adjust-down .flt-change-input { color: var(--danger); font-weight: 600; }
+
     /* Beds:Seats descriptive label */
     .bs-label {
       display: inline-block;
@@ -1997,6 +2050,7 @@ const expandedDestWeeks = new Set(); // `${dest.id}::${weekIdx}`
 const expandedRoutes    = new Set(); // `${dest.id}::${weekIdx}::${route.id}`
 const expandedDays      = new Set(); // `${dest.id}::${weekIdx}::${route.id}::${day.id}`
 const fareOverrides     = {};        // { leafKey: newFare }   leafKey = `${dayId}::${cls}`
+const marginOverrides   = {};        // { dayId: newMargin }   flight margin adjustment overrides
 const acceptedRecs      = new Set(); // leafKey — rec fare was accepted
 const rejectedRecs      = new Set(); // leafKey — rec fare was rejected
 const notes             = {};        // { dayId: { text, expires, createdBy, createdAt } }
@@ -2190,6 +2244,9 @@ function showChartCanvas(canvasId) {
 function getEffectiveFare(date) {
   return fareOverrides[date.id] != null ? fareOverrides[date.id] : date.currentFare;
 }
+function getEffectiveMargin(date) {
+  return marginOverrides[date.id] != null ? marginOverrides[date.id] : date.currentMargin;
+}
 function shortDate(s) {
   // Input "Apr 27, 2026" → "Mon 27 Apr"
   if (!s) return s;
@@ -2236,7 +2293,16 @@ function weekOverlapsSelectedRange(weekStart, range) {
 function shortMMDDYY(s) {
   const d = parseAppDate(s);
   if (!d) return shortMMDD(s);
+  return formatMMDDYYDate(d);
+}
+function formatMMDDYYDate(d) {
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+}
+function weekEndMMDDYY(date) {
+  const d = parseAppDate(date && (date.weekStart || date.departureDate));
+  if (!d) return shortMMDDYY(date && date.departureDate);
+  d.setDate(d.getDate() + 6);
+  return formatMMDDYYDate(d);
 }
 
 function aggDates(dates) {
@@ -2252,7 +2318,7 @@ function aggDates(dates) {
   const lf = lfWeight ? lfNumerator / lfWeight : (capacity ? sold / capacity : 0);
   const fCur = dates.reduce((s, x) => s + getEffectiveFare(x), 0) / dates.length;
   const fRec = dates.reduce((s, x) => s + x.recFare, 0) / dates.length;
-  const mCur = dates.reduce((s, x) => s + x.currentMargin, 0) / dates.length;
+  const mCur = dates.reduce((s, x) => s + getEffectiveMargin(x), 0) / dates.length;
   const mRec = dates.reduce((s, x) => s + x.recMargin, 0) / dates.length;
   const forecastLF = dates.reduce((s, x) => s + x.forecastLF, 0) / dates.length;
   const targetLF   = dates.reduce((s, x) => s + x.targetLF, 0) / dates.length;
@@ -2318,6 +2384,7 @@ function renderRecsHead() {
       <th class="text-right" style="width:90px;">Rec<span class="th-sub">Fare $</span></th>
       <th class="text-right" style="width:80px;">Delta<span class="th-sub">$</span></th>
       <th class="text-right" style="width:90px;">Current<span class="th-sub">Margin $</span></th>
+      <th style="width:132px;">Margin Change<span class="th-sub">% / abs.</span></th>
       <th class="text-right" style="width:90px;">Rec<span class="th-sub">Margin $</span></th>
       <th class="text-right" style="width:80px;">Margin<span class="th-sub">Δ $</span></th>
       <th class="text-right" style="width:110px;">Beds/Seats</th>
@@ -2376,6 +2443,7 @@ function renderRecsTable() {
       const weekDisplay = datesAtWeek[0]?.weekLabel || `Wk ${shortMMDDYY(refDateStr)}`;
       const hOcc       = hotelOccForWeek(dest, weekIdx);
       const ratio      = bedsSeatsRatio(datesAtWeek);
+      const dwMarginAdj = _fltMarginScopeAvg('dw', dest.id, weekIdx);
 
       const entryRows = [];
       const entry = { weekIdx, forecastLF: dwAgg.forecastLF, rows: entryRows };
@@ -2397,7 +2465,8 @@ function renderRecsTable() {
           <td class="text-right">${fmt$(dwAgg.avgCurrentFare)}</td>
           <td class="text-right highlight-teal${dwAgg.deltaFare < 0 ? ' rec-down' : ''}">${fmt$(dwAgg.avgRecFare)}</td>
           <td class="text-right">${deltaCell(dwAgg.deltaFare)}</td>
-          <td class="text-right num">${fmt$(dwAgg.avgCurrentMargin)}</td>
+          <td class="text-right num${Math.abs(dwMarginAdj.avgChange) >= 0.5 ? ' cur-pink' : ''}">${fmt$(dwAgg.avgCurrentMargin)}</td>
+          ${_fltMarginChgCell('dw', dest.id, weekIdx, '', '')}
           <td class="text-right num">${fmt$(dwAgg.avgRecMargin)}</td>
           <td class="text-right">${deltaCell(dwAgg.deltaMargin)}</td>
           <td class="text-right">${ratioBadge(ratio)}</td>
@@ -2427,6 +2496,7 @@ function renderRecsTable() {
         const routeKey = `${dest.id}::${weekIdx}::${route.id}`;
         const routeOpen = expandedRoutes.has(routeKey);
         const rAgg = aggDates([date]);
+        const rtMarginAdj = _fltMarginScopeAvg('rt', dest.id, weekIdx, route.id);
         entryRows.push(`
           <tr class="row-bedtype clickable" onclick="toggleRoute('${routeKey}')" style="cursor:pointer;">
             <td>
@@ -2442,7 +2512,8 @@ function renderRecsTable() {
             <td class="text-right">${fmt$(rAgg.avgCurrentFare)}</td>
             <td class="text-right highlight-teal${rAgg.deltaFare < 0 ? ' rec-down' : ''}">${fmt$(rAgg.avgRecFare)}</td>
             <td class="text-right">${deltaCell(rAgg.deltaFare)}</td>
-            <td class="text-right num">${fmt$(rAgg.avgCurrentMargin)}</td>
+            <td class="text-right num${Math.abs(rtMarginAdj.avgChange) >= 0.5 ? ' cur-pink' : ''}">${fmt$(rAgg.avgCurrentMargin)}</td>
+            ${_fltMarginChgCell('rt', dest.id, weekIdx, route.id, '')}
             <td class="text-right num">${fmt$(rAgg.avgRecMargin)}</td>
             <td class="text-right">${deltaCell(rAgg.deltaMargin)}</td>
             <td class="text-muted">—</td>
@@ -2464,9 +2535,10 @@ function renderRecsTable() {
           const blendLF   = Number.isFinite(day.currentLF) ? day.currentLF : (totalCap ? totalSold / totalCap : 0);
           const blendCurrFare   = day.currentFare || 0;
           const blendRecFare    = day.recFare || 0;
-          const blendCurrMargin = day.currentMargin || 0;
+          const blendCurrMargin = getEffectiveMargin(day) || 0;
           const blendRecMargin  = day.recMargin || 0;
           const blendForecast = day.forecastLF;
+          const dtMarginAdj = _fltMarginScopeAvg('dt', dest.id, weekIdx, route.id, day.id);
 
           const dayAnyAuto = !!day.autoChanged || !!(day.economy && day.economy.autoChanged) || !!(day.business && day.business.autoChanged);
 
@@ -2484,7 +2556,8 @@ function renderRecsTable() {
               <td class="text-right">${fmt$(blendCurrFare)}</td>
               <td class="text-right highlight-teal${(blendRecFare - blendCurrFare) < 0 ? ' rec-down' : ''}">${fmt$(blendRecFare)}</td>
               <td class="text-right">${deltaCell(blendRecFare - blendCurrFare)}</td>
-              <td class="text-right num">${fmt$(blendCurrMargin)}</td>
+              <td class="text-right num${Math.abs(dtMarginAdj.avgChange) >= 0.5 ? ' cur-pink' : ''}">${fmt$(blendCurrMargin)}</td>
+              ${_fltMarginChgCell('dt', dest.id, weekIdx, route.id, day.id)}
               <td class="text-right num">${fmt$(blendRecMargin)}</td>
               <td class="text-right">${deltaCell(blendRecMargin - blendCurrMargin)}</td>
               <td class="text-muted">—</td>
@@ -2519,7 +2592,7 @@ function renderRecsTable() {
 
   const allRows = entries.flatMap(e => e.rows);
   if (visibleDestSet.size === 0 && (advFiltersActive() || headerFiltersActive())) {
-    allRows.push('<tr><td colspan="16" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
+    allRows.push('<tr><td colspan="17" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
   }
 
   tbody.innerHTML = allRows.join('');
@@ -2847,6 +2920,100 @@ function _fltChgCells(scope, destId, weekIdx, routeId, dayId, cls) {
 // ── Exposure panel (booking curve + fare history) ─────────
 // The 27 MB booking-curve export is loaded on demand the first time a curve is
 // opened, rather than on every page load.
+function _fltMarginScopeLeaves(scope, destId, weekIdx, routeId, dayId) {
+  const out = [];
+  const dest = FLIGHT_DATA.find(d => d.id === destId);
+  if (!dest) return out;
+  const routes = (scope === 'rt' || scope === 'dt')
+    ? dest.routes.filter(r => r.id === routeId)
+    : dest.routes;
+  routes.forEach(route => {
+    const date = route.dates[weekIdx];
+    if (!date) return;
+    const sourceDays = date.days || [date];
+    const days = scope === 'dt'
+      ? sourceDays.filter(d => d.id === dayId)
+      : sourceDays;
+    days.forEach(day => out.push({
+      dayId: day.id,
+      currentMargin: Number(day.currentMargin) || 0,
+    }));
+  });
+  return out;
+}
+
+function _fltMarginScopeAvg(scope, destId, weekIdx, routeId, dayId) {
+  const leaves = _fltMarginScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId);
+  if (!leaves.length) return { avgChange: 0, avgCurrentMargin: 0 };
+  let sumChange = 0;
+  let sumCurrent = 0;
+  leaves.forEach(lf => {
+    const override = marginOverrides[lf.dayId];
+    const change = override != null ? override - lf.currentMargin : 0;
+    sumChange += change;
+    sumCurrent += lf.currentMargin;
+  });
+  return {
+    avgChange: sumChange / leaves.length,
+    avgCurrentMargin: sumCurrent / leaves.length,
+  };
+}
+
+function _fltApplyMarginChange(leaves, changeOrFn) {
+  leaves.forEach(lf => {
+    const change = typeof changeOrFn === 'function' ? changeOrFn(lf) : changeOrFn;
+    if (!Number.isFinite(change) || Math.abs(change) < 0.5) {
+      delete marginOverrides[lf.dayId];
+    } else {
+      marginOverrides[lf.dayId] = Math.round(lf.currentMargin + change);
+    }
+  });
+  renderRecsTable();
+  renderMetricsBar();
+}
+
+function onMarginChgDollar(scope, destId, weekIdx, routeId, dayId, raw) {
+  const amount = raw === '' ? 0 : Number(raw);
+  _fltApplyMarginChange(
+    _fltMarginScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId),
+    Number.isFinite(amount) ? amount : 0
+  );
+}
+
+function onMarginChgPct(scope, destId, weekIdx, routeId, dayId, raw) {
+  const pct = raw === '' ? 0 : Number(raw);
+  _fltApplyMarginChange(
+    _fltMarginScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId),
+    Number.isFinite(pct) ? (lf => lf.currentMargin * (pct / 100)) : 0
+  );
+}
+
+function _fltMarginChgCell(scope, destId, weekIdx, routeId, dayId) {
+  const { avgChange, avgCurrentMargin } = _fltMarginScopeAvg(scope, destId, weekIdx, routeId, dayId);
+  const hasChg = Math.abs(avgChange) >= 0.5;
+  const pctRounded = avgCurrentMargin > 0 ? Math.round((avgChange / avgCurrentMargin) * 1000) / 10 : 0;
+  const dollarVal = hasChg ? String(Math.round(avgChange)) : '0';
+  const pctVal = hasChg ? String(pctRounded) : '';
+  const adjClass = hasChg ? ` has-adjustment ${avgChange < 0 ? 'adjust-down' : 'adjust-up'}` : '';
+  const args = `'${scope}','${destId}','${weekIdx}','${routeId || ''}','${dayId || ''}'`;
+  return `
+    <td class="flt-margin-change-cell${adjClass}">
+      <div class="flt-change-pair" onclick="event.stopPropagation()">
+        <span class="flt-change-wrap">
+          <input class="flt-change-input" type="number" step="0.1" value="${pctVal}"
+                 onchange="onMarginChgPct(${args}, this.value)" />
+          <span class="flt-change-suffix">%</span>
+        </span>
+        <span class="flt-change-wrap">
+          <span class="flt-change-prefix">$</span>
+          <input class="flt-change-input" type="number" step="1" value="${dollarVal}"
+                 onchange="onMarginChgDollar(${args}, this.value)" />
+        </span>
+      </div>
+    </td>
+  `;
+}
+
 let _curvePromise = null;
 function ensureCurveLoaded() {
   if (typeof FLIGHT_BOOKING_CURVE_DATA !== 'undefined' && FLIGHT_BOOKING_CURVE_DATA.length) {
@@ -3710,7 +3877,8 @@ function passesFlightDate(date) {
   if (fLF < af.forecastLF.min || fLF > af.forecastLF.max) return false;
   if (tLF < af.targetLF.min   || tLF > af.targetLF.max)   return false;
   if (eff < af.currentFare.min || eff > af.currentFare.max) return false;
-  if (date.currentMargin < af.currentMargin.min || date.currentMargin > af.currentMargin.max) return false;
+  const effMargin = getEffectiveMargin(date);
+  if (effMargin < af.currentMargin.min || effMargin > af.currentMargin.max) return false;
   if (date.capacity < af.capacity.min || date.capacity > af.capacity.max) return false;
 
   if (af.recDiffers && date.recFare === eff) return false;
@@ -3823,7 +3991,7 @@ function getCalendarWeeks() {
       idx: i,
       departureDate: refDate.departureDate,
       label: refDate.weekLabel || `Wk ${shortMMDDYY(refDate.departureDate)}`,
-      mmdd: shortMMDDYY(refDate.departureDate),
+      mmdd: weekEndMMDDYY(refDate),
     });
   }
   return weeks;
@@ -4210,8 +4378,9 @@ function renderCalPanel() {
     const date  = route ? route.dates.find(d => d.id === dateId) : null;
     if (!route || !date) { content.innerHTML = ''; return; }
     const eff = getEffectiveFare(date);
+    const effMargin = getEffectiveMargin(date);
     const dFare = date.recFare - eff;
-    const marginD = date.recMargin - date.currentMargin;
+    const marginD = date.recMargin - effMargin;
     const lf = date.capacity ? date.sold / date.capacity : 0;
     const unsold = date.capacity - date.sold;
     const cheapest = Math.min(date.comp1Fare, date.comp2Fare);
@@ -4258,7 +4427,7 @@ function renderCalPanel() {
         <div class="cdp-row"><span class="cdp-label">Current Fare</span><span class="cdp-val cdp-big">${fmt$(eff)}</span></div>
         <div class="cdp-row"><span class="cdp-label">Recommended Fare</span><span class="cdp-val cdp-big teal">${fmt$(date.recFare)}</span></div>
         <div class="cdp-row"><span class="cdp-label">Delta</span><span class="cdp-val">${deltaCell(dFare)}</span></div>
-        <div class="cdp-row"><span class="cdp-label">Current Margin</span><span class="cdp-val">${fmt$(date.currentMargin)}</span></div>
+        <div class="cdp-row"><span class="cdp-label">Current Margin</span><span class="cdp-val">${fmt$(effMargin)}</span></div>
         <div class="cdp-row"><span class="cdp-label">Rec Margin</span><span class="cdp-val teal">${fmt$(date.recMargin)}</span></div>
         <div class="cdp-row"><span class="cdp-label">Margin Δ</span><span class="cdp-val">${deltaCell(marginD)}</span></div>
       </div>
@@ -5201,12 +5370,13 @@ function _generalFlightAnswer(q) {
     { id: 'recFare',       label: 'Rec Fare $',       col: 7,  locked: true },
     { id: 'deltaDollar',   label: 'Delta $',          col: 8 },
     { id: 'currentMargin', label: 'Current Margin $', col: 9 },
-    { id: 'recMargin',     label: 'Rec Margin $',     col: 10 },
-    { id: 'marginDelta',   label: 'Margin Δ $',       col: 11 },
-    { id: 'bsRatio',       label: 'Beds/Seats',       col: 12 },
-    { id: 'hotelOcc',      label: 'Hotel Occ %',      col: 13 },
-    { id: 'flags',         label: 'Flags',            col: 14 },
-    { id: 'capAlert',      label: 'Cap. Alert',       col: 15 },
+    { id: 'marginChange',  label: 'Margin Change',    col: 10 },
+    { id: 'recMargin',     label: 'Rec Margin $',     col: 11 },
+    { id: 'marginDelta',   label: 'Margin Delta $',   col: 12 },
+    { id: 'bsRatio',       label: 'Beds/Seats',       col: 13 },
+    { id: 'hotelOcc',      label: 'Hotel Occ %',      col: 14 },
+    { id: 'flags',         label: 'Flags',            col: 15 },
+    { id: 'capAlert',      label: 'Cap. Alert',       col: 16 },
   ];
   const columnVisibility = Object.fromEntries(COLUMN_DEFS.map(d => [d.id, true]));
   let built = false;

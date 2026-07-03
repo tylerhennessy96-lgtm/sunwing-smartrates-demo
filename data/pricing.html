@@ -1099,6 +1099,30 @@
     .pkg-adv-field select:focus,
     .bulk-field input:focus,
     .bulk-field select:focus { border-color: var(--accent); }
+    .pkg-adv-check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 10px;
+      margin-top: 2px;
+    }
+    .pkg-adv-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 5px 8px;
+      border: 1px solid var(--border-mid);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .pkg-adv-check input {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+    }
     .pkg-adv-foot {
       display: flex;
       justify-content: flex-end;
@@ -1619,6 +1643,27 @@
       </div>
     </div>
     <div class="pkg-adv-section">
+      <div class="pkg-adv-section-title">Alerts</div>
+      <div class="pkg-adv-row">
+        <div class="pkg-adv-field">
+          <label for="advAlertState">Alert state</label>
+          <select id="advAlertState">
+            <option value="">Any</option>
+            <option value="with">Has alerts</option>
+            <option value="without">No alerts</option>
+          </select>
+        </div>
+      </div>
+      <div class="pkg-adv-check-grid">
+        <label class="pkg-adv-check"><input type="checkbox" data-adv-alert-type value="OUT" /> Out fcst</label>
+        <label class="pkg-adv-check"><input type="checkbox" data-adv-alert-type value="RET" /> Ret fcst</label>
+        <label class="pkg-adv-check"><input type="checkbox" data-adv-alert-type value="HOTEL" /> Hotel fcst</label>
+        <label class="pkg-adv-check"><input type="checkbox" data-adv-alert-type value="MARGIN" /> Margin delta</label>
+        <label class="pkg-adv-check"><input type="checkbox" data-adv-alert-type value="COST" /> Cost change</label>
+        <label class="pkg-adv-check"><input type="checkbox" data-adv-alert-type value="PACE" /> Pace</label>
+      </div>
+    </div>
+    <div class="pkg-adv-section">
       <div class="pkg-adv-section-title">Margins</div>
       <div class="pkg-adv-row">
         <div class="pkg-adv-field">
@@ -1983,6 +2028,12 @@ function passesAdvancedPackageFilters(pkg) {
   if (f.adjustmentState === 'accepted' && !acceptedRecs.has(pkg.id)) return false;
   if (f.adjustmentState === 'rejected' && !rejectedRecs.has(pkg.id)) return false;
   if (f.paceState && String(pkg.bookingPace || '').toLowerCase() !== f.paceState) return false;
+  if (f.alertState || (Array.isArray(f.alertTypes) && f.alertTypes.length)) {
+    const alertList = packageAlertsFor(pkg, packageLeafMetrics(pkg));
+    if (f.alertState === 'with' && !alertList.length) return false;
+    if (f.alertState === 'without' && alertList.length) return false;
+    if (Array.isArray(f.alertTypes) && f.alertTypes.length && !alertList.some(alert => f.alertTypes.includes(alert.key))) return false;
+  }
   if ((f.currMarginMin != null || f.currMarginMax != null) && !inNumberRange(getEffectiveMargin(pkg), f.currMarginMin, f.currMarginMax)) return false;
   if ((f.recMarginMin != null || f.recMarginMax != null) && !inNumberRange(pkg.recMargin, f.recMarginMin, f.recMarginMax)) return false;
   if ((f.marginDeltaMin != null || f.marginDeltaMax != null) && !inNumberRange(pkg.recMargin - getEffectiveMargin(pkg), f.marginDeltaMin, f.marginDeltaMax)) return false;
@@ -2102,7 +2153,7 @@ function allLeaves() {
    ══════════════════════════════════════════════════════════════════ */
 const PACKAGE_SELECT_COLS = 1;
 const PACKAGE_GROUP_COLS = 3;
-const PACKAGE_METRIC_COLS = 19;
+const PACKAGE_METRIC_COLS = 20;
 const COLSPAN = PACKAGE_SELECT_COLS + PACKAGE_GROUP_COLS + PACKAGE_METRIC_COLS;
 const PACKAGE_SORTERS = {
   gateway: { type: 'text', groupType: 'itinerary', value: p => p.gatewayCity || p.gateway },
@@ -2120,6 +2171,7 @@ const PACKAGE_SORTERS = {
   pickup7d: { type: 'number', value: p => p.pickupPax7d },
   price: { type: 'number', value: p => getEffectivePrice(p) },
   priceChange: { type: 'number', value: p => getPackagePriceChange(p) },
+  sup: { type: 'number', value: p => getPackagePriceChange(p) },
   recPrice: { type: 'number', value: p => p.recPrice },
   priceDelta: { type: 'number', value: p => p.recPrice - getEffectivePrice(p) },
   currMargin: { type: 'number', value: p => getEffectiveMargin(p) },
@@ -2188,6 +2240,7 @@ function renderPackagesHead() {
       ${packageHeaderCell('pickup7d', 'Pick<br>7d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 7 days' })}
       ${packageHeaderCell('price', 'Price<br>From', { width: '76px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('priceChange', 'Price Change<br>(% / abs.)', { width: '132px', title: 'Price Change (% / abs.)' })}
+      ${packageHeaderCell('sup', 'Sup', { width: '58px', className: 'text-right', align: 'right', title: 'Supplementary price adjustment from base price' })}
       ${packageHeaderCell('recPrice', 'Rec.<br>Price', { width: '76px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('priceDelta', 'Delta<br>$', { width: '54px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('currMargin', 'Curr<br>Margin', { width: '72px', className: 'text-right', align: 'right' })}
@@ -2515,6 +2568,7 @@ function packageLeafMetrics(pkg) {
     pickup7d: pkg.pickupPax7d,
     price: getEffectivePrice(pkg),
     priceChange: getPackagePriceChange(pkg),
+    sup: getPackagePriceChange(pkg),
     recPrice: pkg.recPrice,
     priceDelta: pkg.recPrice - getEffectivePrice(pkg),
     currMargin: getEffectiveMargin(pkg),
@@ -2558,6 +2612,7 @@ function packageAggregatedMetrics(node) {
     pickup7d: aggregateMetricValues(childMetrics, 'pickup7d', 'sum'),
     price: aggregateMetricValues(childMetrics, 'price', 'min'),
     priceChange: aggregateMetricValues(childMetrics, 'priceChange', 'avg'),
+    sup: aggregateMetricValues(childMetrics, 'sup', 'avg'),
     recPrice: aggregateMetricValues(childMetrics, 'recPrice', 'min'),
     priceDelta: aggregateMetricValues(childMetrics, 'priceDelta', 'min'),
     currMargin: aggregateMetricValues(childMetrics, 'currMargin', 'avg'),
@@ -2586,7 +2641,7 @@ function metricPctCell(value, opts = {}) {
 
 function metricMoneyCell(value, opts = {}) {
   if (value == null) return BLANK_NUM;
-  const sign = opts.sign && value >= 0 ? '+' : '';
+  const sign = opts.sign && value > 0 ? '+' : '';
   const cls = `${opts.delta ? ` ${deltaColor(value)}` : ''}${opts.className ? ` ${opts.className}` : ''}`;
   return `<td class="text-right num${cls}">${sign}${fmt$(value)}</td>`;
 }
@@ -2671,6 +2726,7 @@ function packageGroupMetricCells(node) {
     ${metricNumCell(metrics.pickup7d)}
     ${metricMoneyCell(metrics.price)}
     ${packagePriceChangeCellForScope(node.key, node.leaves, true)}
+    ${metricMoneyCell(metrics.sup, { delta: true, sign: true })}
     ${metricMoneyCell(metrics.recPrice)}
     ${metricMoneyCell(metrics.priceDelta, { delta: true, sign: true })}
     ${metricMoneyCell(metrics.currMargin)}
@@ -2723,6 +2779,7 @@ function metricCells(p, opts) {
   const hotelFcstCell = numCell(opts.hotelFcst, 'hotelForecast');
   const priceCell = changedMoneyCell(currP, p.currentPrice, changed);
   const priceChangeCell = packagePriceChangeCell(p, editable);
+  const supCell = metricMoneyCell(getPackagePriceChange(p), { delta: true, sign: true });
   const marginCell = changedMoneyCell(currM, originalM, changed);
   const recClass = acceptedRecs.has(p.id) ? 'accepted' : (rejectedRecs.has(p.id) ? 'rejected' : '');
   const recCell = `<td class="text-right"><span class="pkg-rec-value ${recClass}">${fmt$(p.recPrice)}</span></td>`;
@@ -2738,6 +2795,7 @@ function metricCells(p, opts) {
     <td class="text-right num">${p.pickupPax7d == null ? '-' : p.pickupPax7d}</td>
     ${priceCell}
     ${priceChangeCell}
+    ${supCell}
     ${recCell}
     <td class="text-right num ${deltaColor(deltaP)}">${deltaP>=0?'+':''}${fmt$(deltaP)}</td>
     ${marginCell}
@@ -2929,7 +2987,7 @@ function loadCurveData() {
 function destroyBpCharts() {
   bpCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
   bpCharts = [];
-  ['bpChartOutbound', 'bpChartInbound', 'bpChartHotel'].forEach(id => clearCurveHover(document.getElementById(id)));
+  ['bpChartOutbound', 'bpChartInbound', 'bpChartHotel', 'bpChartPrice'].forEach(id => clearCurveHover(document.getElementById(id)));
 }
 
 const BP_DAY_MS = 24 * 60 * 60 * 1000;
@@ -3036,6 +3094,60 @@ function attachCurveTooltip(canvas, rawMaps, xMax, options) {
     line.style.display = 'block';
     line.style.left = `${Math.round(x)}px`;
     tip.innerHTML = `<div class="bp-tooltip-title">${day.toLocaleString()} days before service</div>${rows}`;
+    tip.style.display = 'block';
+    const preferredLeft = x + 10;
+    const tipWidth = tip.offsetWidth || 180;
+    const left = preferredLeft + tipWidth > width - 8 ? x - tipWidth - 10 : preferredLeft;
+    tip.style.left = `${Math.max(8, left)}px`;
+    tip.style.top = `${Math.max(6, Math.min(height - 86, plot.top - 10))}px`;
+  };
+}
+
+function nearestPriceHistoryDay(days, targetDay) {
+  if (!days.length) return null;
+  return days.reduce((best, day) => (
+    Math.abs(day - targetDay) < Math.abs(best - targetDay) ? day : best
+  ), days[0]);
+}
+
+function attachPriceHistoryTooltip(canvas, history, xMax) {
+  const wrap = canvas.parentNode;
+  const plot = { left: 44, right: 16, top: 18, bottom: 34 };
+  const { line, tip } = curveTooltipLayer(canvas);
+  const priceByDay = new Map(history.days.map((day, idx) => [day, history.prices[idx]]));
+  const marginByDay = new Map(history.days.map((day, idx) => [day, history.marginDeltas[idx]]));
+  const hide = () => {
+    line.style.display = 'none';
+    tip.style.display = 'none';
+  };
+  canvas.onmouseleave = hide;
+  canvas.onmousemove = (e) => {
+    const width = canvas.clientWidth || wrap.clientWidth || 1;
+    const height = canvas.clientHeight || wrap.clientHeight || 1;
+    const plotWidth = Math.max(10, width - plot.left - plot.right);
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < plot.left || x > plot.left + plotWidth) {
+      hide();
+      return;
+    }
+    const ratio = (x - plot.left) / plotWidth;
+    const day = Math.max(0, Math.min(xMax, Math.round(xMax - (ratio * xMax))));
+    const nearestDay = nearestPriceHistoryDay(history.days, day);
+    const price = priceByDay.get(nearestDay);
+    const marginDelta = marginByDay.get(nearestDay);
+    const marginLabel = marginDelta == null
+      ? ''
+      : `${marginDelta > 0 ? '+' : marginDelta < 0 ? '-' : ''}${fmt$(Math.abs(marginDelta))}`;
+    const rows = [
+      `<div class="bp-tooltip-row"><span>Price</span><strong>${fmt$(price)}</strong></div>`,
+      marginDelta == null
+        ? ''
+        : `<div class="bp-tooltip-row"><span>Margin change</span><strong>${marginLabel}</strong></div>`,
+    ].join('');
+    line.style.display = 'block';
+    line.style.left = `${Math.round(x)}px`;
+    tip.innerHTML = `<div class="bp-tooltip-title">${nearestDay.toLocaleString()} days before departure</div>${rows}`;
     tip.style.display = 'block';
     const preferredLeft = x + 10;
     const tipWidth = tip.offsetWidth || 180;
@@ -3186,7 +3298,7 @@ function renderPriceHistory(canvasId, pkg, xMax, todayDtc) {
           data: dots,
           borderColor: '#f5a623',
           backgroundColor: '#f5a623',
-          pointBackgroundColor: marginDeltas.map(v => v == null ? '#f5a623' : (v >= 0 ? '#047857' : '#e74c3c')),
+          pointBackgroundColor: '#f5a623',
           pointBorderColor: '#1f2430',
           pointBorderWidth: 1,
           pointRadius: dots.map(v => v == null ? 0 : 5),
@@ -3216,6 +3328,7 @@ function renderPriceHistory(canvasId, pkg, xMax, todayDtc) {
       },
     },
   }));
+  attachPriceHistoryTooltip(canvas, { days, prices, marginDeltas }, xMax);
 }
 
 function openBookingPanel(key) {
@@ -3411,6 +3524,9 @@ function openPackageAdvancedFilters() {
   document.getElementById('advRecommendationState').value = advancedPackageFilters.recommendationState || '';
   document.getElementById('advAdjustmentState').value = advancedPackageFilters.adjustmentState || '';
   document.getElementById('advPaceState').value = advancedPackageFilters.paceState || '';
+  document.getElementById('advAlertState').value = advancedPackageFilters.alertState || '';
+  const alertTypes = new Set(advancedPackageFilters.alertTypes || []);
+  document.querySelectorAll('[data-adv-alert-type]').forEach(cb => { cb.checked = alertTypes.has(cb.value); });
   const setVal = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.value = value == null ? '' : value;
@@ -3437,7 +3553,9 @@ function closePackageAdvancedFilters() {
 }
 
 function packageAdvancedFilterCount() {
-  return Object.values(advancedPackageFilters).filter(v => v !== null && v !== undefined && v !== '').length;
+  return Object.values(advancedPackageFilters).filter(v => (
+    Array.isArray(v) ? v.length : v !== null && v !== undefined && v !== ''
+  )).length;
 }
 
 function updateAdvancedFilterButton() {
@@ -3453,6 +3571,8 @@ function applyPackageAdvancedFilters() {
     recommendationState: document.getElementById('advRecommendationState').value || '',
     adjustmentState: document.getElementById('advAdjustmentState').value || '',
     paceState: document.getElementById('advPaceState').value || '',
+    alertState: document.getElementById('advAlertState').value || '',
+    alertTypes: Array.from(document.querySelectorAll('[data-adv-alert-type]:checked')).map(cb => cb.value),
     currMarginMin: readAdvancedNumber('advCurrMarginMin'),
     currMarginMax: readAdvancedNumber('advCurrMarginMax'),
     recMarginMin: readAdvancedNumber('advRecMarginMin'),
@@ -3467,7 +3587,7 @@ function applyPackageAdvancedFilters() {
     priceMax: readAdvancedNumber('advPriceMax'),
   };
   advancedPackageFilters = Object.fromEntries(
-    Object.entries(next).filter(([, value]) => value !== null && value !== '')
+    Object.entries(next).filter(([, value]) => Array.isArray(value) ? value.length : value !== null && value !== '')
   );
   visibleRowLimit = ROW_RENDER_BATCH;
   closePackageAdvancedFilters();
@@ -3478,13 +3598,14 @@ function applyPackageAdvancedFilters() {
 function clearPackageAdvancedFilters() {
   advancedPackageFilters = {};
   [
-    'advPublishedState', 'advRecommendationState', 'advAdjustmentState', 'advPaceState', 'advCurrMarginMin', 'advCurrMarginMax',
+    'advPublishedState', 'advRecommendationState', 'advAdjustmentState', 'advPaceState', 'advAlertState', 'advCurrMarginMin', 'advCurrMarginMax',
     'advRecMarginMin', 'advRecMarginMax', 'advMarginDeltaMin', 'advMarginDeltaMax', 'advLfMin', 'advLfMax',
     'advHotelFcstMin', 'advHotelFcstMax', 'advPriceMin', 'advPriceMax',
   ].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  document.querySelectorAll('[data-adv-alert-type]').forEach(cb => { cb.checked = false; });
   visibleRowLimit = ROW_RENDER_BATCH;
   closePackageAdvancedFilters();
   updateAdvancedFilterButton();
@@ -3739,14 +3860,15 @@ function publishChanges() {
     { id: 'pickup7d', label: 'Pick 7d', col: 12 },
     { id: 'price', label: 'Price From', col: 13, locked: true },
     { id: 'priceChange', label: 'Price Change', col: 14 },
-    { id: 'recPrice', label: 'Rec Price', col: 15 },
-    { id: 'priceDelta', label: 'Delta $', col: 16 },
-    { id: 'currMargin', label: 'Curr Margin', col: 17 },
-    { id: 'recMargin', label: 'Rec Margin', col: 18 },
-    { id: 'marginDelta', label: 'Margin Delta', col: 19 },
-    { id: 'alerts', label: 'Alerts', col: 20 },
-    { id: 'status', label: 'Status', col: 21 },
-    { id: 'pace', label: 'Pace', col: 22 },
+    { id: 'sup', label: 'Sup', col: 15 },
+    { id: 'recPrice', label: 'Rec Price', col: 16 },
+    { id: 'priceDelta', label: 'Delta $', col: 17 },
+    { id: 'currMargin', label: 'Curr Margin', col: 18 },
+    { id: 'recMargin', label: 'Rec Margin', col: 19 },
+    { id: 'marginDelta', label: 'Margin Delta', col: 20 },
+    { id: 'alerts', label: 'Alerts', col: 21 },
+    { id: 'status', label: 'Status', col: 22 },
+    { id: 'pace', label: 'Pace', col: 23 },
   ];
   const packageColumnVisibility = Object.fromEntries(PACKAGE_COLUMN_DEFS.map(d => [d.id, true]));
   let built = false;
