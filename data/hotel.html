@@ -926,6 +926,13 @@
     }
     .cp-send:hover { background: #c2185b; }
 
+    /* Values centered under their headers; the name column stays left-aligned */
+    #recsTable thead th, #recsTable tbody td { text-align: center; }
+    #recsTable thead th:nth-child(2), #recsTable tbody td:nth-child(2) { text-align: left; }
+    #recsTable tr.row-property td:nth-child(2) { font-weight: 600; font-size: 13px; }
+    #recsTable tr.row-bedtype td:nth-child(2) { font-weight: 500; padding-left: 28px; }
+    #recsTable tr.row-unit td:nth-child(2) { padding-left: 44px; }
+
     /* ── Chg $ / Chg % inline adjustment columns ─────────────── */
     td.chg-cell { padding: 4px 8px; }
     .chg-input-wrap {
@@ -1174,6 +1181,38 @@
   <div id="alertsTooltipBody"></div>
 </div>
 
+<!-- ── Bulk rate update modal (Fizz styling) ── -->
+<div class="bulk-backdrop" id="bulkBackdrop" aria-hidden="true">
+  <div class="bulk-modal" role="dialog" aria-modal="true" aria-labelledby="bulkTitle">
+    <div class="bulk-modal-header">
+      <div>
+        <div class="bulk-modal-title" id="bulkTitle">Bulk rate update</div>
+        <div class="bulk-modal-sub" id="bulkSub">0 rooms selected</div>
+      </div>
+      <button class="bulk-modal-close" type="button" aria-label="Close" onclick="closeBulkModal()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+      </button>
+    </div>
+    <div class="bulk-modal-body">
+      <div class="bulk-type-row" role="radiogroup" aria-label="Adjustment type">
+        <label class="bulk-type-opt"><input type="radio" name="bulkType" value="pct" checked onchange="refreshBulkPreview()"><span>Percentage (%)</span></label>
+        <label class="bulk-type-opt"><input type="radio" name="bulkType" value="amt" onchange="refreshBulkPreview()"><span>Amount ($)</span></label>
+      </div>
+      <div class="bulk-value-row">
+        <label for="bulkValue">Adjustment</label>
+        <input type="text" inputmode="decimal" id="bulkValue" placeholder="e.g. 5 or -3" oninput="priceInputSanitize(this);refreshBulkPreview()" onkeydown="if(event.key==='Enter'){applyBulkChange();}">
+        <span class="bulk-unit" id="bulkUnit">%</span>
+      </div>
+      <div class="bulk-hint">Applied to each room category's <b>current ADR</b>. Positive raises, negative lowers. Locked weeks are skipped; updates are queued for <b>Publish</b>.</div>
+      <div class="bulk-preview" id="bulkPreview"></div>
+    </div>
+    <div class="bulk-modal-footer">
+      <button class="bulk-btn-ghost" type="button" onclick="closeBulkModal()">Cancel</button>
+      <button class="bulk-btn-primary" type="button" id="bulkApplyBtn" disabled onclick="applyBulkChange()">Apply to 0 rooms</button>
+    </div>
+  </div>
+</div>
+
 <div class="re-toast" id="reToast">
   <span class="spinner"></span>
   <span class="check">✓</span>
@@ -1252,25 +1291,13 @@
   <!-- ── Filter Bar ── -->
   <div class="filter-bar" id="filterBar">
     <div class="ms-wrap" id="fBrand">
-      <button class="ms-trigger" onclick="toggleFilter('fBrand')">
-        <span>All Brands</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Brands</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fRegion">
-      <button class="ms-trigger" onclick="toggleFilter('fRegion')">
-        <span>All Regions</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Regions</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fDestination">
-      <button class="ms-trigger" onclick="toggleFilter('fDestination')">
-        <span>All Destinations</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Destinations</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fDates">
       <button class="date-pill" onclick="toggleFilter('fDates')">
@@ -1285,11 +1312,7 @@
       <div class="date-pill-popover"></div>
     </div>
     <div class="ms-wrap" id="fRM">
-      <button class="ms-trigger" onclick="toggleFilter('fRM')">
-        <span>All RMs</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All RMs</span><span class="ms-trigger-count" hidden></span></button>
     </div>
   </div>
 
@@ -1299,6 +1322,20 @@
     <a href="hotel.html"   class="subtab active">Hotels</a>
     <a href="pricing.html" class="subtab">Packages</a>
     <div class="subtab-spacer"></div>
+    <div class="pkg-toolbar">
+      <button class="accept-all-btn" id="bulkBtn" type="button" disabled onclick="openBulkModal()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5h10M2 7h10M2 9.5h6"/><path d="M10.2 8.6l1.1 1.1 2-2.2"/></svg>
+        <span class="bulk-btn-label">Bulk update (0)</span>
+      </button>
+      <button class="accept-all-btn" id="acceptSelBtn" type="button" disabled onclick="acceptSelected()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3,7 6,10 11,4"/></svg>
+        <span class="accept-all-label">Accept (0)</span>
+      </button>
+      <button class="accept-all-btn" id="rejectSelBtn" type="button" disabled onclick="rejectSelected()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3.5" y1="3.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="3.5" x2="3.5" y2="10.5"/></svg>
+        <span class="reject-all-label">Reject (0)</span>
+      </button>
+    </div>
     <button class="btn btn-ghost" onclick="runEvaluation()" style="margin-right:8px;">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
       Run Evaluation
@@ -1919,7 +1956,8 @@ function renderRecsHead() {
   const arrow = topSortDir === 'asc' ? '↑' : '↓';
   thead.innerHTML = `
     <tr>
-      <th style="min-width:320px;">Destination / Week</th>
+      <th class="col-select" title="Select all visible rooms"><input class="row-select" id="selectAllRows" type="checkbox" aria-label="Select all visible rooms" onclick="event.stopPropagation()" onchange="toggleAllVisibleSelection(this.checked)"></th>
+      <th style="min-width:220px;">Destination / Week</th>
       <th style="width:100px;cursor:pointer;user-select:none;" onclick="toggleTopSort()" title="Sort by check-in week">Check-in Wk <span class="sort-ind">${arrow}</span></th>
       <th class="text-right" style="width:110px;">Sold / Alloc</th>
       <th class="text-right" style="width:80px;cursor:pointer;user-select:none;" onclick="toggleTopSort()" title="Sort by forecast occ">Forecast<span class="th-sub">Occ % <span class="sort-ind">${arrow}</span></span></th>
@@ -1945,6 +1983,7 @@ function renderRecsTable() {
   const tbody = document.getElementById('recsTableBody');
   const entries = [];
   let visibleLeaves = 0, totalLeaves = 0;
+  _renderedLeafIds = [];
   let matchedEntries = 0; // total dest+week rows that pass filters (may exceed what we render)
   const visibleDestSet = new Set();
   const totalDestCount = HOTEL_DATA.length;
@@ -1956,6 +1995,7 @@ function renderRecsTable() {
       if (!passesHeaderFilters(dest, wkMeta)) return;
 
       const weekKey = `${dest.id}::${weekIdx}`;
+      _hotScopeLeaves('dw', dest.id, weekIdx, '', '').forEach(lf => _renderedLeafIds.push(lf.weekId));
       const weekOpen = expandedWeeks.has(weekKey);
 
       const advActive = advFiltersActive();
@@ -2010,14 +2050,14 @@ function renderRecsTable() {
       const dtc = daysToCheckIn(wkMeta.weekStart);
       entryRows.push(`
         <tr class="row-property" onclick="toggleWeek('${weekKey}')" style="cursor:pointer;">
+          ${hotSelectionCell('dw', dest.id, weekIdx, '', '')}
           <td>
             <button class="expand-btn ${weekOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleWeek('${weekKey}')">${chevron(weekOpen)}</button>
             <span style="font-weight:600;">${dest.name}</span>
-            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- ${weekDisplay}</span>
             <div class="row-region">${regionBadge(dest.region)}</div>
           </td>
           <td><span style="font-weight:500;">${weekDisplay}</span></td>
-          <td class="text-right num">${dwAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${dwAgg.alloc.toLocaleString()}</td>
+          <td class="text-right num">${Math.round(dwAgg.sold).toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${Math.round(dwAgg.alloc).toLocaleString()}</td>
           <td class="text-right">${occPill(dwAgg.forecastOcc)}</td>
           <td class="text-right num">${fmtPct(dwAgg.currentOcc)}</td>
           <td class="text-muted">—</td>
@@ -2059,6 +2099,7 @@ function renderRecsTable() {
 
         entryRows.push(`
           <tr class="row-bedtype clickable" onclick="toggleHotel('${hotelKey}')" style="cursor:pointer;">
+            ${hotSelectionCell('ht', dest.id, weekIdx, hotel.id, '')}
             <td>
               <button class="expand-btn ${hotelOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleHotel('${hotelKey}')">${chevron(hotelOpen)}</button>
               <span style="font-weight:500;">${hotel.name}</span>
@@ -2066,7 +2107,7 @@ function renderRecsTable() {
               ${starsMarkup(hotel.stars)}
             </td>
             <td class="text-muted">—</td>
-            <td class="text-right num">${hAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${hAgg.alloc.toLocaleString()}</td>
+            <td class="text-right num">${Math.round(hAgg.sold).toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${Math.round(hAgg.alloc).toLocaleString()}</td>
             <td class="text-right">${occPill(hAgg.forecastOcc)}</td>
             <td class="text-right num">${fmtPct(hAgg.currentOcc)}</td>
             <td class="text-muted">—</td>
@@ -2110,12 +2151,13 @@ function renderRecsTable() {
 
           entryRows.push(`
             <tr class="${rowClass}">
+              ${hotSelectionCell('lf', dest.id, weekIdx, hotel.id, week.id)}
               <td>
                 <span>${cat.name}</span>
                 ${week.locked ? ' <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--accent);vertical-align:middle;"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg>' : ''}
               </td>
               <td class="text-muted">—</td>
-              <td class="text-right num">${week.sold}<span style="color:var(--text-muted);margin:0 5px;">/</span>${week.allocation}</td>
+              <td class="text-right num">${Math.round(week.sold).toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${Math.round(week.allocation).toLocaleString()}</td>
               <td class="text-right">${occPill(week.forecastOcc)}</td>
               <td class="text-right num">${fmtPct(week.currentOcc)}</td>
               <td class="text-right num">${fmt$(week.supplierCost)}</td>
@@ -2158,16 +2200,17 @@ function renderRecsTable() {
   const allRows = entries.flatMap(e => e.rows);
   // Empty state when no destinations match the current filters
   if (visibleDestSet.size === 0 && (advFiltersActive() || headerFiltersActive())) {
-    allRows.push('<tr><td colspan="18" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
+    allRows.push('<tr><td colspan="19" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
   } else if (matchedEntries > entries.length) {
     const remaining = matchedEntries - entries.length;
-    allRows.push(`<tr><td colspan="18" style="text-align:center;color:var(--text-secondary);padding:14px 16px;">
+    allRows.push(`<tr><td colspan="19" style="text-align:center;color:var(--text-secondary);padding:14px 16px;">
       Showing first ${entries.length.toLocaleString()} of ${matchedEntries.toLocaleString()} destination-week rows — narrow with the Region, Destination or week filters to see specific rows.
       <button class="btn btn-ghost" style="margin-left:10px;" onclick="showMoreHotelRows()">Show ${Math.min(HOTEL_ROW_BATCH, remaining).toLocaleString()} more</button>
     </td></tr>`);
   }
 
   tbody.innerHTML = allRows.join('');
+  afterSelectionRender();
 
   // Row count bar above the table
   const rcb = document.getElementById('rowCountBar');
@@ -2506,6 +2549,119 @@ function toggleHotel(key)  { expandedHotels.has(key) ? expandedHotels.delete(key
 
 // ── Chg $ / Chg % columns — scope-aware propagation ────────
 // Scopes: 'dw' dest+week | 'ht' hotel | 'lf' room category leaf
+// ── Row selection + bulk actions (mirrors the Packages tab) ─────────
+const selectedLeafIds = new Set();   // check-in week ids (room category × week)
+let _renderedLeafIds = [];
+
+function hotSelectionCell(scope, destId, weekIdx, hotelId, weekId) {
+  const ids = _hotScopeLeaves(scope, destId, Number(weekIdx), hotelId, weekId).map(lf => lf.weekId);
+  const sel = ids.filter(id => selectedLeafIds.has(id)).length;
+  const checked = ids.length > 0 && sel === ids.length;
+  const indeterminate = sel > 0 && sel < ids.length;
+  const args = `'${scope}','${destId}','${weekIdx}','${hotelId || ''}','${weekId || ''}'`;
+  return `<td class="col-select"><input class="row-select" type="checkbox" ${checked ? 'checked' : ''} ${indeterminate ? 'data-indeterminate="1"' : ''} ${ids.length ? '' : 'disabled'}
+      title="${sel} of ${ids.length} selected" onclick="event.stopPropagation()" onchange="toggleHotSelection(${args}, this.checked)"></td>`;
+}
+function toggleHotSelection(scope, destId, weekIdx, hotelId, weekId, checked) {
+  _hotScopeLeaves(scope, destId, Number(weekIdx), hotelId, weekId).forEach(lf => {
+    if (checked) selectedLeafIds.add(lf.weekId); else selectedLeafIds.delete(lf.weekId);
+  });
+  renderRecsTable();
+}
+function toggleAllVisibleSelection(checked) {
+  _renderedLeafIds.forEach(id => { if (checked) selectedLeafIds.add(id); else selectedLeafIds.delete(id); });
+  renderRecsTable();
+}
+function afterSelectionRender() {
+  document.querySelectorAll('#recsTable input.row-select[data-indeterminate="1"]').forEach(cb => { cb.indeterminate = true; });
+  const all = document.getElementById('selectAllRows');
+  if (all) {
+    const n = _renderedLeafIds.filter(id => selectedLeafIds.has(id)).length;
+    all.checked = _renderedLeafIds.length > 0 && n === _renderedLeafIds.length;
+    all.indeterminate = n > 0 && n < _renderedLeafIds.length;
+  }
+  syncBulkToolbar();
+}
+function selectedLeaves() {
+  return [...selectedLeafIds].map(id => getCheckInWeekById(id)).filter(Boolean);
+}
+function syncBulkToolbar() {
+  const n = selectedLeafIds.size;
+  const setBtn = (id, cls, text) => { const b = document.getElementById(id); if (!b) return; b.querySelector('.' + cls).textContent = text; b.disabled = n === 0; };
+  setBtn('bulkBtn',      'bulk-btn-label',   `Bulk update (${n.toLocaleString()})`);
+  setBtn('acceptSelBtn', 'accept-all-label', `Accept (${n.toLocaleString()})`);
+  setBtn('rejectSelBtn', 'reject-all-label', `Reject (${n.toLocaleString()})`);
+}
+function acceptSelected() {
+  const hits = selectedLeaves().filter(h => !h.week.locked);
+  if (!hits.length) return;
+  hits.forEach(h => { adrOverrides[h.week.id] = h.week.recADR; acceptedRecs.add(h.week.id); rejectedRecs.delete(h.week.id); });
+  selectedLeafIds.clear();
+  renderRecsTable(); updatePublishBadge();
+  showToast(`Accepted ${hits.length.toLocaleString()} recommendation${hits.length === 1 ? '' : 's'}`);
+}
+function rejectSelected() {
+  const hits = selectedLeaves().filter(h => !h.week.locked);
+  if (!hits.length) return;
+  hits.forEach(h => { rejectedRecs.add(h.week.id); acceptedRecs.delete(h.week.id); delete adrOverrides[h.week.id]; });
+  selectedLeafIds.clear();
+  renderRecsTable(); updatePublishBadge();
+  showToast(`Rejected ${hits.length.toLocaleString()} recommendation${hits.length === 1 ? '' : 's'}`);
+}
+// Bulk ADR update modal (Fizz styling; applies a % or $ change to current ADR)
+function bulkChangeType() { return document.querySelector('input[name="bulkType"]:checked')?.value || 'pct'; }
+function bulkLeaves() {
+  return selectedLeaves().filter(h => !h.week.locked).map(h => ({ hit: h, weekId: h.week.id, currentADR: h.week.currentADR }));
+}
+function refreshBulkPreview() {
+  const type = bulkChangeType();
+  document.getElementById('bulkUnit').textContent = type === 'pct' ? '%' : '$';
+  const v = priceInputNumber(document.getElementById('bulkValue').value);
+  const leaves = bulkLeaves();
+  const applyBtn = document.getElementById('bulkApplyBtn');
+  const preview = document.getElementById('bulkPreview');
+  applyBtn.textContent = `Apply to ${leaves.length.toLocaleString()} room${leaves.length === 1 ? '' : 's'}`;
+  if (v == null || v === 0 || !leaves.length) { applyBtn.disabled = true; preview.innerHTML = ''; return; }
+  applyBtn.disabled = false;
+  const newADR = lf => Math.max(0, Math.round(type === 'pct' ? lf.currentADR * (1 + v / 100) : lf.currentADR + v));
+  const sample = leaves.slice(0, 3).map(lf => {
+    const label = [lf.hit.destination?.name, lf.hit.hotel?.name, lf.hit.category?.name].filter(Boolean).join(' · ');
+    return `<div class="bulk-preview-row"><span title="${label}">${label}</span><span>${fmt$(lf.currentADR)} → <b>${fmt$(newADR(lf))}</b></span></div>`;
+  }).join('');
+  const more = leaves.length > 3 ? `<div class="bulk-preview-more">… and ${(leaves.length - 3).toLocaleString()} more</div>` : '';
+  preview.innerHTML = '<div class="bulk-preview-title">Preview</div>' + sample + more;
+}
+function openBulkModal() {
+  const leaves = bulkLeaves();
+  if (!leaves.length) return;
+  document.getElementById('bulkSub').textContent = `${leaves.length.toLocaleString()} room${leaves.length === 1 ? '' : 's'} selected`;
+  const input = document.getElementById('bulkValue');
+  input.value = '';
+  refreshBulkPreview();
+  const bd = document.getElementById('bulkBackdrop');
+  bd.classList.add('is-open'); bd.setAttribute('aria-hidden', 'false');
+  setTimeout(() => input.focus(), 30);
+}
+function closeBulkModal() {
+  const bd = document.getElementById('bulkBackdrop');
+  bd.classList.remove('is-open'); bd.setAttribute('aria-hidden', 'true');
+}
+function applyBulkChange() {
+  const v = priceInputNumber(document.getElementById('bulkValue').value);
+  const leaves = bulkLeaves();
+  if (v == null || v === 0 || !leaves.length) return;
+  const type = bulkChangeType();
+  closeBulkModal();
+  if (type === 'pct') _hotApplyChangePct(leaves, v); else _hotApplyChange(leaves, v);
+  selectedLeafIds.clear();
+  renderRecsTable();
+  showToast(`${leaves.length.toLocaleString()} rate${leaves.length === 1 ? '' : 's'} updated (${v > 0 ? '+' : ''}${type === 'pct' ? v + '%' : '$' + v})`);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('bulkBackdrop')?.classList.contains('is-open')) closeBulkModal();
+});
+document.addEventListener('click', e => { if (e.target.id === 'bulkBackdrop') closeBulkModal(); });
+
 function _hotScopeLeaves(scope, destId, weekIdx, hotelId, weekId) {
   const out = [];
   const dest = HOTEL_DATA.find(d => d.id === destId);
@@ -3469,6 +3625,7 @@ function cdpExpandDest(destId) {
 // ── Init ───────────────────────────────────────────────────
 function _initApp() {
   updatePublishBadge();
+  syncBulkToolbar();
   Filters.populateStandard({
     onAnyChange: (active) => {
       headerFilters = active;
@@ -3919,21 +4076,21 @@ function _generalHotelAnswer(q) {
    ══════════════════════════════════════════════════════════════════ */
 (function() {
   const COLUMN_DEFS = [
-    { id: 'checkInWk',     label: 'Check-in Wk',       col: 2,  locked: true },
-    { id: 'soldAlloc',     label: 'Sold / Alloc',      col: 3,  locked: true },
-    { id: 'forecastOcc',   label: 'Forecast Occ %',    col: 4 },
-    { id: 'currentOcc',    label: 'Current Occ %',     col: 5 },
-    { id: 'suppCost',      label: 'Supp Cost / night', col: 6 },
-    { id: 'currentADR',    label: 'Current ADR $',     col: 7,  locked: true },
-    { id: 'chgDollar',     label: 'Chg $',             col: 8 },
-    { id: 'chgPct',        label: 'Chg %',             col: 9 },
-    { id: 'recADR',        label: 'Rec ADR $',         col: 11, locked: true },
-    { id: 'deltaDollar',   label: 'Delta $',           col: 12 },
-    { id: 'currentMargin', label: 'Current Margin $',  col: 13 },
-    { id: 'recMargin',     label: 'Rec Margin $',      col: 14 },
-    { id: 'marginDelta',   label: 'Margin Δ $',        col: 15 },
-    { id: 'marginPct',     label: 'Margin %',          col: 16 },
-    { id: 'flags',         label: 'Flags',             col: 17 },
+    { id: 'checkInWk',     label: 'Check-in Wk',       col: 3,  locked: true },
+    { id: 'soldAlloc',     label: 'Sold / Alloc',      col: 4,  locked: true },
+    { id: 'forecastOcc',   label: 'Forecast Occ %',    col: 5 },
+    { id: 'currentOcc',    label: 'Current Occ %',     col: 6 },
+    { id: 'suppCost',      label: 'Supp Cost / night', col: 7 },
+    { id: 'currentADR',    label: 'Current ADR $',     col: 8,  locked: true },
+    { id: 'chgDollar',     label: 'Chg $',             col: 9 },
+    { id: 'chgPct',        label: 'Chg %',             col: 10 },
+    { id: 'recADR',        label: 'Rec ADR $',         col: 12, locked: true },
+    { id: 'deltaDollar',   label: 'Delta $',           col: 13 },
+    { id: 'currentMargin', label: 'Current Margin $',  col: 14 },
+    { id: 'recMargin',     label: 'Rec Margin $',      col: 15 },
+    { id: 'marginDelta',   label: 'Margin Δ $',        col: 16 },
+    { id: 'marginPct',     label: 'Margin %',          col: 17 },
+    { id: 'flags',         label: 'Flags',             col: 18 },
   ];
   const columnVisibility = Object.fromEntries(COLUMN_DEFS.map(d => [d.id, true]));
   let built = false;

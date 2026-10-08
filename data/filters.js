@@ -40,6 +40,11 @@
           '<span class="ms-trigger-count" hidden></span>' +
         '</button>';
       pill = wrap.querySelector('.ms-pill');
+    }
+    // Pages ship the pill markup statically (so it is styled before the CSV
+    // loads); bind the click handler exactly once either way.
+    if (!pill.dataset.msBound) {
+      pill.dataset.msBound = '1';
       pill.addEventListener('click', (e) => {
         e.stopPropagation();
         msOpenPopover(wrapId);

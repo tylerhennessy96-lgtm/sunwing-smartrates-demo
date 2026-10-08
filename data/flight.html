@@ -1297,7 +1297,7 @@
 
     /* Flight-date aggregate row (3rd tree level — between route and cabin leaf) */
     tr.row-date td { background: #f4f6f9; }
-    tr.row-date td:first-child { padding-left: 56px; font-weight: 500; font-size: 12.5px; color: var(--text-primary); }
+    tr.row-date td:nth-child(2) { padding-left: 56px; font-weight: 500; font-size: 12.5px; color: var(--text-primary); }
     tr.row-date td {
       padding-top: 7px;
       padding-bottom: 7px;
@@ -1328,7 +1328,14 @@
     .class-chip-biz { background: rgba(90, 48, 168, 0.08);  color: #5a30a8; border-color: rgba(90, 48, 168, 0.35); }
 
     /* Leaf (cabin class) row — indented one step deeper than date row */
-    tr.row-unit td:first-child { padding-left: 80px !important; }
+    tr.row-unit td:nth-child(2) { padding-left: 80px !important; }
+
+    /* Values centered under their headers; the name column stays left-aligned */
+    #recsTable thead th, #recsTable tbody td { text-align: center; }
+    #recsTable thead th:nth-child(2), #recsTable tbody td:nth-child(2) { text-align: left; }
+    #recsTable tr.row-property td:nth-child(2) { font-weight: 600; font-size: 13px; }
+    #recsTable tr.row-bedtype td:nth-child(2) { font-weight: 500; padding-left: 28px; }
+    #recsTable .price-change-pair { justify-content: center; }
 
     /* ── Chg $ / Chg % inline adjustment columns ─────────────── */
     td.chg-cell { padding: 4px 8px; }
@@ -1499,6 +1506,38 @@
   <div id="alertsTooltipBody"></div>
 </div>
 
+<!-- ── Bulk margin update modal (Fizz styling) ── -->
+<div class="bulk-backdrop" id="bulkBackdrop" aria-hidden="true">
+  <div class="bulk-modal" role="dialog" aria-modal="true" aria-labelledby="bulkTitle">
+    <div class="bulk-modal-header">
+      <div>
+        <div class="bulk-modal-title" id="bulkTitle">Bulk margin update</div>
+        <div class="bulk-modal-sub" id="bulkSub">0 flights selected</div>
+      </div>
+      <button class="bulk-modal-close" type="button" aria-label="Close" onclick="closeBulkModal()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+      </button>
+    </div>
+    <div class="bulk-modal-body">
+      <div class="bulk-type-row" role="radiogroup" aria-label="Adjustment type">
+        <label class="bulk-type-opt"><input type="radio" name="bulkType" value="pct" checked onchange="refreshBulkPreview()"><span>Percentage (%)</span></label>
+        <label class="bulk-type-opt"><input type="radio" name="bulkType" value="amt" onchange="refreshBulkPreview()"><span>Amount ($)</span></label>
+      </div>
+      <div class="bulk-value-row">
+        <label for="bulkValue">Adjustment</label>
+        <input type="text" inputmode="decimal" id="bulkValue" placeholder="e.g. 5 or -3" oninput="priceInputSanitize(this);refreshBulkPreview()" onkeydown="if(event.key==='Enter'){applyBulkChange();}">
+        <span class="bulk-unit" id="bulkUnit">%</span>
+      </div>
+      <div class="bulk-hint">Applied to each flight date's <b>current margin</b>. Positive raises, negative lowers.</div>
+      <div class="bulk-preview" id="bulkPreview"></div>
+    </div>
+    <div class="bulk-modal-footer">
+      <button class="bulk-btn-ghost" type="button" onclick="closeBulkModal()">Cancel</button>
+      <button class="bulk-btn-primary" type="button" id="bulkApplyBtn" disabled onclick="applyBulkChange()">Apply to 0 flights</button>
+    </div>
+  </div>
+</div>
+
 <div class="re-toast" id="reToast">
   <span class="spinner"></span>
   <span class="check">✓</span>
@@ -1577,25 +1616,13 @@
   <!-- ── Filter Bar ── -->
   <div class="filter-bar" id="filterBar">
     <div class="ms-wrap" id="fBrand">
-      <button class="ms-trigger" onclick="toggleFilter('fBrand')">
-        <span>All Brands</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Brands</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fRegion">
-      <button class="ms-trigger" onclick="toggleFilter('fRegion')">
-        <span>All Regions</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Regions</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fDestination">
-      <button class="ms-trigger" onclick="toggleFilter('fDestination')">
-        <span>All Destinations</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Destinations</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fDates">
       <button class="date-pill" onclick="toggleFilter('fDates')">
@@ -1610,11 +1637,7 @@
       <div class="date-pill-popover"></div>
     </div>
     <div class="ms-wrap" id="fRM">
-      <button class="ms-trigger" onclick="toggleFilter('fRM')">
-        <span>All RMs</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All RMs</span><span class="ms-trigger-count" hidden></span></button>
     </div>
   </div>
 
@@ -1624,6 +1647,20 @@
     <a href="hotel.html"   class="subtab">Hotels</a>
     <a href="pricing.html" class="subtab">Packages</a>
     <div class="subtab-spacer"></div>
+    <div class="pkg-toolbar">
+      <button class="accept-all-btn" id="bulkBtn" type="button" disabled onclick="openBulkModal()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5h10M2 7h10M2 9.5h6"/><path d="M10.2 8.6l1.1 1.1 2-2.2"/></svg>
+        <span class="bulk-btn-label">Bulk update (0)</span>
+      </button>
+      <button class="accept-all-btn" id="acceptSelBtn" type="button" disabled onclick="acceptSelected()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3,7 6,10 11,4"/></svg>
+        <span class="accept-all-label">Accept (0)</span>
+      </button>
+      <button class="accept-all-btn" id="rejectSelBtn" type="button" disabled onclick="rejectSelected()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3.5" y1="3.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="3.5" x2="3.5" y2="10.5"/></svg>
+        <span class="reject-all-label">Reject (0)</span>
+      </button>
+    </div>
     <button class="btn btn-ghost" onclick="runEvaluation()" style="margin-right:8px;">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
       Run Evaluation
@@ -2319,7 +2356,8 @@ function renderRecsHead() {
   const arrow = topSortDir === 'asc' ? '↑' : '↓';
   thead.innerHTML = `
     <tr>
-      <th style="min-width:320px;">Destination / Week</th>
+      <th class="col-select" title="Select all visible flights"><input class="row-select" id="selectAllRows" type="checkbox" aria-label="Select all visible flights" onclick="event.stopPropagation()" onchange="toggleAllVisibleSelection(this.checked)"></th>
+      <th style="min-width:220px;">Destination / Week</th>
       <th style="width:100px;cursor:pointer;user-select:none;" onclick="toggleTopSort()" title="Sort by departure week">Dep. Week <span class="sort-ind">${arrow}</span></th>
       <th class="text-right" style="width:110px;">Sold / Cap</th>
       <th class="text-right" style="width:85px;cursor:pointer;user-select:none;" onclick="toggleTopSort()" title="Sort by forecast LF">Forecast<span class="th-sub">LF % <span class="sort-ind">${arrow}</span></span></th>
@@ -2345,6 +2383,7 @@ function renderRecsTable() {
   const tbody = document.getElementById('recsTableBody');
   const entries = [];
   let visibleLeaves = 0, totalLeaves = 0;
+  _renderedLeafIds = [];
   const visibleDestSet = new Set();
   const totalDestCount = FLIGHT_DATA.length;
 
@@ -2356,6 +2395,7 @@ function renderRecsTable() {
 
     for (let weekIdx = 0; weekIdx < weekCount; weekIdx++) {
       const dwKey = `${dest.id}::${weekIdx}`;
+      _fltMarginScopeLeaves('dw', dest.id, weekIdx, '', '').forEach(lf => _renderedLeafIds.push(lf.dayId));
       const dwOpen = expandedDestWeeks.has(dwKey);
 
       // Determine which routes pass at this week
@@ -2389,14 +2429,14 @@ function renderRecsTable() {
       // ── Level 1: Destination + Week row ──
       entryRows.push(`
         <tr class="row-property" onclick="toggleDestWeek('${dwKey}')" style="cursor:pointer;">
+          ${fltSelectionCell('dw', dest.id, weekIdx, '', '')}
           <td>
             <button class="expand-btn ${dwOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleDestWeek('${dwKey}')">${chevron(dwOpen)}</button>
             <span style="font-weight:600;">${dest.name}</span>
-            <span style="font-weight:400;color:var(--text-muted);margin-left:6px;">- ${weekDisplay}</span>
             <div class="row-region">${regionBadge(dest.region)}</div>
           </td>
           <td><span style="font-weight:500;">${weekDisplay}</span></td>
-          <td class="text-right num">${dwAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${dwAgg.capacity.toLocaleString()}</td>
+          <td class="text-right num">${Math.round(dwAgg.sold).toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${Math.round(dwAgg.capacity).toLocaleString()}</td>
           <td class="text-right">${lfPill(dwAgg.forecastLF)}</td>
           <td class="text-right">${lfText(dwAgg.lf)}</td>
           <td class="text-right">${fmt$(dwAgg.avgCurrentFare)}</td>
@@ -2434,6 +2474,7 @@ function renderRecsTable() {
         const rtMarginAdj = _fltMarginScopeAvg('rt', dest.id, weekIdx, route.id);
         entryRows.push(`
           <tr class="row-bedtype clickable" onclick="toggleRoute('${routeKey}')" style="cursor:pointer;">
+            ${fltSelectionCell('rt', dest.id, weekIdx, route.id, '')}
             <td>
               <button class="expand-btn ${routeOpen ? 'open' : ''}" onclick="event.stopPropagation();toggleRoute('${routeKey}')">${chevron(routeOpen)}</button>
               <span class="font-mono" style="font-weight:500;">${route.flightNum}</span>
@@ -2441,7 +2482,7 @@ function renderRecsTable() {
               ${flightCatBadge(route.category)}
             </td>
             <td class="text-muted">—</td>
-            <td class="text-right num">${rAgg.sold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${rAgg.capacity.toLocaleString()}</td>
+            <td class="text-right num">${Math.round(rAgg.sold).toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${Math.round(rAgg.capacity).toLocaleString()}</td>
             <td class="text-right">${lfPill(rAgg.forecastLF)}</td>
             <td class="text-right">${lfText(rAgg.lf)}</td>
             <td class="text-right">${fmt$(rAgg.avgCurrentFare)}</td>
@@ -2480,13 +2521,14 @@ function renderRecsTable() {
 
           entryRows.push(`
             <tr class="row-date${dayState ? ' row-' + dayState : ''}">
+              ${fltSelectionCell('dt', dest.id, weekIdx, route.id, day.id)}
               <td>
                 <span class="row-indent-spacer"></span>
                 <span>${shortDate(day.departureDate)}</span>
                 <span style="color:var(--text-muted);font-size:10.5px;margin-left:6px;">${day.departureTime}</span>
               </td>
               <td class="text-muted">—</td>
-              <td class="text-right num">${totalSold.toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${totalCap.toLocaleString()}</td>
+              <td class="text-right num">${Math.round(totalSold).toLocaleString()}<span style="color:var(--text-muted);margin:0 5px;">/</span>${Math.round(totalCap).toLocaleString()}</td>
               <td class="text-right">${lfPill(blendForecast)}</td>
               <td class="text-right">${lfText(blendLF)}</td>
               <td class="text-right">${fmt$(blendCurrFare)}</td>
@@ -2530,10 +2572,11 @@ function renderRecsTable() {
 
   const allRows = entries.flatMap(e => e.rows);
   if (visibleDestSet.size === 0 && (advFiltersActive() || headerFiltersActive())) {
-    allRows.push('<tr><td colspan="17" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
+    allRows.push('<tr><td colspan="18" style="text-align:center;color:var(--text-muted);padding:32px;">No results match current filters</td></tr>');
   }
 
   tbody.innerHTML = allRows.join('');
+  afterSelectionRender();
 
   const rcb = document.getElementById('rowCountBar');
   if (rcb) {
@@ -2839,6 +2882,130 @@ function _fltChgCells(scope, destId, weekIdx, routeId, dayId, cls) {
 // ── Exposure panel (booking curve + fare history) ─────────
 // The 27 MB booking-curve export is loaded on demand the first time a curve is
 // opened, rather than on every page load.
+// ── Row selection + bulk actions (mirrors the Packages tab) ─────────
+const selectedLeafIds = new Set();   // flight-date ids
+let _renderedLeafIds = [];           // every flight-date id in the current (filtered) table
+
+function fltSelectionCell(scope, destId, weekIdx, routeId, dayId) {
+  const ids = _fltMarginScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId).map(lf => lf.dayId);
+  const sel = ids.filter(id => selectedLeafIds.has(id)).length;
+  const checked = ids.length > 0 && sel === ids.length;
+  const indeterminate = sel > 0 && sel < ids.length;
+  const args = `'${scope}','${destId}','${weekIdx}','${routeId || ''}','${dayId || ''}'`;
+  return `<td class="col-select"><input class="row-select" type="checkbox" ${checked ? 'checked' : ''} ${indeterminate ? 'data-indeterminate="1"' : ''} ${ids.length ? '' : 'disabled'}
+      title="${sel} of ${ids.length} selected" onclick="event.stopPropagation()" onchange="toggleFltSelection(${args}, this.checked)"></td>`;
+}
+function toggleFltSelection(scope, destId, weekIdx, routeId, dayId, checked) {
+  _fltMarginScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId).forEach(lf => {
+    if (checked) selectedLeafIds.add(lf.dayId); else selectedLeafIds.delete(lf.dayId);
+  });
+  renderRecsTable();
+}
+function toggleAllVisibleSelection(checked) {
+  _renderedLeafIds.forEach(id => { if (checked) selectedLeafIds.add(id); else selectedLeafIds.delete(id); });
+  renderRecsTable();
+}
+function afterSelectionRender() {
+  document.querySelectorAll('#recsTable input.row-select[data-indeterminate="1"]').forEach(cb => { cb.indeterminate = true; });
+  const all = document.getElementById('selectAllRows');
+  if (all) {
+    const n = _renderedLeafIds.filter(id => selectedLeafIds.has(id)).length;
+    all.checked = _renderedLeafIds.length > 0 && n === _renderedLeafIds.length;
+    all.indeterminate = n > 0 && n < _renderedLeafIds.length;
+  }
+  syncBulkToolbar();
+}
+function selectedLeaves() {
+  return [..._renderedLeafIds.filter(id => selectedLeafIds.has(id)), ...[...selectedLeafIds].filter(id => !_renderedLeafIds.includes(id))]
+    .map(id => getFlightDateById(id)).filter(Boolean);
+}
+function syncBulkToolbar() {
+  const n = selectedLeafIds.size;
+  const setBtn = (id, cls, text) => { const b = document.getElementById(id); if (!b) return; b.querySelector('.' + cls).textContent = text; b.disabled = n === 0; };
+  setBtn('bulkBtn',      'bulk-btn-label',   `Bulk update (${n.toLocaleString()})`);
+  setBtn('acceptSelBtn', 'accept-all-label', `Accept (${n.toLocaleString()})`);
+  setBtn('rejectSelBtn', 'reject-all-label', `Reject (${n.toLocaleString()})`);
+}
+function _setDayRec(day, mode) {
+  dayLeafKeys(day).forEach(key => {
+    if (mode === 'accept') {
+      const cd = getClassData(day, key.split('::')[1]);
+      if (cd) { fareOverrides[key] = cd.recFare; acceptedRecs.add(key); rejectedRecs.delete(key); }
+    } else {
+      rejectedRecs.add(key); acceptedRecs.delete(key); delete fareOverrides[key];
+    }
+  });
+}
+function acceptSelected() {
+  const hits = selectedLeaves().filter(h => !h.date.locked);
+  if (!hits.length) return;
+  hits.forEach(h => _setDayRec(h.date, 'accept'));
+  selectedLeafIds.clear();
+  renderRecsTable(); updatePublishBadge();
+  showToast(`Accepted ${hits.length.toLocaleString()} recommendation${hits.length === 1 ? '' : 's'}`);
+}
+function rejectSelected() {
+  const hits = selectedLeaves().filter(h => !h.date.locked);
+  if (!hits.length) return;
+  hits.forEach(h => _setDayRec(h.date, 'reject'));
+  selectedLeafIds.clear();
+  renderRecsTable(); updatePublishBadge();
+  showToast(`Rejected ${hits.length.toLocaleString()} recommendation${hits.length === 1 ? '' : 's'}`);
+}
+// Bulk margin update modal (Fizz styling; applies a % or $ change to current margin)
+function bulkChangeType() { return document.querySelector('input[name="bulkType"]:checked')?.value || 'pct'; }
+function bulkLeaves() {
+  return selectedLeaves().map(h => ({ hit: h, dayId: h.date.id, currentMargin: Number(h.date.currentMargin) || 0 }));
+}
+function refreshBulkPreview() {
+  const type = bulkChangeType();
+  document.getElementById('bulkUnit').textContent = type === 'pct' ? '%' : '$';
+  const v = priceInputNumber(document.getElementById('bulkValue').value);
+  const leaves = bulkLeaves();
+  const applyBtn = document.getElementById('bulkApplyBtn');
+  const preview = document.getElementById('bulkPreview');
+  applyBtn.textContent = `Apply to ${leaves.length.toLocaleString()} flight${leaves.length === 1 ? '' : 's'}`;
+  if (v == null || v === 0 || !leaves.length) { applyBtn.disabled = true; preview.innerHTML = ''; return; }
+  applyBtn.disabled = false;
+  const newMargin = lf => Math.round(type === 'pct' ? lf.currentMargin * (1 + v / 100) : lf.currentMargin + v);
+  const sample = leaves.slice(0, 3).map(lf => {
+    const label = [lf.hit.destination?.name, lf.hit.route?.flightNum, shortDate(lf.hit.date.departureDate)].filter(Boolean).join(' · ');
+    return `<div class="bulk-preview-row"><span title="${label}">${label}</span><span>${fmt$(lf.currentMargin)} → <b>${fmt$(newMargin(lf))}</b></span></div>`;
+  }).join('');
+  const more = leaves.length > 3 ? `<div class="bulk-preview-more">… and ${(leaves.length - 3).toLocaleString()} more</div>` : '';
+  preview.innerHTML = '<div class="bulk-preview-title">Preview</div>' + sample + more;
+}
+function openBulkModal() {
+  const leaves = bulkLeaves();
+  if (!leaves.length) return;
+  document.getElementById('bulkSub').textContent = `${leaves.length.toLocaleString()} flight${leaves.length === 1 ? '' : 's'} selected`;
+  const input = document.getElementById('bulkValue');
+  input.value = '';
+  refreshBulkPreview();
+  const bd = document.getElementById('bulkBackdrop');
+  bd.classList.add('is-open'); bd.setAttribute('aria-hidden', 'false');
+  setTimeout(() => input.focus(), 30);
+}
+function closeBulkModal() {
+  const bd = document.getElementById('bulkBackdrop');
+  bd.classList.remove('is-open'); bd.setAttribute('aria-hidden', 'true');
+}
+function applyBulkChange() {
+  const v = priceInputNumber(document.getElementById('bulkValue').value);
+  const leaves = bulkLeaves();
+  if (v == null || v === 0 || !leaves.length) return;
+  const type = bulkChangeType();
+  closeBulkModal();
+  _fltApplyMarginChange(leaves, type === 'pct' ? (lf => lf.currentMargin * (v / 100)) : v);
+  selectedLeafIds.clear();
+  renderRecsTable();
+  showToast(`${leaves.length.toLocaleString()} margin${leaves.length === 1 ? '' : 's'} updated (${v > 0 ? '+' : ''}${type === 'pct' ? v + '%' : '$' + v})`);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('bulkBackdrop')?.classList.contains('is-open')) closeBulkModal();
+});
+document.addEventListener('click', e => { if (e.target.id === 'bulkBackdrop') closeBulkModal(); });
+
 function _fltMarginScopeLeaves(scope, destId, weekIdx, routeId, dayId) {
   const out = [];
   const dest = FLIGHT_DATA.find(d => d.id === destId);
@@ -4487,6 +4654,7 @@ function cdpExpandDest(destId) {
 // ── Init ───────────────────────────────────────────────────
 function _initApp() {
   updatePublishBadge();
+  syncBulkToolbar();
   Filters.populateStandard({
     onAnyChange: (active) => {
       headerFilters = active;
@@ -5279,21 +5447,21 @@ function _generalFlightAnswer(q) {
    ══════════════════════════════════════════════════════════════════ */
 (function() {
   const COLUMN_DEFS = [
-    { id: 'depWeek',       label: 'Dep. Week',        col: 2,  locked: true },
-    { id: 'soldCap',       label: 'Sold / Cap',       col: 3,  locked: true },
-    { id: 'forecastLF',    label: 'Forecast LF %',    col: 4 },
-    { id: 'currentLF',     label: 'Current LF %',     col: 5 },
-    { id: 'currentFare',   label: 'Current Fare $',   col: 6,  locked: true },
-    { id: 'recFare',       label: 'Rec Fare $',       col: 7,  locked: true },
-    { id: 'deltaDollar',   label: 'Delta $',          col: 8 },
-    { id: 'currentMargin', label: 'Current Margin $', col: 9 },
-    { id: 'marginChange',  label: 'Margin Change',    col: 10 },
-    { id: 'recMargin',     label: 'Rec Margin $',     col: 11 },
-    { id: 'marginDelta',   label: 'Margin Delta $',   col: 12 },
-    { id: 'bsRatio',       label: 'Beds/Seats',       col: 13 },
-    { id: 'hotelOcc',      label: 'Hotel Occ %',      col: 14 },
-    { id: 'flags',         label: 'Flags',            col: 15 },
-    { id: 'capAlert',      label: 'Alerts',           col: 16 },
+    { id: 'depWeek',       label: 'Dep. Week',        col: 3,  locked: true },
+    { id: 'soldCap',       label: 'Sold / Cap',       col: 4,  locked: true },
+    { id: 'forecastLF',    label: 'Forecast LF %',    col: 5 },
+    { id: 'currentLF',     label: 'Current LF %',     col: 6 },
+    { id: 'currentFare',   label: 'Current Fare $',   col: 7,  locked: true },
+    { id: 'recFare',       label: 'Rec Fare $',       col: 8,  locked: true },
+    { id: 'deltaDollar',   label: 'Delta $',          col: 9 },
+    { id: 'currentMargin', label: 'Current Margin $', col: 10 },
+    { id: 'marginChange',  label: 'Margin Change',    col: 11 },
+    { id: 'recMargin',     label: 'Rec Margin $',     col: 12 },
+    { id: 'marginDelta',   label: 'Margin Delta $',   col: 13 },
+    { id: 'bsRatio',       label: 'Beds/Seats',       col: 14 },
+    { id: 'hotelOcc',      label: 'Hotel Occ %',      col: 15 },
+    { id: 'flags',         label: 'Flags',            col: 16 },
+    { id: 'capAlert',      label: 'Alerts',           col: 17 },
   ];
   const columnVisibility = Object.fromEntries(COLUMN_DEFS.map(d => [d.id, true]));
   let built = false;

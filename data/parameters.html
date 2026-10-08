@@ -755,44 +755,16 @@
   <!-- ── Filter Bar ── -->
   <div class="filter-bar" id="filterBar">
     <div class="ms-wrap" id="fBrand">
-      <button class="ms-trigger" onclick="toggleFilter('fBrand')">
-        <span>All Brands</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Brands</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fRegion">
-      <button class="ms-trigger" onclick="toggleFilter('fRegion')">
-        <span>All Regions</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Regions</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fDestination">
-      <button class="ms-trigger" onclick="toggleFilter('fDestination')">
-        <span>All Destinations</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
-    </div>
-    <div class="ms-wrap" id="fDates">
-      <button class="date-pill" onclick="toggleFilter('fDates')">
-        <svg class="cal" width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6">
-          <rect x="2" y="3" width="10" height="9" rx="1"/>
-          <line x1="2" y1="6" x2="12" y2="6"/>
-          <line x1="5" y1="1.5" x2="5" y2="4"/>
-          <line x1="9" y1="1.5" x2="9" y2="4"/>
-        </svg>
-        <span class="date-range-text" id="fDatesLabel">Select weeks</span>
-      </button>
-      <div class="date-pill-popover"></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All Destinations</span><span class="ms-trigger-count" hidden></span></button>
     </div>
     <div class="ms-wrap" id="fRM">
-      <button class="ms-trigger" onclick="toggleFilter('fRM')">
-        <span>All RMs</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="ms-dropdown"><div class="ms-options"></div></div>
+      <button class="filter-pill ms-pill" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="ms-trigger-text">All RMs</span><span class="ms-trigger-count" hidden></span></button>
     </div>
   </div>
 
@@ -1210,9 +1182,11 @@ function renderPackageParamsTable(area) {
   const rows = [renderPackageParamRow(area, 'defaults', defaultsNode, 0, false)];
   tree.forEach(region => {
     const regionId = `${area}::region::${region.key}`;
-    rows.push(renderPackageParamRow(area, 'region', region, 1, region.destinations.length));
+    const visibleDests = region.destinations.filter(dest => paramFilterPass(region.name, dest.name));
+    if (!paramFilterPass(region.name, null) || !visibleDests.length) return;
+    rows.push(renderPackageParamRow(area, 'region', region, 1, visibleDests.length));
     if (!expanded.has(regionId)) return;
-    region.destinations.forEach(dest => {
+    visibleDests.forEach(dest => {
       const destId = `${area}::destination::${dest.key}`;
       const hasDateChildren = (area === 'price' || area === 'rules') && dest.dates.length;
       rows.push(renderPackageParamRow(area, 'destination', dest, 2, hasDateChildren));
@@ -1631,6 +1605,7 @@ function renderSectionBody() {
   }));
 
   tree.destinations.forEach(dest => {
+    if (!paramFilterPass(dest.region ?? null, dest.name ?? null)) return;
     const destKey    = `${cfg.tab}::${dest.id}`;
     const destOpen   = expanded.has(destKey);
     const midArr     = dest[MID_KEY[cfg.tab]] || [];
@@ -1911,8 +1886,17 @@ document.addEventListener('click', (e) => {
 /* ══════════════════════════════════════════════════════════════════
    Init
    ══════════════════════════════════════════════════════════════════ */
+// Region / Destination pills narrow the parameter trees below.
+function paramFilterPass(regionName, destName) {
+  if (typeof Filters === 'undefined' || !Filters.getActiveFilters) return true;
+  const f = Filters.getActiveFilters();
+  if (f.region.length && regionName != null && !f.region.includes(regionName)) return false;
+  if (f.destination.length && destName != null && !f.destination.includes(destName)) return false;
+  return true;
+}
+
 function initParameters() {
-  Filters.populateStandard();
+  Filters.populateStandard({ onAnyChange: () => renderContentPanel() });
   if (window.__filterRegions && window.__filterRegions.length && Filters.setMultiSelectValues) {
     Filters.setMultiSelectValues('fRegion', window.__filterRegions);
   }
