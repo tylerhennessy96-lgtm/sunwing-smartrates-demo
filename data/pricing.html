@@ -1095,11 +1095,12 @@
       text-align: left; white-space: nowrap; line-height: 28px;
       border-bottom: 2px solid var(--accent);
     }
-    .pkg-col-group-package  { background: #fde6e0; color: #9c4221; }
-    .pkg-col-group-bookings { background: #fef0d9; color: #9a3412; }
-    .pkg-col-group-pricing  { background: #e0eaff; color: #1e3a8a; }
-    .pkg-col-group-margins  { background: #d1f5e8; color: #0f766e; }
-    .pkg-col-group-actions  { background: #eef0f5; color: #4b5563; }
+    /* Specificity must beat styles.css's `table.data-table thead th { background: var(--surface) }` */
+    table.data-table.packages-table thead tr.pkg-col-groups th.pkg-col-group-package  { background: #fde6e0; color: #9c4221; }
+    table.data-table.packages-table thead tr.pkg-col-groups th.pkg-col-group-bookings { background: #fef0d9; color: #9a3412; }
+    table.data-table.packages-table thead tr.pkg-col-groups th.pkg-col-group-pricing  { background: #e0eaff; color: #1e3a8a; }
+    table.data-table.packages-table thead tr.pkg-col-groups th.pkg-col-group-margins  { background: #d1f5e8; color: #0f766e; }
+    table.data-table.packages-table thead tr.pkg-col-groups th.pkg-col-group-actions  { background: #eef0f5; color: #4b5563; }
     table.data-table.packages-table thead tr.pkg-col-row th { top: 28px; background: #fafbfc; }
     .pkg-th-static { display: inline-block; line-height: 1.08; color: var(--text-secondary); }
     table.data-table.packages-table thead th {
