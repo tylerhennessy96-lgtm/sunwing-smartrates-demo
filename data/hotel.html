@@ -934,25 +934,9 @@
       align-items: center;
       gap: 2px;
     }
-    .chg-input {
-      width: 64px;
-      padding: 3px 6px;
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      text-align: right;
-      outline: none;
-      background: #fff;
-      color: var(--text-primary);
-      -moz-appearance: textfield;
-    }
-    .chg-input::-webkit-outer-spin-button,
-    .chg-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .chg-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232, 0, 125, 0.10); }
-    .chg-input::placeholder { color: var(--text-muted); font-weight: 400; font-family: var(--font-sans); font-size: 10.5px; }
+    /* .chg-input inherits the shared .price-input look (styles.css) */
     td.chg-cell.has-chg { background: rgba(232, 0, 125, 0.08); }
-    td.chg-cell.has-chg .chg-input { border-color: rgba(232, 0, 125, 0.40); background: #fff; }
+    td.chg-cell.has-chg .chg-input { border-color: rgba(233, 30, 140, 0.45); }
     .chg-input-wrap.chg-pos .chg-input { color: #047857; font-weight: 600; }
     .chg-input-wrap.chg-neg .chg-input { color: var(--danger); font-weight: 600; }
     .chg-clear {
@@ -1184,6 +1168,12 @@
     </div>
   </div>
 </div>
+<!-- ── Alerts tooltip (Adisseo styling) ── -->
+<div class="tooltip-popup" id="alertsTooltip">
+  <div class="tooltip-title">Alerts in effect</div>
+  <div id="alertsTooltipBody"></div>
+</div>
+
 <div class="re-toast" id="reToast">
   <span class="spinner"></span>
   <span class="check">✓</span>
@@ -1309,48 +1299,14 @@
     <a href="hotel.html"   class="subtab active">Hotels</a>
     <a href="pricing.html" class="subtab">Packages</a>
     <div class="subtab-spacer"></div>
-    <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
+    <button class="btn btn-ghost" onclick="runEvaluation()" style="margin-right:8px;">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
       Run Evaluation
     </button>
-    <button id="publishBtn" class="btn btn-ghost" onclick="publishChanges()">
-      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h10M7 2l5 5-5 5"/></svg>
-      Publish Changes
+    <button id="publishBtn" class="commit-btn" type="button" onclick="publishChanges()" disabled>
+      <span class="commit-spinner"></span>
+      <span class="commit-label">Publish (0)</span>
     </button>
-  </div>
-
-  <!-- ── Metrics Bar (6 KPI cards) ── -->
-  <div class="metrics-bar" id="metricsBar">
-    <div class="metric-card metric-emphasis">
-      <div class="metric-card-label">Hotels behind plan</div>
-      <div class="metric-card-value metric-warn" id="mHotelsBehind">—</div>
-      <div class="metric-card-sub">Need hotel pricing action</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-card-label">Avg. forecast occ.</div>
-      <div class="metric-card-value" id="mAvgForecastOcc">—</div>
-      <div class="metric-card-sub">Across next 60 days</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-card-label">Avg. ADR change</div>
-      <div class="metric-card-value" id="mAvgADRChange">—</div>
-      <div class="metric-card-sub">Across selected hotels</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-card-label">High package demand hotels</div>
-      <div class="metric-card-value metric-pos" id="mHighDemand">—</div>
-      <div class="metric-card-sub">Beds need protection</div>
-    </div>
-    <div class="metric-card metric-emphasis">
-      <div class="metric-card-label">Supplier cost changes</div>
-      <div class="metric-card-value metric-warn" id="mCostChanges">—</div>
-      <div class="metric-card-sub">Contract or allotment updates</div>
-    </div>
-    <div class="metric-card metric-emphasis">
-      <div class="metric-card-label">Pending approval</div>
-      <div class="metric-card-value" id="mPendingApproval">—</div>
-      <div class="metric-card-sub">Waiting to publish</div>
-    </div>
   </div>
 
   <!-- ── Sub-subtab Bar ── -->
@@ -1626,6 +1582,7 @@
 const expandedWeeks  = new Set();  // `${dest.id}::${weekIdx}`
 const expandedHotels = new Set();  // `${dest.id}::${weekIdx}::${hotel.id}`
 const adrOverrides   = {};         // { weekId: newADR }
+const acceptedRecs   = new Set();  // weekId (rec was accepted)
 const rejectedRecs   = new Set();  // weekId — recADR rejected
 const notes          = {};         // { weekId: { text, expires, createdBy, createdAt } }
 let   activeNoteKey  = null;
@@ -1918,16 +1875,44 @@ function daysToCheckIn(weekStart) {
   const d = new Date(2000 + (yy || 26), (mm || 1) - 1, dd || 1);
   return Math.round((d - _TODAY_FOR_DEMO) / 86400000);
 }
+// Alerts — Adisseo-style amber bell with a count badge; click → "Alerts in effect" popup.
+// Only the real has_cost_change flag is evaluated (the hotel CSV carries no
+// occupancy target/plan, so no demand-based alert thresholds are invented).
+let _alertSeq = 0;
+const _alertData = new Map();
 function alertsCellHTML(a) {
-  const parts = [];
-  if (a.hasCostChange) {
-    parts.push('<span class="cost-change-flag" title="Cost change / alert">⚠️</span>');
-  }
-  // No "fast/slow seller" badges: the hotel CSV has no occupancy target/plan to
-  // judge demand against, so any sold%/occ cutoff here would be invented. Only
-  // the real has_cost_change flag is shown.
-  return parts.join('');
+  const alerts = [];
+  if (a.hasCostChange) alerts.push({ key: 'COST', title: 'Supplier cost change — contract or allotment update' });
+  if (!alerts.length) return '';
+  const id = `hot-alert-${++_alertSeq}`;
+  _alertData.set(id, alerts);
+  const badge = alerts.length > 1 ? `<span class="alert-bell-badge">${alerts.length}</span>` : '';
+  return `<div class="alert-bell-wrap"><button type="button" class="alert-bell" title="Alerts" aria-label="Show alerts" onclick="showAlerts(event, '${id}')">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#f5a623" stroke-width="1.5" stroke-linecap="round"><path d="M8 2a5 5 0 0 1 5 5c0 3.5 1.5 4.5 1.5 4.5h-13S3 10.5 3 7a5 5 0 0 1 5-5z"/><line x1="6.5" y1="14" x2="9.5" y2="14"/></svg>
+  </button>${badge}</div>`;
 }
+const _alertIcons = {
+  COST: '<circle cx="7" cy="7" r="5"/><path d="M7 4.5v5M5.5 6h2.2a1 1 0 0 1 0 2H5.5"/>',
+};
+function showAlerts(e, id) {
+  e.stopPropagation();
+  const alerts = _alertData.get(id);
+  if (!alerts || !alerts.length) return;
+  const tt = document.getElementById('alertsTooltip');
+  const body = document.getElementById('alertsTooltipBody');
+  const wasOpen = tt.classList.contains('open') && tt.dataset.for === id;
+  body.innerHTML = alerts.map(a => {
+    const icon = _alertIcons[a.key] || '<circle cx="7" cy="7" r="5"/><path d="M7 4.5v3M7 9.5v.5"/>';
+    return `<div class="tooltip-item"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg> ${a.title}</div>`;
+  }).join('');
+  tt.dataset.for = id;
+  tt.style.left = Math.min(e.clientX - 10, window.innerWidth - 300) + 'px';
+  tt.style.top = (e.clientY + 16) + 'px';
+  tt.classList.toggle('open', !wasOpen);
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.alert-bell')) document.getElementById('alertsTooltip')?.classList.remove('open');
+});
 
 function renderRecsHead() {
   const thead = document.getElementById('recsTableHead');
@@ -2120,9 +2105,8 @@ function renderRecsTable() {
           const marginPct = eff ? curMargin / eff : 0;
 
           const isRejected = rejectedRecs.has(week.id);
-          // No persisted pending-publish state (no change-log backing). Accept/reject
-          // still update the row in-session, but we don't show a PENDING highlight.
-          const rowClass   = 'row-unit';
+          const isAccepted = acceptedRecs.has(week.id);
+          const rowClass   = 'row-unit' + (isAccepted ? ' row-accepted' : isRejected ? ' row-rejected' : '');
 
           entryRows.push(`
             <tr class="${rowClass}">
@@ -2138,10 +2122,7 @@ function renderRecsTable() {
               <td class="text-right${eff !== week.currentADR ? ' cur-pink' : ''}">${fmt$(eff)}</td>
               ${_hotChgCells('lf', dest.id, weekIdx, hotel.id, week.id)}
               <td class="text-right num">${fmt$(eff * 7)}</td>
-              <td class="text-right" style="white-space:nowrap;">
-                <span class="rec-margin-cell${isRejected ? ' rec-rejected' : ''}" onclick="event.stopPropagation();${isRejected ? '' : `acceptRec('${week.id}')`}" title="${isRejected ? 'Rejected' : 'Click to accept'}">${fmt$(week.recADR)}</span>
-                ${isRejected ? '' : `<button class="reject-btn" title="Reject recommendation" onclick="event.stopPropagation();rejectRec('${week.id}')">✕</button>`}
-              </td>
+              <td class="text-right highlight-teal${wDelta < 0 ? ' rec-down' : ''}">${fmt$(week.recADR)}</td>
               <td class="text-right">${deltaCell(wDelta)}</td>
               <td class="text-right num">${fmt$(curMargin)}</td>
               <td class="text-right num">${fmt$(recMargin)}</td>
@@ -2151,15 +2132,13 @@ function renderRecsTable() {
                 <span class="flags-inline">
                   ${alertsCellHTML({ soldPct: wSoldPct, forecastOcc: week.forecastOcc, daysToCheckIn: dtc, hasCostChange: week.hasCostChange })}
                   ${week.autoChanged ? `<span class="badge-auto" title="${week.autoChangedRule || 'Auto-adjusted by rules engine'}">⚡ AUTO</span>` : ''}
-                  ${isRejected ? '<span class="badge-rejected" title="Recommendation rejected">REJECTED</span>' : ''}
                 </span>
               </td>
-              <td>
-                <span class="pkg-action-icons">
-                  <button title="Rules" onclick="event.stopPropagation()">
-                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="2"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2M2.5 2.5l1.4 1.4M10.1 10.1l1.4 1.4M2.5 11.5l1.4-1.4M10.1 3.9l1.4-1.4"/></svg>
-                  </button>
-                  ${week.locked ? '<span class="lock-indicator" title="Price locked" style="display:inline-flex;align-items:center;padding:0 6px;color:var(--accent);"><svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg></span>' : ''}
+              <td class="action-cell">
+                <span class="action-cell-inner" onclick="event.stopPropagation()">
+                  <button type="button" class="action-btn act-accept${isAccepted ? ' solid' : ''}" title="Accept recommendation" onclick="acceptRec('${week.id}')" ${week.locked ? 'disabled' : ''}><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5,7.5 5.5,10.5 11.5,3.5"/></svg></button>
+                  <button type="button" class="action-btn act-reject${isRejected ? ' solid' : ''}" title="Reject recommendation" onclick="rejectRec('${week.id}')" ${week.locked ? 'disabled' : ''}><svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3.5" y1="3.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="3.5" x2="3.5" y2="10.5"/></svg></button>
+                  ${week.locked ? '<span class="lock-indicator" title="Price locked" style="display:inline-flex;align-items:center;padding:0 4px;color:var(--accent);"><svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg></span>' : ''}
                 </span>
               </td>
             </tr>
@@ -2243,66 +2222,6 @@ function renderExceptionsTable() {
       <td class="font-mono" style="font-size:11.5px;">${c.dateReceived}</td>
     </tr>
   `).join('');
-}
-
-// ── Metrics bar ────────────────────────────────────────────
-function computeMetrics() {
-  const rows = window.__hotelRows;
-  // Real-data path: compute the KPI bar straight from the loaded CSV rows.
-  // Any KPI whose source column is absent returns null → rendered blank.
-  if (rows && rows.length) {
-    const n = (v) => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
-    const cols = Object.keys(rows[0]);
-    const has = (c) => cols.includes(c);
-    // "Hotels behind plan" and "High demand" need a target/plan occupancy to
-    // compare against, but the hotel CSV carries only current_occ_pct and
-    // forecast_occ_pct — no target column. There is no honest threshold, so both
-    // stay blank rather than using invented < 60 / >= 75 cutoffs.
-    const hotelsBehind = null, highDemand = null;
-    const avgForecastOcc = has('forecast_occ_pct')
-      ? rows.reduce((s, r) => s + n(r.forecast_occ_pct), 0) / Math.max(1, rows.length) / 100 : null;
-    const avgADRChange = has('adr_delta')
-      ? rows.reduce((s, r) => s + n(r.adr_delta), 0) / Math.max(1, rows.length) : null;
-    const costChanges = has('has_cost_change')
-      ? rows.filter(r => r.has_cost_change === true).length : null;
-    // No publish/approval/change-log column exists in the hotel CSV, so there is
-    // no honest "pending approval / waiting to publish" count. Leave it blank
-    // rather than proxying it with the unrelated auto_changed flag.
-    const pendingApproval = null;
-    return { hotelsBehind, avgForecastOcc, avgADRChange, highDemand, costChanges, pendingApproval };
-  }
-
-  // Fallback path (data.js generated data).
-  const allHotels = HOTEL_DATA.flatMap(d => d.hotels);
-  const allWeeks = allHotels.flatMap(h => h.categories.flatMap(c => c.checkInWeeks));
-
-  const hotelsBehind = allHotels.filter(h => h.currentOcc < h.forecastOcc - 0.08).length;
-  const avgForecastOcc = allWeeks.reduce((s, w) => s + w.forecastOcc, 0) / Math.max(1, allWeeks.length);
-  const avgADRChange = allWeeks.reduce((s, w) => s + w.deltaADR, 0) / Math.max(1, allWeeks.length);
-  const highDemand = allHotels.filter(h => h.forecastOcc >= 0.75).length;
-  const costChanges = COST_CHANGE_DATA.filter(c => c.status === 'Pending').length;
-  const pendingApproval = typeof PUBLISHED_HOTEL_CHANGES !== 'undefined' ? PUBLISHED_HOTEL_CHANGES.filter(p => p.status === 'Scheduled').length : 0;
-
-  return { hotelsBehind, avgForecastOcc, avgADRChange, highDemand, costChanges, pendingApproval };
-}
-
-function renderMetricsBar() {
-  const m = computeMetrics();
-  const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  // A null metric means its source column was missing — render it blank.
-  setTxt('mHotelsBehind',    m.hotelsBehind == null ? '' : m.hotelsBehind);
-  setTxt('mAvgForecastOcc',  m.avgForecastOcc == null ? '' : Math.round(m.avgForecastOcc * 100) + '%');
-  setTxt('mAvgADRChange',    m.avgADRChange == null ? '' : fmtSignedDollar(m.avgADRChange));
-  setTxt('mHighDemand',      m.highDemand == null ? '' : m.highDemand);
-  setTxt('mCostChanges',     m.costChanges == null ? '' : m.costChanges + ' active');
-  setTxt('mPendingApproval', m.pendingApproval == null ? '' : m.pendingApproval);
-
-  const adrEl = document.getElementById('mAvgADRChange');
-  if (adrEl) {
-    adrEl.classList.remove('metric-pos', 'metric-neg', 'metric-warn');
-    if (m.avgADRChange > 0) adrEl.classList.add('metric-pos');
-    else if (m.avgADRChange < 0) adrEl.classList.add('metric-neg');
-  }
 }
 
 // ── Analytics panel (booking curve + secondary) ───────────
@@ -2623,9 +2542,11 @@ function _hotApplyChange(leaves, amt$) {
     } else {
       adrOverrides[lf.weekId] = Math.max(0, Math.round(lf.currentADR + amt$));
     }
+    acceptedRecs.delete(lf.weekId);
+    rejectedRecs.delete(lf.weekId);
   });
   renderRecsTable();
-  renderMetricsBar();
+  updatePublishBadge();
 }
 function _hotApplyChangePct(leaves, pct) {
   leaves.forEach(lf => {
@@ -2635,16 +2556,18 @@ function _hotApplyChangePct(leaves, pct) {
     } else {
       adrOverrides[lf.weekId] = Math.max(0, Math.round(lf.currentADR + amt));
     }
+    acceptedRecs.delete(lf.weekId);
+    rejectedRecs.delete(lf.weekId);
   });
   renderRecsTable();
-  renderMetricsBar();
+  updatePublishBadge();
 }
 function onChgDollar(scope, destId, weekIdx, hotelId, weekId, raw) {
-  const amt = raw === '' ? 0 : Number(raw);
+  const amt = priceInputNumber(raw) == null ? 0 : priceInputNumber(raw);
   _hotApplyChange(_hotScopeLeaves(scope, destId, Number(weekIdx), hotelId, weekId), isNaN(amt) ? 0 : amt);
 }
 function onChgPct(scope, destId, weekIdx, hotelId, weekId, raw) {
-  const pct = raw === '' ? 0 : Number(raw);
+  const pct = priceInputNumber(raw) == null ? 0 : priceInputNumber(raw);
   _hotApplyChangePct(_hotScopeLeaves(scope, destId, Number(weekIdx), hotelId, weekId), isNaN(pct) ? 0 : pct);
 }
 function clearChg(scope, destId, weekIdx, hotelId, weekId) {
@@ -2659,8 +2582,8 @@ function _hotChgCells(scope, destId, weekIdx, hotelId, weekId) {
   const pctRounded = avgCurrentADR > 0 ? Math.round(avgChange / avgCurrentADR * 1000) / 10 : 0;
   const posNeg = avgChange > 0 ? 'chg-pos' : avgChange < 0 ? 'chg-neg' : '';
   const cellCls = hasChg ? ' has-chg' : '';
-  const dollarVal = hasChg ? chgRounded : '';
-  const pctVal    = hasChg ? pctRounded : '';
+  const dollarVal = hasChg ? '$' + chgRounded : '';
+  const pctVal    = hasChg ? pctRounded + '%' : '';
   const args = `'${scope}','${destId}','${weekIdx}','${hotelId || ''}','${weekId || ''}'`;
   const clearBtn = hasChg
     ? `<button class="chg-clear" title="Clear change" onclick="event.stopPropagation();clearChg(${args})">×</button>`
@@ -2668,16 +2591,18 @@ function _hotChgCells(scope, destId, weekIdx, hotelId, weekId) {
   return `
     <td class="text-right chg-cell${cellCls}">
       <div class="chg-input-wrap ${posNeg}">
-        <input type="number" class="chg-input" value="${dollarVal}" step="1" placeholder="±$"
-               onclick="event.stopPropagation()"
+        <input type="text" inputmode="decimal" class="price-input chg-input abs" value="${dollarVal}" placeholder="$"
+               onclick="event.stopPropagation()" oninput="priceInputSanitize(this)"
+               onkeydown="priceInputKeydown(event, this)" onblur="applyDollarFormat(this)"
                onchange="onChgDollar(${args}, this.value)">
         ${clearBtn}
       </div>
     </td>
     <td class="text-right chg-cell${cellCls}">
       <div class="chg-input-wrap ${posNeg}">
-        <input type="number" class="chg-input" value="${pctVal}" step="0.5" placeholder="±%"
-               onclick="event.stopPropagation()"
+        <input type="text" inputmode="decimal" class="price-input chg-input pct" value="${pctVal}" placeholder="%"
+               onclick="event.stopPropagation()" oninput="priceInputSanitize(this)"
+               onkeydown="priceInputKeydown(event, this)" onblur="applyPctFormat(this)"
                onchange="onChgPct(${args}, this.value)">
       </div>
     </td>
@@ -2689,36 +2614,46 @@ function getPendingCount() {
   return Object.keys(adrOverrides).filter(k => !rejectedRecs.has(k)).length;
 }
 function updatePublishBadge() {
-  // No persisted change-log / audit data backs a pending-publish count, so the
-  // Publish Changes button shows no count badge.
   const btn = document.getElementById('publishBtn');
-  if (!btn) return;
-  const existing = btn.querySelector('.publish-count');
-  if (existing) existing.remove();
+  if (!btn || btn.classList.contains('is-loading')) return;
+  const n = getPendingCount();
+  btn.querySelector('.commit-label').textContent = `Publish (${n.toLocaleString()})`;
+  btn.disabled = n === 0;
+}
+function showToast(message) {
+  const toast = document.getElementById('reToast');
+  const text  = document.getElementById('reToastText');
+  if (!toast || !text) return;
+  toast.classList.remove('running');
+  toast.classList.add('success');
+  text.textContent = '\u2713 ' + message;
+  toast.classList.add('shown');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { toast.classList.remove('shown'); toast.classList.remove('success'); }, 2500);
 }
 function updateADR(weekId, value) {
   const v = Number(value);
   if (isNaN(v)) return;
   adrOverrides[weekId] = v;
+  acceptedRecs.delete(weekId);
   rejectedRecs.delete(weekId);
   renderRecsTable();
-  renderMetricsBar();
   updatePublishBadge();
 }
 function acceptRec(weekId) {
   const hit = getCheckInWeekById(weekId);
   if (!hit) return;
   adrOverrides[weekId] = hit.week.recADR;
+  acceptedRecs.add(weekId);
   rejectedRecs.delete(weekId);
   renderRecsTable();
-  renderMetricsBar();
   updatePublishBadge();
 }
 function rejectRec(weekId) {
   rejectedRecs.add(weekId);
+  acceptedRecs.delete(weekId);
   delete adrOverrides[weekId];
   renderRecsTable();
-  renderMetricsBar();
   updatePublishBadge();
 }
 // Simple lock flip — retained for any caller that still references toggleLock.
@@ -2859,7 +2794,30 @@ function confirmRunEvaluation() {
     }, 3000);
   }, 1500);
 }
-function publishChanges() {}
+function publishChanges() {
+  const btn = document.getElementById('publishBtn');
+  if (btn && (btn.disabled || btn.classList.contains('is-loading'))) return;
+  const n = getPendingCount();
+  if (!n) { showToast('No pending changes to publish'); return; }
+  if (btn) {
+    btn.classList.add('is-loading');
+    btn.querySelector('.commit-label').textContent = 'Publishing\u2026';
+  }
+  setTimeout(() => {
+    // Published rates become the new current ADR; pending trackers are cleared.
+    Object.keys(adrOverrides).forEach(weekId => {
+      if (rejectedRecs.has(weekId)) return;
+      const hit = getCheckInWeekById(weekId);
+      if (hit) hit.week.currentADR = adrOverrides[weekId];
+      delete adrOverrides[weekId];
+    });
+    acceptedRecs.clear();
+    if (btn) btn.classList.remove('is-loading');
+    renderRecsTable();
+    updatePublishBadge();
+    showToast(`Published ${n.toLocaleString()} rate change${n === 1 ? '' : 's'}`);
+  }, 1000);
+}
 
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.ms-wrap')) {
@@ -3510,6 +3468,7 @@ function cdpExpandDest(destId) {
 
 // ── Init ───────────────────────────────────────────────────
 function _initApp() {
+  updatePublishBadge();
   Filters.populateStandard({
     onAnyChange: (active) => {
       headerFilters = active;
@@ -3523,7 +3482,6 @@ function _initApp() {
   }
   buildAdvDrawer();
   syncAdvBadge();
-  renderMetricsBar();
   renderRecsHead();
   renderRecsTable();
   renderExceptionsTable();

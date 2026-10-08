@@ -41,14 +41,19 @@ const ALERT_SEVERITIES   = [];
 // ── Lookups over the CSV-filled globals (used by flight.html / hotel.html) ──
 // These keep working once data-loader.js has populated FLIGHT_DATA / HOTEL_DATA;
 // before that (or on CSV failure) they simply return null.
+function flightDays(date) {
+  return date ? (date.days || [date]) : [];
+}
+
 function getFlightDateById(dateId) {
   for (const d of FLIGHT_DATA) {
     for (const r of d.routes) {
-      const hit = r.dates.find(x => x.id === dateId);
+      // r.dates is indexed by week and can be sparse (null gaps) — guard each entry.
+      const hit = r.dates.find(x => x && x.id === dateId);
       if (hit) return { destination: d, route: r, date: hit };
       // Search inside per-week days
       for (const weekDate of r.dates) {
-        if (!weekDate.days) continue;
+        if (!weekDate || !weekDate.days) continue;
         const dayHit = weekDate.days.find(x => x.id === dateId);
         if (dayHit) return { destination: d, route: r, date: dayHit, weekDate };
       }

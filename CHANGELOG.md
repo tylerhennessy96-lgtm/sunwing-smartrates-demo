@@ -12,6 +12,43 @@ Format:
 
 ---
 
+## 2026-10-08 - Complete flight-date coverage and price-history markers
+- Fixed flight route/week grouping to retain every departure in a `days`
+  collection instead of overwriting dates sharing a weekly slot. All 272
+  flight dates now survive loading and render in the expanded list.
+- Updated weekly/monthly calendar aggregation, selected-period detail panels,
+  daily lookups, and margin scopes to include all departures. Month buckets
+  use actual departure dates when a week spans two months.
+- Fixed inactive advanced-filter endpoints so they do not hide flights,
+  including forecasts above 100%.
+- Added local chart support for point radii, colors, borders, and marker-only
+  datasets. The package price-history chart now draws its four orange mock
+  margin-change dots and retains the price/margin tooltip.
+- Added focused Node regression checks and verified flight list/calendar
+  coverage, bulk margin changes, and package chart points/tooltips in desktop
+  and mobile browser checks without JavaScript errors.
+- Why: resolve the two frontend issues identified before preparing the data
+  refresh for GitLab review.
+
+## 2026-10-08 - Data refresh validation and booking-curve rebuild
+- Validated the refreshed pricing exports: 29,095 packages and 272 flights,
+  with departure dates from 2026-06-08 through 2026-09-07.
+- Regenerated all three compact curve JSONs from the restored raw CSVs and
+  checked 3,471,800 input rows for schema, buckets, dates, curve types, and
+  numeric consistency.
+- Added Docker exclusions for the raw booking-curve CSVs so local build inputs
+  are not copied into the static image, and fixed a trailing blank line caught
+  by `git diff --check`.
+- Documented the intentionally empty Hotels tab, missing flight-curve matches
+  in the raw exports, and the chart renderer's missing margin-point support.
+- Identified a pre-merge flight-loader issue: multiple flight dates in the same
+  route/week overwrite one another, retaining only 127 of 272 flight dates.
+- Confirmed Packages, Flights, and Parameters load without JavaScript errors,
+  package charts and tooltips render, and flight week/month calendar controls
+  work; complete flight-date coverage still requires the loader fix above.
+- Why: prepare the local refresh for review while keeping remaining data and
+  rendering limitations visible. No commit or push was made.
+
 ## 2026-07-03 - Flight margin controls and package alert filters
 - Restored Flights margin adjustment controls without bringing back fare
   editing, using the same paired `% / absolute $` pattern as Packages at

@@ -1338,25 +1338,9 @@
       align-items: center;
       gap: 2px;
     }
-    .chg-input {
-      width: 64px;
-      padding: 3px 6px;
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      text-align: right;
-      outline: none;
-      background: #fff;
-      color: var(--text-primary);
-      -moz-appearance: textfield;
-    }
-    .chg-input::-webkit-outer-spin-button,
-    .chg-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .chg-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232, 0, 125, 0.10); }
-    .chg-input::placeholder { color: var(--text-muted); font-weight: 400; font-family: var(--font-sans); font-size: 10.5px; }
+    /* .chg-input inherits the shared .price-input look (styles.css) */
     td.chg-cell.has-chg { background: rgba(232, 0, 125, 0.08); }
-    td.chg-cell.has-chg .chg-input { border-color: rgba(232, 0, 125, 0.40); background: #fff; }
+    td.chg-cell.has-chg .chg-input { border-color: rgba(233, 30, 140, 0.45); }
     .chg-input-wrap.chg-pos .chg-input { color: #047857; font-weight: 600; }
     .chg-input-wrap.chg-neg .chg-input { color: var(--danger); font-weight: 600; }
     .chg-clear {
@@ -1380,49 +1364,8 @@
     .flt-margin-change-cell.has-adjustment {
       background: rgba(232, 0, 125, 0.08) !important;
     }
-    .flt-change-pair {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px;
-      align-items: center;
-    }
-    .flt-change-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-      height: 26px;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      background: #fff;
-      overflow: hidden;
-    }
-    .flt-change-wrap:focus-within {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(232, 0, 125, 0.10);
-    }
-    .flt-change-input {
-      min-width: 0;
-      width: 100%;
-      border: 0;
-      outline: 0;
-      padding: 3px 6px;
-      text-align: right;
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      color: var(--text-primary);
-      background: transparent;
-      -moz-appearance: textfield;
-    }
-    .flt-change-input::-webkit-outer-spin-button,
-    .flt-change-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .flt-change-suffix,
-    .flt-change-prefix {
-      flex: 0 0 auto;
-      color: var(--text-muted);
-      font-size: 11px;
-      padding: 0 6px;
-      pointer-events: none;
-    }
+    /* .flt-change-input inherits the shared .price-input look (styles.css) */
+    .flt-margin-change-cell.has-adjustment .flt-change-input { border-color: rgba(233, 30, 140, 0.45); }
     .flt-margin-change-cell.adjust-up .flt-change-input { color: #047857; font-weight: 600; }
     .flt-margin-change-cell.adjust-down .flt-change-input { color: var(--danger); font-weight: 600; }
 
@@ -1550,6 +1493,12 @@
     </div>
   </div>
 </div>
+<!-- ── Alerts tooltip (Adisseo styling) ── -->
+<div class="tooltip-popup" id="alertsTooltip">
+  <div class="tooltip-title">Alerts in effect</div>
+  <div id="alertsTooltipBody"></div>
+</div>
+
 <div class="re-toast" id="reToast">
   <span class="spinner"></span>
   <span class="check">✓</span>
@@ -1675,48 +1624,14 @@
     <a href="hotel.html"   class="subtab">Hotels</a>
     <a href="pricing.html" class="subtab">Packages</a>
     <div class="subtab-spacer"></div>
-    <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
+    <button class="btn btn-ghost" onclick="runEvaluation()" style="margin-right:8px;">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
       Run Evaluation
     </button>
-    <button id="publishBtn" class="btn btn-ghost" onclick="publishChanges()">
-      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h10M7 2l5 5-5 5"/></svg>
-      Publish Changes
+    <button id="publishBtn" class="commit-btn" type="button" onclick="publishChanges()" disabled>
+      <span class="commit-spinner"></span>
+      <span class="commit-label">Publish (0)</span>
     </button>
-  </div>
-
-  <!-- ── Metrics Bar (6 KPI cards) ── -->
-  <div class="metrics-bar" id="metricsBar">
-    <div class="metric-card metric-emphasis">
-      <div class="metric-card-label">Flights behind target</div>
-      <div class="metric-card-value metric-warn" id="mFlightsBehind">—</div>
-      <div class="metric-card-sub">Load factor below threshold</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-card-label">Avg. forecast LF</div>
-      <div class="metric-card-value" id="mAvgForecastLF">—</div>
-      <div class="metric-card-sub">Across next 60 days</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-card-label">Avg. fare change</div>
-      <div class="metric-card-value" id="mAvgFareChange">—</div>
-      <div class="metric-card-sub">Across active flights</div>
-    </div>
-    <div class="metric-card metric-emphasis">
-      <div class="metric-card-label">Rate of sale alerts</div>
-      <div class="metric-card-value metric-warn" id="mROSAlerts">—</div>
-      <div class="metric-card-sub">Behind target pace</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-card-label">Competitor undercuts</div>
-      <div class="metric-card-value metric-neg" id="mCompUndercuts">—</div>
-      <div class="metric-card-sub">Priced below ours</div>
-    </div>
-    <div class="metric-card metric-emphasis">
-      <div class="metric-card-label">Pending approval</div>
-      <div class="metric-card-value" id="mPendingApproval">—</div>
-      <div class="metric-card-sub">Waiting to publish</div>
-    </div>
   </div>
 
   <!-- ── Sub-subtab Bar ── -->
@@ -2168,11 +2083,39 @@ function ratioBadge(ratio) {
 }
 // Capacity-alert badge is driven by the real capacity_alert column — only
 // rendered when the backing field is genuinely true.
+// Alerts — Adisseo-style amber bell; click → "Alerts in effect" popup.
+let _alertSeq = 0;
+const _alertData = new Map();
 function _capAlertTD(hasAlert) {
-  return hasAlert
-    ? `<td class="text-center"><span class="cap-alert-badge" title="Capacity alert flagged for this flight">CAPACITY</span></td>`
-    : '<td class="text-center text-muted">—</td>';
+  if (!hasAlert) return '<td class="text-center"></td>';
+  const id = `flt-alert-${++_alertSeq}`;
+  _alertData.set(id, [{ key: 'CAPACITY', title: 'Capacity alert — load factor approaching capacity' }]);
+  return `<td class="text-center"><div class="alert-bell-wrap"><button type="button" class="alert-bell" title="Alerts" aria-label="Show alerts" onclick="showAlerts(event, '${id}')">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#f5a623" stroke-width="1.5" stroke-linecap="round"><path d="M8 2a5 5 0 0 1 5 5c0 3.5 1.5 4.5 1.5 4.5h-13S3 10.5 3 7a5 5 0 0 1 5-5z"/><line x1="6.5" y1="14" x2="9.5" y2="14"/></svg>
+  </button></div></td>`;
 }
+const _alertIcons = {
+  CAPACITY: '<rect x="2" y="3" width="10" height="9" rx="1"/><rect x="4" y="6" width="2" height="4" fill="currentColor"/><rect x="7" y="4.5" width="2" height="5.5" fill="currentColor"/>',
+};
+function showAlerts(e, id) {
+  e.stopPropagation();
+  const alerts = _alertData.get(id);
+  if (!alerts || !alerts.length) return;
+  const tt = document.getElementById('alertsTooltip');
+  const body = document.getElementById('alertsTooltipBody');
+  const wasOpen = tt.classList.contains('open') && tt.dataset.for === id;
+  body.innerHTML = alerts.map(a => {
+    const icon = _alertIcons[a.key] || '<circle cx="7" cy="7" r="5"/><path d="M7 4.5v3M7 9.5v.5"/>';
+    return `<div class="tooltip-item"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg> ${a.title}</div>`;
+  }).join('');
+  tt.dataset.for = id;
+  tt.style.left = Math.min(e.clientX - 10, window.innerWidth - 300) + 'px';
+  tt.style.top = (e.clientY + 16) + 'px';
+  tt.classList.toggle('open', !wasOpen);
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.alert-bell')) document.getElementById('alertsTooltip')?.classList.remove('open');
+});
 function _dwCapAlertTD(dest, weekIdx) {
   const fire = dest.routes.some(r => {
     const d = r.dates[weekIdx];
@@ -2306,6 +2249,7 @@ function weekEndMMDDYY(date) {
 }
 
 function aggDates(dates) {
+  dates = dates.flatMap(flightDays);
   if (!dates.length) return null;
   const capacity = dates.reduce((s, x) => s + x.capacity, 0);
   const sold = dates.reduce((s, x) => s + x.sold, 0);
@@ -2345,7 +2289,7 @@ function bedsSeatsRatio(dates) {
   // total flight seats (~18k) — different units over different periods, which
   // collapsed to ~0.4 for every destination and mislabeled them all
   // "Under-bedded". The pricing CSV already carries the real per-flight ratio.)
-  const ratios = (dates || [])
+  const ratios = (dates || []).flatMap(flightDays)
     .map(d => (d ? d.bedsToSeatsRatio : null))
     .filter(v => Number.isFinite(v));
   if (!ratios.length) return null;
@@ -2390,7 +2334,7 @@ function renderRecsHead() {
       <th class="text-right" style="width:110px;">Beds/Seats</th>
       <th class="text-right" style="width:80px;">Hotel<span class="th-sub">Occ %</span></th>
       <th style="width:80px;">Flags</th>
-      <th style="width:90px;">Cap. Alert</th>
+      <th style="width:70px;">Alerts</th>
       <th style="width:110px;">Actions</th>
     </tr>
   `;
@@ -2414,29 +2358,22 @@ function renderRecsTable() {
       const dwKey = `${dest.id}::${weekIdx}`;
       const dwOpen = expandedDestWeeks.has(dwKey);
 
-      // Header date range filter — check the week's reference date. Use the
-      // first route that actually flies this week (routes fly different week
-      // sets, so routes[0] is often empty and would skip the filter entirely).
-      const refDate = dest.routes.map(r => r.dates[weekIdx]).find(Boolean);
-      if (refDate && !passesHeaderDate(refDate)) continue;
-
       // Determine which routes pass at this week
       const matchingRoutes = dest.routes
         .filter(r => passesRouteLevel(r))
-        .map(r => ({ route: r, date: r.dates[weekIdx] }))
-        .filter(x => x.date && passesFlightDate(x.date));
+        .map(r => ({ route: r, date: r.dates[weekIdx],
+          days: flightDays(r.dates[weekIdx]).filter(d => passesHeaderDate(d) && passesFlightDate(d)) }))
+        .filter(x => x.days.length);
 
       // Tally totals
-      dest.routes.forEach(r => { if (r.dates[weekIdx]) totalLeaves++; });
-      matchingRoutes.forEach(() => { visibleLeaves++; });
+      dest.routes.forEach(r => { totalLeaves += flightDays(r.dates[weekIdx]).length; });
+      matchingRoutes.forEach(x => { visibleLeaves += x.days.length; });
 
-      if (!matchingRoutes.length && advFiltersActive()) continue;
+      if (!matchingRoutes.length) continue;
 
       visibleDestSet.add(dest.id);
 
-      const datesAtWeek = matchingRoutes.length
-        ? matchingRoutes.map(x => x.date)
-        : dest.routes.map(r => r.dates[weekIdx]).filter(Boolean);
+      const datesAtWeek = matchingRoutes.flatMap(x => x.days);
       const dwAgg = aggDates(datesAtWeek);
       if (!dwAgg) continue;
       const refDateStr = datesAtWeek[0]?.departureDate || '';
@@ -2489,13 +2426,11 @@ function renderRecsTable() {
       if (!dwOpen) continue;
 
       // ── Level 2: Flight Route rows (within this dest+week) — filtered ──
-      const routeIterList = matchingRoutes.length
-        ? matchingRoutes
-        : dest.routes.map(r => ({ route: r, date: r.dates[weekIdx] })).filter(x => x.date);
-      routeIterList.forEach(({ route, date }) => {
+      const routeIterList = matchingRoutes;
+      routeIterList.forEach(({ route, date, days }) => {
         const routeKey = `${dest.id}::${weekIdx}::${route.id}`;
         const routeOpen = expandedRoutes.has(routeKey);
-        const rAgg = aggDates([date]);
+        const rAgg = aggDates(days);
         const rtMarginAdj = _fltMarginScopeAvg('rt', dest.id, weekIdx, route.id);
         entryRows.push(`
           <tr class="row-bedtype clickable" onclick="toggleRoute('${routeKey}')" style="cursor:pointer;">
@@ -2527,7 +2462,7 @@ function renderRecsTable() {
         if (!routeOpen) return;
 
         // ── Level 3: Flight Date rows ──
-        const dayList = date.days || [date];
+        const dayList = days;
         dayList.forEach(day => {
           const dayKey  = `${routeKey}::${day.id}`;
           const totalCap  = day.capacity || 0;
@@ -2541,9 +2476,10 @@ function renderRecsTable() {
           const dtMarginAdj = _fltMarginScopeAvg('dt', dest.id, weekIdx, route.id, day.id);
 
           const dayAnyAuto = !!day.autoChanged || !!(day.economy && day.economy.autoChanged) || !!(day.business && day.business.autoChanged);
+          const dayState = dayRecState(day);
 
           entryRows.push(`
-            <tr class="row-date">
+            <tr class="row-date${dayState ? ' row-' + dayState : ''}">
               <td>
                 <span class="row-indent-spacer"></span>
                 <span>${shortDate(day.departureDate)}</span>
@@ -2568,12 +2504,14 @@ function renderRecsTable() {
                 </div>
               </td>
               ${_capAlertTD(!!day.capacityAlert)}
-              <td>
-                <span class="pkg-action-icons">
-                  <button title="Booking curve" onclick="event.stopPropagation();openExposure('${day.id}')">
+              <td class="action-cell">
+                <span class="action-cell-inner" onclick="event.stopPropagation()">
+                  <button type="button" class="action-btn act-accept${dayState === 'accepted' ? ' solid' : ''}" title="Accept recommendation" onclick="acceptDayRec('${day.id}')" ${day.locked ? 'disabled' : ''}><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5,7.5 5.5,10.5 11.5,3.5"/></svg></button>
+                  <button type="button" class="action-btn act-reject${dayState === 'rejected' ? ' solid' : ''}" title="Reject recommendation" onclick="rejectDayRec('${day.id}')" ${day.locked ? 'disabled' : ''}><svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3.5" y1="3.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="3.5" x2="3.5" y2="10.5"/></svg></button>
+                  <button type="button" class="action-note" title="Booking curve" onclick="openExposure('${day.id}')">
                     <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="2,11 5,7 8,9 12,3"/><line x1="2" y1="12" x2="12" y2="12"/></svg>
                   </button>
-                  ${day.locked ? '<span class="lock-indicator" title="Price locked" style="display:inline-flex;align-items:center;padding:0 6px;color:var(--accent);"><svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg></span>' : ''}
+                  ${day.locked ? '<span class="lock-indicator" title="Price locked" style="display:inline-flex;align-items:center;padding:0 4px;color:var(--accent);"><svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="8" height="6" rx="1"/><path d="M5 6V4a2 2 0 0 1 4 0v2"/></svg></span>' : ''}
                 </span>
               </td>
             </tr>
@@ -2668,66 +2606,6 @@ function renderCompetitorTable() {
   }).join('');
 }
 
-// ── Metrics bar ────────────────────────────────────────────
-function computeMetrics() {
-  const rows = window.__flightRows;
-  // Real-data path: compute the KPI bar straight from the loaded CSV rows.
-  // Any KPI whose source column is absent returns null → rendered blank.
-  if (rows && rows.length) {
-    const n = (v) => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
-    const cols = Object.keys(rows[0]);
-    const has = (c) => cols.includes(c);
-    const flightsBehind = (has('current_lf_pct') && has('target_lf_pct'))
-      ? rows.filter(r => n(r.current_lf_pct) < n(r.target_lf_pct)).length : null;
-    const avgForecastLF = has('forecast_lf_pct')
-      ? rows.reduce((s, r) => s + n(r.forecast_lf_pct), 0) / Math.max(1, rows.length) / 100 : null;
-    const avgFareChange = has('fare_delta_eco')
-      ? rows.reduce((s, r) => s + n(r.fare_delta_eco), 0) / Math.max(1, rows.length) : null;
-    // "Behind target pace" is definitional: rate of sale below 100% of the
-    // CSV's target (ros_pct_of_target). No alert-threshold column exists, so we
-    // use the real boundary rather than an invented cutoff (was a hardcoded <75).
-    const rosAlerts = has('ros_pct_of_target')
-      ? rows.filter(r => n(r.ros_pct_of_target) < 100).length : null;
-    // comp_delta = our fare − cheapest competitor; >0 means the competitor is
-    // priced below us (they undercut us). (Was <0, which counted the opposite.)
-    const compUndercuts = has('comp_delta')
-      ? rows.filter(r => n(r.comp_delta) > 0).length : null;
-    // No publish/approval/change-log column exists in the CSV, so there is no
-    // honest "pending approval / waiting to publish" count. Leave it blank
-    // rather than proxying it with the unrelated auto_changed flag.
-    const pendingApproval = null;
-    return { flightsBehind, avgForecastLF, avgFareChange, rosAlerts, compUndercuts, pendingApproval };
-  }
-
-  // Fallback path (data.js generated data).
-  const allDates = FLIGHT_DATA.flatMap(d => d.routes.flatMap(r => r.dates));
-  const flightsBehind = allDates.filter(x => x.forecastLF < x.targetLF).length;
-  const avgForecastLF = allDates.reduce((s, x) => s + x.forecastLF, 0) / Math.max(1, allDates.length);
-  const avgFareChange = allDates.reduce((s, x) => s + (x.recFare - getEffectiveFare(x)), 0) / Math.max(1, allDates.length);
-  const rosAlerts = allDates.filter(x => x.rateOfSale < x.rateOfSaleTarget).length;
-  const compUndercuts = COMPETITOR_FLIGHT_DATA.filter(c => c.ourDelta > 0).length;
-  const pendingApproval = typeof FLIGHT_PUBLISHED_DATA !== 'undefined' ? FLIGHT_PUBLISHED_DATA.filter(p => p.status === 'Scheduled').length : 0;
-  return { flightsBehind, avgForecastLF, avgFareChange, rosAlerts, compUndercuts, pendingApproval };
-}
-function renderMetricsBar() {
-  const m = computeMetrics();
-  const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  // A null metric means its source column was missing — render it blank.
-  setTxt('mFlightsBehind',   m.flightsBehind == null ? '' : m.flightsBehind);
-  setTxt('mAvgForecastLF',   m.avgForecastLF == null ? '' : Math.round(m.avgForecastLF * 100) + '%');
-  setTxt('mAvgFareChange',   m.avgFareChange == null ? '' : fmtSignedDollar(m.avgFareChange));
-  setTxt('mROSAlerts',       m.rosAlerts == null ? '' : m.rosAlerts);
-  setTxt('mCompUndercuts',   m.compUndercuts == null ? '' : m.compUndercuts);
-  setTxt('mPendingApproval', m.pendingApproval == null ? '' : m.pendingApproval);
-
-  const fareEl = document.getElementById('mAvgFareChange');
-  if (fareEl) {
-    fareEl.classList.remove('metric-pos', 'metric-neg', 'metric-warn');
-    if (m.avgFareChange > 0) fareEl.classList.add('metric-pos');
-    else if (m.avgFareChange < 0) fareEl.classList.add('metric-neg');
-  }
-}
-
 // ── Expand / collapse ──────────────────────────────────────
 function toggleDestWeek(key) { expandedDestWeeks.has(key) ? expandedDestWeeks.delete(key) : expandedDestWeeks.add(key); renderRecsTable(); }
 function toggleRoute(key)    { expandedRoutes.has(key)    ? expandedRoutes.delete(key)    : expandedRoutes.add(key);    renderRecsTable(); }
@@ -2741,6 +2619,40 @@ function parseLeafKey(k) {
 function getClassData(day, cls) {
   return cls === 'biz' ? day.business : day.economy;
 }
+function dayLeafKeys(day) {
+  return ['eco', 'biz'].filter(cls => getClassData(day, cls)).map(cls => `${day.id}::${cls}`);
+}
+function dayRecState(day) {
+  const keys = dayLeafKeys(day);
+  if (!keys.length) return '';
+  if (keys.every(k => acceptedRecs.has(k))) return 'accepted';
+  if (keys.every(k => rejectedRecs.has(k))) return 'rejected';
+  return '';
+}
+function acceptDayRec(dayId) {
+  const hit = getFlightDateById(dayId);
+  if (!hit || hit.date.locked) return;
+  dayLeafKeys(hit.date).forEach(key => {
+    const cd = getClassData(hit.date, key.split('::')[1]);
+    if (!cd) return;
+    fareOverrides[key] = cd.recFare;
+    acceptedRecs.add(key);
+    rejectedRecs.delete(key);
+  });
+  renderRecsTable();
+  updatePublishBadge();
+}
+function rejectDayRec(dayId) {
+  const hit = getFlightDateById(dayId);
+  if (!hit || hit.date.locked) return;
+  dayLeafKeys(hit.date).forEach(key => {
+    rejectedRecs.add(key);
+    acceptedRecs.delete(key);
+    delete fareOverrides[key];
+  });
+  renderRecsTable();
+  updatePublishBadge();
+}
 function getEffectiveFareForLeaf(day, cls) {
   const key = `${day.id}::${cls}`;
   const cd  = getClassData(day, cls);
@@ -2751,12 +2663,22 @@ function getPendingCount() {
   return Object.keys(fareOverrides).filter(k => !rejectedRecs.has(k)).length;
 }
 function updatePublishBadge() {
-  // No persisted change-log / audit data backs a pending-publish count, so the
-  // Publish Changes button shows no count badge.
   const btn = document.getElementById('publishBtn');
-  if (!btn) return;
-  const existing = btn.querySelector('.publish-count');
-  if (existing) existing.remove();
+  if (!btn || btn.classList.contains('is-loading')) return;
+  const n = getPendingCount();
+  btn.querySelector('.commit-label').textContent = `Publish (${n.toLocaleString()})`;
+  btn.disabled = n === 0;
+}
+function showToast(message) {
+  const toast = document.getElementById('reToast');
+  const text  = document.getElementById('reToastText');
+  if (!toast || !text) return;
+  toast.classList.remove('running');
+  toast.classList.add('success');
+  text.textContent = '\u2713 ' + message;
+  toast.classList.add('shown');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { toast.classList.remove('shown'); toast.classList.remove('success'); }, 2500);
 }
 
 function updateFare(leafKey, value) {
@@ -2766,7 +2688,6 @@ function updateFare(leafKey, value) {
   acceptedRecs.delete(leafKey);
   rejectedRecs.delete(leafKey);
   renderRecsTable();
-  renderMetricsBar();
   updatePublishBadge();
 }
 function acceptRec(leafKey) {
@@ -2779,7 +2700,6 @@ function acceptRec(leafKey) {
   acceptedRecs.add(leafKey);
   rejectedRecs.delete(leafKey);
   renderRecsTable();
-  renderMetricsBar();
   updatePublishBadge();
 }
 function rejectRec(leafKey) {
@@ -2787,7 +2707,6 @@ function rejectRec(leafKey) {
   acceptedRecs.delete(leafKey);
   delete fareOverrides[leafKey];
   renderRecsTable();
-  renderMetricsBar();
   updatePublishBadge();
 }
 function toggleDay(key) {
@@ -2854,7 +2773,6 @@ function _fltApplyChange(leaves, amt$) {
     rejectedRecs.delete(lf.leafKey);
   });
   renderRecsTable();
-  renderMetricsBar();
   updatePublishBadge();
 }
 function _fltApplyChangePct(leaves, pct) {
@@ -2869,15 +2787,14 @@ function _fltApplyChangePct(leaves, pct) {
     rejectedRecs.delete(lf.leafKey);
   });
   renderRecsTable();
-  renderMetricsBar();
   updatePublishBadge();
 }
 function onChgDollar(scope, destId, weekIdx, routeId, dayId, cls, raw) {
-  const amt = raw === '' ? 0 : Number(raw);
+  const amt = priceInputNumber(raw) == null ? 0 : priceInputNumber(raw);
   _fltApplyChange(_fltScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId, cls), isNaN(amt) ? 0 : amt);
 }
 function onChgPct(scope, destId, weekIdx, routeId, dayId, cls, raw) {
-  const pct = raw === '' ? 0 : Number(raw);
+  const pct = priceInputNumber(raw) == null ? 0 : priceInputNumber(raw);
   _fltApplyChangePct(_fltScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId, cls), isNaN(pct) ? 0 : pct);
 }
 function clearChg(scope, destId, weekIdx, routeId, dayId, cls) {
@@ -2892,8 +2809,8 @@ function _fltChgCells(scope, destId, weekIdx, routeId, dayId, cls) {
   const pctRounded = avgCurrentFare > 0 ? Math.round(avgChange / avgCurrentFare * 1000) / 10 : 0;
   const posNeg = avgChange > 0 ? 'chg-pos' : avgChange < 0 ? 'chg-neg' : '';
   const cellCls = hasChg ? ' has-chg' : '';
-  const dollarVal = hasChg ? chgRounded : '';
-  const pctVal    = hasChg ? pctRounded : '';
+  const dollarVal = hasChg ? '$' + chgRounded : '';
+  const pctVal    = hasChg ? pctRounded + '%' : '';
   const args = `'${scope}','${destId}','${weekIdx}','${routeId || ''}','${dayId || ''}','${cls || ''}'`;
   const clearBtn = hasChg
     ? `<button class="chg-clear" title="Clear change" onclick="event.stopPropagation();clearChg(${args})">×</button>`
@@ -2901,16 +2818,18 @@ function _fltChgCells(scope, destId, weekIdx, routeId, dayId, cls) {
   return `
     <td class="text-right chg-cell${cellCls}">
       <div class="chg-input-wrap ${posNeg}">
-        <input type="number" class="chg-input" value="${dollarVal}" step="1" placeholder="±$"
-               onclick="event.stopPropagation()"
+        <input type="text" inputmode="decimal" class="price-input chg-input abs" value="${dollarVal}" placeholder="$"
+               onclick="event.stopPropagation()" oninput="priceInputSanitize(this)"
+               onkeydown="priceInputKeydown(event, this)" onblur="applyDollarFormat(this)"
                onchange="onChgDollar(${args}, this.value)">
         ${clearBtn}
       </div>
     </td>
     <td class="text-right chg-cell${cellCls}">
       <div class="chg-input-wrap ${posNeg}">
-        <input type="number" class="chg-input" value="${pctVal}" step="0.5" placeholder="±%"
-               onclick="event.stopPropagation()"
+        <input type="text" inputmode="decimal" class="price-input chg-input pct" value="${pctVal}" placeholder="%"
+               onclick="event.stopPropagation()" oninput="priceInputSanitize(this)"
+               onkeydown="priceInputKeydown(event, this)" onblur="applyPctFormat(this)"
                onchange="onChgPct(${args}, this.value)">
       </div>
     </td>
@@ -2969,11 +2888,10 @@ function _fltApplyMarginChange(leaves, changeOrFn) {
     }
   });
   renderRecsTable();
-  renderMetricsBar();
 }
 
 function onMarginChgDollar(scope, destId, weekIdx, routeId, dayId, raw) {
-  const amount = raw === '' ? 0 : Number(raw);
+  const amount = priceInputNumber(raw) == null ? 0 : priceInputNumber(raw);
   _fltApplyMarginChange(
     _fltMarginScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId),
     Number.isFinite(amount) ? amount : 0
@@ -2981,7 +2899,7 @@ function onMarginChgDollar(scope, destId, weekIdx, routeId, dayId, raw) {
 }
 
 function onMarginChgPct(scope, destId, weekIdx, routeId, dayId, raw) {
-  const pct = raw === '' ? 0 : Number(raw);
+  const pct = priceInputNumber(raw) == null ? 0 : priceInputNumber(raw);
   _fltApplyMarginChange(
     _fltMarginScopeLeaves(scope, destId, Number(weekIdx), routeId, dayId),
     Number.isFinite(pct) ? (lf => lf.currentMargin * (pct / 100)) : 0
@@ -2992,23 +2910,19 @@ function _fltMarginChgCell(scope, destId, weekIdx, routeId, dayId) {
   const { avgChange, avgCurrentMargin } = _fltMarginScopeAvg(scope, destId, weekIdx, routeId, dayId);
   const hasChg = Math.abs(avgChange) >= 0.5;
   const pctRounded = avgCurrentMargin > 0 ? Math.round((avgChange / avgCurrentMargin) * 1000) / 10 : 0;
-  const dollarVal = hasChg ? String(Math.round(avgChange)) : '0';
-  const pctVal = hasChg ? String(pctRounded) : '';
+  const dollarVal = hasChg ? '$' + Math.round(avgChange) : '';
+  const pctVal = hasChg ? pctRounded + '%' : '';
   const adjClass = hasChg ? ` has-adjustment ${avgChange < 0 ? 'adjust-down' : 'adjust-up'}` : '';
   const args = `'${scope}','${destId}','${weekIdx}','${routeId || ''}','${dayId || ''}'`;
   return `
     <td class="flt-margin-change-cell${adjClass}">
-      <div class="flt-change-pair" onclick="event.stopPropagation()">
-        <span class="flt-change-wrap">
-          <input class="flt-change-input" type="number" step="0.1" value="${pctVal}"
-                 onchange="onMarginChgPct(${args}, this.value)" />
-          <span class="flt-change-suffix">%</span>
-        </span>
-        <span class="flt-change-wrap">
-          <span class="flt-change-prefix">$</span>
-          <input class="flt-change-input" type="number" step="1" value="${dollarVal}"
-                 onchange="onMarginChgDollar(${args}, this.value)" />
-        </span>
+      <div class="price-change-pair" onclick="event.stopPropagation()">
+        <input class="price-input flt-change-input abs" type="text" inputmode="decimal" value="${dollarVal}" placeholder="$"
+               oninput="priceInputSanitize(this)" onkeydown="priceInputKeydown(event, this)"
+               onchange="onMarginChgDollar(${args}, this.value)" onblur="applyDollarFormat(this)" />
+        <input class="price-input flt-change-input pct" type="text" inputmode="decimal" value="${pctVal}" placeholder="%"
+               oninput="priceInputSanitize(this)" onkeydown="priceInputKeydown(event, this)"
+               onchange="onMarginChgPct(${args}, this.value)" onblur="applyPctFormat(this)" />
       </div>
     </td>
   `;
@@ -3063,7 +2977,7 @@ function openExposure(dateId) {
 function openDestWeekCurve(destId, weekIdx) {
   const dest = FLIGHT_DATA.find(d => d.id === destId);
   if (!dest) return;
-  const datesAtWeek = dest.routes.map(r => r.dates[weekIdx]).filter(Boolean);
+  const datesAtWeek = dest.routes.flatMap(r => flightDays(r.dates[weekIdx]));
   if (!datesAtWeek.length) return;
   const agg = aggDates(datesAtWeek);
   const refDate = datesAtWeek[0].departureDate;
@@ -3771,30 +3685,23 @@ function confirmRunEvaluation() {
   }, 2500);
 }
 function publishChanges() {
+  const btn = document.getElementById('publishBtn');
+  if (btn && (btn.disabled || btn.classList.contains('is-loading'))) return;
   const n = getPendingCount();
-  const toast = document.getElementById('reToast');
-  const text  = document.getElementById('reToastText');
-  if (!toast || !text) return;
-  if (n === 0) {
-    toast.classList.remove('running');
-    toast.classList.add('success');
-    text.textContent = '✓ No pending changes to publish';
-  } else {
+  if (!n) { showToast('No pending changes to publish'); return; }
+  if (btn) {
+    btn.classList.add('is-loading');
+    btn.querySelector('.commit-label').textContent = 'Publishing\u2026';
+  }
+  setTimeout(() => {
     // Move pending overrides into a "published" state by clearing the pending trackers.
     Object.keys(fareOverrides).forEach(k => delete fareOverrides[k]);
     acceptedRecs.clear();
-    toast.classList.remove('running');
-    toast.classList.add('success');
-    text.textContent = `✓ Published ${n} fare change${n === 1 ? '' : 's'}`;
+    if (btn) btn.classList.remove('is-loading');
     renderRecsTable();
-    renderMetricsBar();
     updatePublishBadge();
-  }
-  toast.classList.add('shown');
-  setTimeout(() => {
-    toast.classList.remove('shown');
-    toast.classList.remove('success');
-  }, 2500);
+    showToast(`Published ${n.toLocaleString()} fare change${n === 1 ? '' : 's'}`);
+  }, 1000);
 }
 
 document.addEventListener('click', (e) => {
@@ -3857,6 +3764,9 @@ function passesRouteLevel(route) {
 function passesFlightDate(date) {
   if (!date) return false;
   const af = advFilters;
+  // Slider endpoints mean no bound until the user narrows that edge.
+  const outsideRange = (value, range, min, max) =>
+    (range.min !== min && value < range.min) || (range.max !== max && value > range.max);
   const eff = getEffectiveFare(date);
   const lf = date.capacity ? (date.sold / date.capacity) * 100 : 0;
   const fLF = date.forecastLF * 100;
@@ -3873,20 +3783,20 @@ function passesFlightDate(date) {
   if (af.alertNotes && !hasNote) return false;
   if (af.alertBehindLF && !(date.forecastLF < date.targetLF)) return false;
 
-  if (lf  < af.currentLF.min  || lf  > af.currentLF.max)  return false;
-  if (fLF < af.forecastLF.min || fLF > af.forecastLF.max) return false;
-  if (tLF < af.targetLF.min   || tLF > af.targetLF.max)   return false;
-  if (eff < af.currentFare.min || eff > af.currentFare.max) return false;
+  if (outsideRange(lf, af.currentLF, 0, 100)) return false;
+  if (outsideRange(fLF, af.forecastLF, 0, 100)) return false;
+  if (outsideRange(tLF, af.targetLF, 0, 100)) return false;
+  if (outsideRange(eff, af.currentFare, 0, 1000)) return false;
   const effMargin = getEffectiveMargin(date);
-  if (effMargin < af.currentMargin.min || effMargin > af.currentMargin.max) return false;
-  if (date.capacity < af.capacity.min || date.capacity > af.capacity.max) return false;
+  if (outsideRange(effMargin, af.currentMargin, 0, 300)) return false;
+  if (outsideRange(date.capacity, af.capacity, 0, 300)) return false;
 
   if (af.recDiffers && date.recFare === eff) return false;
   if (af.unsoldGt20 && unsoldPct <= 20) return false;
   if (af.ros === 'ahead' && !rosAhead) return false;
   if (af.ros === 'behind' && rosAhead) return false;
   if (af.compCheaper && compD <= 0) return false;
-  if (compD < af.compDelta.min || compD > af.compDelta.max) return false;
+  if (outsideRange(compD, af.compDelta, -100, 100)) return false;
   return true;
 }
 
@@ -3982,11 +3892,12 @@ function getCalendarWeeks() {
   const weeks = [];
   for (let i = 0; i < weekCount; i++) {
     // Reference date for this week index — first route that actually flies it.
-    const refDate = routes.map(r => r.dates && r.dates[i]).find(Boolean);
+    const dates = routes.flatMap(r => flightDays(r.dates && r.dates[i]))
+      .filter(passesHeaderDate);
+    const refDate = dates[0];
     if (!refDate) continue;
     // Respect the header date filter: only weeks in range become columns, so
     // selecting weeks narrows the calendar instead of just blanking cells.
-    if (headerFiltersActive() && !passesHeaderDate(refDate)) continue;
     weeks.push({
       idx: i,
       departureDate: refDate.departureDate,
@@ -4016,27 +3927,29 @@ function getCalendarBuckets() {
 
   const byMonth = new Map();
   weeks.forEach(w => {
-    const d = parseAppDate(w.departureDate);
-    const key = d
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      : `month-${w.idx}`;
-    if (!byMonth.has(key)) {
-      byMonth.set(key, {
-        key,
-        idx: w.idx,
-        departureDate: w.departureDate,
-        label: monthYearLabel(w.departureDate),
-        mmdd: '',
-        indices: [],
-        mode: 'month',
-      });
-    }
-    const bucket = byMonth.get(key);
-    bucket.indices.push(w.idx);
-    bucket.lastDepartureDate = w.departureDate;
+    const dates = FLIGHT_DATA.flatMap(dest => dest.routes.flatMap(r => flightDays(r.dates[w.idx])))
+      .filter(passesHeaderDate);
+    dates.forEach(day => {
+      const d = parseAppDate(day.departureDate);
+      if (!d) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!byMonth.has(key)) {
+        byMonth.set(key, {
+          key,
+          idx: w.idx,
+          departureDate: day.departureDate,
+          label: monthYearLabel(day.departureDate),
+          mmdd: '',
+          indices: [],
+          mode: 'month',
+        });
+      }
+      const bucket = byMonth.get(key);
+      if (!bucket.indices.includes(w.idx)) bucket.indices.push(w.idx);
+    });
   });
 
-  return Array.from(byMonth.values()).map(bucket => {
+  return Array.from(byMonth.values()).sort((a, b) => a.key.localeCompare(b.key)).map(bucket => {
     const n = bucket.indices.length;
     return Object.assign(bucket, {
       mmdd: `${n} wk${n === 1 ? '' : 's'}`,
@@ -4085,13 +3998,18 @@ function calLfClass(lf) {
 }
 
 function calDatesForDest(dest, bucket) {
-  return dest.routes.flatMap(route => calDatesForRoute(route, bucket));
+  return dest.routes.filter(passesRouteLevel).flatMap(route => calDatesForRoute(route, bucket));
 }
 
 function calDatesForRoute(route, bucket) {
   return (bucket.indices || [bucket.idx])
-    .map(i => route.dates[i])
-    .filter(Boolean);
+    .flatMap(i => flightDays(route.dates[i]))
+    .filter(day => {
+      if (!passesHeaderDate(day) || !passesFlightDate(day)) return false;
+      if (bucket.mode !== 'month') return true;
+      const d = parseAppDate(day.departureDate);
+      return d && `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === bucket.key;
+    });
 }
 
 function calMetricsMarkup(agg) {
@@ -4163,12 +4081,12 @@ function renderCalendar() {
   const sortedDests = FLIGHT_DATA.slice().sort((a, b) => {
     const aLF = (() => {
       let s = 0, n = 0;
-      a.routes.forEach(r => r.dates.forEach(d => { if (d) { s += d.forecastLF; n++; } }));
+      a.routes.forEach(r => r.dates.flatMap(flightDays).forEach(d => { s += d.forecastLF; n++; }));
       return n ? s / n : 0;
     })();
     const bLF = (() => {
       let s = 0, n = 0;
-      b.routes.forEach(r => r.dates.forEach(d => { if (d) { s += d.forecastLF; n++; } }));
+      b.routes.forEach(r => r.dates.flatMap(flightDays).forEach(d => { s += d.forecastLF; n++; }));
       return n ? s / n : 0;
     })();
     return (aLF - bLF) * mul;
@@ -4375,7 +4293,7 @@ function renderCalPanel() {
 
   if (type === 'date') {
     const route = dest.routes.find(r => r.id === routeId);
-    const date  = route ? route.dates.find(d => d.id === dateId) : null;
+    const date = route ? route.dates.flatMap(flightDays).find(d => d.id === dateId) : null;
     if (!route || !date) { content.innerHTML = ''; return; }
     const eff = getEffectiveFare(date);
     const effMargin = getEffectiveMargin(date);
@@ -4453,8 +4371,7 @@ function renderCalPanel() {
   if (type === 'route') {
     const route = dest.routes.find(r => r.id === routeId);
     if (!route) { content.innerHTML = ''; return; }
-    const routeBucketDates = bucketIndices.map(i => route.dates[i]).filter(Boolean);
-    const date = route.dates[weekIdx] || routeBucketDates[0];
+    const routeBucketDates = calDatesForRoute(route, bucket || { indices: bucketIndices });
     const agg = routeBucketDates.length ? aggDates(routeBucketDates) : null;
     // Per-date chips for only the clicked calendar week/month block.
     const dateChips = routeBucketDates.map((d) => {
@@ -4498,12 +4415,12 @@ function renderCalPanel() {
   }
 
   // type === 'dest'
-  const datesAtWeek = calDatesForDest(dest, { indices: bucketIndices });
+  const datesAtWeek = calDatesForDest(dest, bucket || { indices: bucketIndices });
   const agg = aggDates(datesAtWeek);
   const ratio = bedsSeatsRatio(datesAtWeek);
   const hOcc  = hotelOccForIndices(dest, bucketIndices);
   const routeChips = dest.routes.map(r => {
-    const routeDates = bucketIndices.map(i => r.dates[i]).filter(Boolean);
+    const routeDates = calDatesForRoute(r, bucket || { indices: bucketIndices });
     if (!routeDates.length) return '';
     const rAgg = aggDates(routeDates);
     const lf = rAgg ? rAgg.lf : 0;
@@ -4569,6 +4486,7 @@ function cdpExpandDest(destId) {
 
 // ── Init ───────────────────────────────────────────────────
 function _initApp() {
+  updatePublishBadge();
   Filters.populateStandard({
     onAnyChange: (active) => {
       headerFilters = active;
@@ -4584,7 +4502,6 @@ function _initApp() {
   }
   buildAdvDrawer();
   syncAdvBadge();
-  renderMetricsBar();
   renderRecsHead();
   renderRecsTable();
   renderCompetitorTable();
@@ -4934,7 +4851,7 @@ let _rowCopilotCtxData = null; // precomputed context for current ctx
 function _flightRowContext(destId, weekIdx) {
   const dest = FLIGHT_DATA.find(d => d.id === destId);
   if (!dest) return null;
-  const datesAtWeek = dest.routes.map(r => r.dates[weekIdx]).filter(Boolean);
+  const datesAtWeek = dest.routes.flatMap(r => flightDays(r.dates[weekIdx]));
   if (!datesAtWeek.length) return null;
   const agg = aggDates(datesAtWeek);
   const refDate = datesAtWeek[0].departureDate;
@@ -5291,7 +5208,7 @@ function _generalFlightAnswer(q) {
   if (/(most at risk|at risk|risk|behind target|behind plan)/.test(ql)) {
     const atRisk = [];
     FLIGHT_DATA.forEach(dest => dest.routes.forEach(r => {
-      r.dates.forEach(d => {
+      r.dates.flatMap(flightDays).forEach(d => {
         const lfPct = d.capacity ? (d.sold / d.capacity) * 100 : 0;
         const tgtPct = d.targetLF * 100;
         if (lfPct < tgtPct) {
@@ -5310,7 +5227,7 @@ function _generalFlightAnswer(q) {
   // Competitor undercuts — from CSV comp fields on FLIGHT_DATA.
   if (/(undercut|competitor|\bcomp\b|cheaper)/.test(ql)) {
     const under = [];
-    FLIGHT_DATA.forEach(dest => dest.routes.forEach(r => r.dates.forEach(d => {
+    FLIGHT_DATA.forEach(dest => dest.routes.forEach(r => r.dates.flatMap(flightDays).forEach(d => {
       const comps = [d.comp1Fare, d.comp2Fare].filter(v => v != null && v > 0);
       if (!comps.length) return;
       const cheapest = Math.min(...comps);
@@ -5327,7 +5244,7 @@ function _generalFlightAnswer(q) {
   if (/(best|top performing|best performing|strongest)/.test(ql)) {
     const perDest = FLIGHT_DATA.map(dest => {
       let lfSum = 0, n = 0;
-      dest.routes.forEach(r => r.dates.forEach(d => {
+      dest.routes.forEach(r => r.dates.flatMap(flightDays).forEach(d => {
         const lf = d.capacity ? d.sold / d.capacity : 0;
         lfSum += lf; n++;
       }));
@@ -5340,7 +5257,7 @@ function _generalFlightAnswer(q) {
   // Need fare adjustments
   if (/(fare adjust|need adjust|price adjust|need pricing)/.test(ql)) {
     const needs = [];
-    FLIGHT_DATA.forEach(dest => dest.routes.forEach(r => r.dates.forEach(d => {
+    FLIGHT_DATA.forEach(dest => dest.routes.forEach(r => r.dates.flatMap(flightDays).forEach(d => {
       const delta = d.recFare - getEffectiveFare(d);
       if (Math.abs(delta) >= 15) needs.push({ dest, route: r, date: d, delta });
     })));
@@ -5376,7 +5293,7 @@ function _generalFlightAnswer(q) {
     { id: 'bsRatio',       label: 'Beds/Seats',       col: 13 },
     { id: 'hotelOcc',      label: 'Hotel Occ %',      col: 14 },
     { id: 'flags',         label: 'Flags',            col: 15 },
-    { id: 'capAlert',      label: 'Cap. Alert',       col: 16 },
+    { id: 'capAlert',      label: 'Alerts',           col: 16 },
   ];
   const columnVisibility = Object.fromEntries(COLUMN_DEFS.map(d => [d.id, true]));
   let built = false;

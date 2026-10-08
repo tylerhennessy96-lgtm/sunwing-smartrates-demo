@@ -304,7 +304,7 @@
         }
       }
 
-      segments.forEach(function (segment) {
+      if (dataset.showLine !== false) segments.forEach(function (segment) {
         if (segment.length < 2) return;
         pathLine(ctx, segment);
         dashed(ctx, dataset.borderDash);
@@ -312,6 +312,26 @@
         ctx.lineWidth = dataset.borderWidth || 2;
         ctx.stroke();
         dashed(ctx, []);
+      });
+      datasetYs.forEach(function (y, pointIndex) {
+        var x = datasetXs[pointIndex];
+        var radius = Array.isArray(dataset.pointRadius) ? dataset.pointRadius[pointIndex] : dataset.pointRadius;
+        radius = toNumber(radius, 0);
+        if (radius <= 0 || y == null || !Number.isFinite(x) || !Number.isFinite(y)) return;
+        var fill = Array.isArray(dataset.pointBackgroundColor)
+          ? dataset.pointBackgroundColor[pointIndex] : dataset.pointBackgroundColor;
+        var border = Array.isArray(dataset.pointBorderColor)
+          ? dataset.pointBorderColor[pointIndex] : dataset.pointBorderColor;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = fill || dataset.borderColor || "#e91e8c";
+        ctx.fill();
+        var borderWidth = toNumber(dataset.pointBorderWidth, 0);
+        if (borderWidth > 0) {
+          ctx.strokeStyle = border || dataset.borderColor || "#e91e8c";
+          ctx.lineWidth = borderWidth;
+          ctx.stroke();
+        }
       });
     });
 

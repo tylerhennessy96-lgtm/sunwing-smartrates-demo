@@ -533,11 +533,44 @@
       byRoute.forEach((routeRows, routeId) => {
         const rFirst = routeRows[0];
         const dates = new Array(weeks.length).fill(null);
-        routeRows.forEach(r => {
-          const idx = weekIdxByIso.get(r.week_start);
-          if (idx != null) dates[idx] = buildFlightDate(r);
+        groupBy(routeRows, r => r.week_start).forEach((weekRows, weekStart) => {
+          const idx = weekIdxByIso.get(weekStart);
+          if (idx == null) return;
+          const days = weekRows.slice()
+            .sort((a, b) => String(a.departure_date).localeCompare(String(b.departure_date))
+              || String(a.departure_time).localeCompare(String(b.departure_time)))
+            .map(buildFlightDate);
+          if (days.length === 1) {
+            dates[idx] = days[0];
+            return;
+          }
+          // Keep the weekly slot for existing consumers, with every departure beneath it.
+          const capacity = sumBy(days, d => d.capacity);
+          dates[idx] = Object.assign({}, days[0], {
+            id: `${routeId}::${weekStart}`,
+            days,
+            capacity,
+            sold: sumBy(days, d => d.sold),
+            unsold: sumBy(days, d => d.unsold),
+            currentLF: capacity ? sumBy(days, d => d.currentLF * d.capacity) / capacity : 0,
+            currentFare: avgBy(days, d => d.currentFare),
+            recFare: avgBy(days, d => d.recFare),
+            deltaFare: avgBy(days, d => d.deltaFare),
+            currentMargin: avgBy(days, d => d.currentMargin),
+            recMargin: avgBy(days, d => d.recMargin),
+            forecastLF: avgBy(days, d => d.forecastLF),
+            targetLF: avgBy(days, d => d.targetLF),
+            rateOfSale: avgBy(days, d => d.rateOfSale),
+            rateOfSaleTarget: avgBy(days, d => d.rateOfSaleTarget),
+            hasCostChange: days.some(d => d.hasCostChange),
+            capacityAlert: days.some(d => d.capacityAlert),
+            locked: days.every(d => d.locked),
+            autoChanged: days.some(d => d.autoChanged),
+            economy: null,
+            business: null,
+          });
         });
-        const present = dates.filter(Boolean);
+        const present = dates.filter(Boolean).flatMap(d => d.days || [d]);
         const avgCurrentFare = avgBy(present, d => d.currentFare);
         const avgRecFare = avgBy(present, d => d.recFare);
         const avgCurrentMargin = avgBy(present, d => d.currentMargin);
@@ -565,7 +598,7 @@
       });
       routes.sort((a, b) => a.id.localeCompare(b.id));
 
-      const allDates = routes.flatMap(r => r.dates.filter(Boolean));
+      const allDates = routes.flatMap(r => r.dates.filter(Boolean).flatMap(d => d.days || [d]));
       destinations.push({
         id: String(destId),
         name: first.destination_name,

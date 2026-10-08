@@ -1,7 +1,7 @@
 # Dynamica SmartRates - Project Context
 
 Living context document. Keep this current so any teammate or future session can
-get oriented quickly. Verified against the codebase on 2026-07-03.
+get oriented quickly. Verified against the codebase on 2026-10-08.
 
 ## Project
 
@@ -50,6 +50,33 @@ Required committed runtime data:
 
 Current committed package export: **29,095 rows**.
 
+Current local refresh: **29,095 package rows** and **272 flight rows**, both
+covering departures from 2026-06-08 through 2026-09-07. The regenerated curve
+JSONs contain 476 outbound keys, 475 inbound keys, and 2,558 hotel keys.
+Hotel keys match every package row. The raw flight exports omit 3 outbound
+pricing keys (210 package rows) and 4 inbound pricing keys (280 package rows);
+those offerings use the existing no-curve state. The raw files contain
+3,471,800 rows in total and passed checks for schema, buckets, dates, curve
+types, and finite numeric values.
+
+Flight grouping retains all 272 departures. Each route/week slot contains
+either a single flight or a weekly summary with a `days` collection. Summary
+totals include all departures; list rows, calendar cells, date lookups, and
+margin scopes use the individual flights. Calendar month buckets filter on
+actual departure dates, including weeks spanning two months. Default slider
+endpoints are unbounded until narrowed, preserving forecasts over 100% and
+preventing inactive advanced filters from hiding flights.
+
+`scripts/test_frontend_regressions.js` checks complete CSV flight coverage,
+totals, sparse weekly grouping, daily lookups, and chart markers using Node.js
+and the already-vendored CSV parser. Browser checks also confirmed all 272
+list/calendar departures, period-scoped detail panels, bulk margin changes,
+and orange price-history points at desktop and mobile widths.
+
+Hotels is intentionally empty for this demo: `v_hotel_pricing_pg.csv` is not
+supplied. Flights hotel-occupancy values are therefore blank as well. This
+does not affect package hotel metrics or package hotel booking curves.
+
 Packages currently display pickup from `pickup_pax_1d`, `pickup_pax_3d`, and
 `pickup_pax_7d`; the old 14-day pickup column is no longer shown.
 
@@ -72,6 +99,9 @@ because they are too large for the static image/repo:
 | `data/outbound_booking_curve.csv` | ignored raw source |
 | `data/inbound_booking_curve.csv` | ignored raw source |
 | `data/hotel_booking_curve.csv` | ignored raw source |
+
+These three inputs are excluded by both `.gitignore` and `.dockerignore`;
+the container ships only their generated curve JSONs.
 
 Rebuild the committed compact curve JSON after raw curve CSV changes:
 
@@ -100,7 +130,9 @@ the raw `weeks_to_stay` bucket when available and falls back to
 `data/` is the web root in container/`serve-demo.ps1` environments:
 
 - Docker: `Dockerfile` copies `data/` to `/srv/www/`, nginx listens on `8080`.
-- Local: `serve-demo.ps1` serves `data/` at `http://localhost:8099/`.
+- Local: `python -m http.server 8099 --bind 127.0.0.1 --directory data` serves
+  `data/` at `http://localhost:8099/`. The ignored `serve-demo.ps1` helper is
+  optional and may be absent in a fresh checkout.
 
 Useful local URLs:
 
@@ -121,8 +153,8 @@ Opening pages via `file://` will not work because the browser must fetch CSVs.
 
 | Page | Purpose |
 | --- | --- |
-| `data/flight.html` | Read-only flight load factor, competitor fares, week/month calendar view, RM Copilot |
-| `data/hotel.html` | Hotels pricing recs, occupancy, cost-change flags, RM Copilot |
+| `data/flight.html` | Flight load factor, margin-only what-if adjustments, competitor fares, week/month calendar view, RM Copilot |
+| `data/hotel.html` | Hotels pricing and occupancy UI; intentionally empty without a hotel pricing export |
 | `data/pricing.html` | Package pricing accordion, bell alert column, status column, date/advanced filters, column selector, selected-row bulk overrides, paginated rendering, booking curves |
 | `data/parameters.html` | Package alert thresholds, package rules, and package price-control guardrails; flights/hotels remain blank |
 | `data/index.html` | Entry point |
@@ -148,11 +180,13 @@ Copilot. Known gaps include:
 - Flight calendar/list load-factor fields come from `curve_current_lf`,
   `curve_forecast_final_lf`, and `curve_target_same_time_last_year_lf`; booked
   seats come from `curve_current_booked_seats`.
-- Flights is currently read-only; package pricing remains the active override
-  workflow.
+- Flights supports local margin-only what-if adjustments; package pricing
+  remains the active price-override workflow.
 - Publish, approval, and audit history.
 - Historical fare/ADR time series. The Packages booking panel includes a mock
-  package price-history chart with margin-change dots for demo storytelling.
+  package price-history chart for demo storytelling, with orange mock
+  margin-change points and hover details. `chart.local.js` supports point radii,
+  point colors, borders, and marker-only datasets without connecting lines.
 - Detailed cost-change history beyond the CSV flag.
 - Package autopilot/rule execution beyond the visible localStorage
   configuration.

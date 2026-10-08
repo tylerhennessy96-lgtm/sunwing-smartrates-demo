@@ -1,3 +1,8 @@
 .git
 .gitlab-ci.yml
 README.md
+
+# Raw curve exports are local inputs; the app uses the generated JSON files.
+data/outbound_booking_curve.csv
+data/inbound_booking_curve.csv
+data/hotel_booking_curve.csv

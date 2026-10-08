@@ -205,12 +205,11 @@
       font-weight:400;
       font-family:var(--font-sans);
     }
-    tr.pkg-level-2 .pkg-h-cell:nth-child(-n+2) .pkg-h-title,
-    tr.pkg-room-row .pkg-h-cell:nth-child(-n+2) .pkg-h-title {
-      color: var(--text-secondary);
-      font-size: 11.5px;
-      font-weight: 500;
-    }
+    /* Route (gateway → destination) is blank on hotel and room rows (inherited from the itinerary row) */
+    .pkg-h-inherited { padding: 0 !important; }
+    table.data-table.packages-table td.pkg-route-cell { white-space: normal; }
+    .pkg-route-cell .pkg-h-title { -webkit-line-clamp: 2; line-height: 1.2; }
+    .pkg-route-arrow { color: var(--text-muted); font-weight: 400; margin: 0 1px; }
     tr.pkg-level-2 .pkg-level-cell-2 { padding-left: 28px !important; }
     .pkg-room-cell { padding-left:44px !important; }
     .pkg-placeholder {
@@ -234,7 +233,7 @@
     /* Package-only date range picker. The shared picker remains week-based for the other tabs. */
     .pkg-date-range-popover {
       width: 580px;
-      color: #e5e7eb;
+      color: var(--text-primary);
     }
     @media (max-width: 700px) {
       .pkg-date-range-popover { width: min(92vw, 360px); }
@@ -243,7 +242,7 @@
     .pkg-date-range-title {
       font-size: 11px;
       font-weight: 600;
-      color: #9ca3af;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: .06em;
       margin-bottom: 0;
@@ -262,21 +261,21 @@
     .pkg-calendar-nav {
       width: 28px;
       height: 28px;
-      border: 1px solid #2a2d35;
+      border: 1px solid var(--border-mid);
       border-radius: 4px;
-      background: #1e2028;
-      color: #e5e7eb;
+      background: var(--surface);
+      color: var(--text-secondary);
       cursor: pointer;
       line-height: 1;
     }
-    .pkg-calendar-nav:hover { border-color: var(--accent); color: #fff; }
+    .pkg-calendar-nav:hover { border-color: var(--accent); color: var(--accent); }
     .pkg-calendar-months {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 18px;
     }
     .pkg-calendar-month-title {
-      color: #f3f4f6;
+      color: var(--text-primary);
       font-weight: 600;
       font-size: 12px;
       margin-bottom: 9px;
@@ -289,9 +288,9 @@
       gap: 3px;
     }
     .pkg-calendar-weekdays span {
-      color: #6b7280;
+      color: var(--text-muted);
       font-size: 10px;
-      font-weight: 700;
+      font-weight: 600;
       text-align: center;
       text-transform: uppercase;
     }
@@ -300,25 +299,25 @@
       border: 1px solid transparent;
       border-radius: 4px;
       background: transparent;
-      color: #d1d5db;
+      color: var(--text-primary);
       font-family: var(--font-sans);
       font-size: 12px;
       cursor: pointer;
     }
-    .pkg-calendar-day:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .pkg-calendar-day:hover { background: var(--row-hover); color: var(--text-primary); }
     .pkg-calendar-day.empty {
       visibility: hidden;
       pointer-events: none;
     }
     .pkg-calendar-day.disabled {
-      color: #4b5563;
+      color: var(--text-muted);
       cursor: default;
       opacity: .45;
     }
-    .pkg-calendar-day.disabled:hover { background: transparent; color: #4b5563; }
+    .pkg-calendar-day.disabled:hover { background: transparent; color: var(--text-muted); }
     .pkg-calendar-day.in-range {
-      background: rgba(233, 30, 140, .14);
-      color: #fff;
+      background: rgba(233, 30, 140, .12);
+      color: var(--accent-dim);
     }
     .pkg-calendar-day.range-start,
     .pkg-calendar-day.range-end {
@@ -328,7 +327,7 @@
       font-weight: 700;
     }
     .pkg-calendar-day.today {
-      border-color: rgba(255,255,255,.38);
+      border-color: var(--border-mid);
     }
     .pkg-date-actions {
       display: flex;
@@ -336,14 +335,14 @@
       gap: 8px;
       margin-top: 12px;
       padding-top: 10px;
-      border-top: 1px solid #2a2d35;
+      border-top: 1px solid var(--border);
     }
     .pkg-date-actions button {
       height: 28px;
       border-radius: 4px;
-      border: 1px solid #2a2d35;
-      background: #1e2028;
-      color: #e5e7eb;
+      border: 1px solid var(--border-mid);
+      background: var(--surface);
+      color: var(--text-primary);
       font-family: var(--font-sans);
       font-size: 12px;
       padding: 0 10px;
@@ -359,48 +358,19 @@
       padding-left: 4px !important;
       padding-right: 4px !important;
     }
-    .pkg-alert-bell {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      width: 28px;
-      height: 24px;
-      border: 0;
-      border-radius: 5px;
-      background: transparent;
-      color: #9ca3af;
-      cursor: default;
+    /* Adisseo-style amber bell with a count badge, click → "Alerts in effect" popup */
+    .alert-bell-wrap { position: relative; display: inline-flex; }
+    .alert-bell {
+      background: none; border: none; cursor: pointer; padding: 0;
+      display: inline-flex; align-items: center;
     }
-    .pkg-alert-bell svg {
-      width: 14px;
-      height: 14px;
-      display: block;
-    }
-    .pkg-alert-bell.has-alerts {
-      color: #b91c1c;
-    }
-    .pkg-alert-bell.muted {
-      color: #c7cdd6;
-    }
-    .pkg-alert-count {
-      position: absolute;
-      top: 2px;
-      right: 1px;
-      min-width: 14px;
-      height: 14px;
-      padding: 0 3px;
-      border-radius: 999px;
-      background: var(--accent);
-      color: #fff;
-      font-size: 9px;
-      font-weight: 700;
-      line-height: 14px;
-      box-shadow: 0 0 0 1px #fff;
-    }
-    .pkg-alert-bell.muted .pkg-alert-count {
-      background: #d1d5db;
-      color: #6b7280;
+    .alert-bell-badge {
+      position: absolute; top: -4px; right: -6px;
+      background: #f5a623; color: #fff;
+      font-size: 8px; font-weight: 700; border-radius: 8px;
+      min-width: 14px; height: 14px; padding: 0 3px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
     }
     .pkg-metric-bad { color: var(--danger) !important; font-weight: 600; }
     .pkg-metric-warn { color: #b45309 !important; font-weight: 600; }
@@ -507,66 +477,6 @@
     .bp-k-margin   { border-top-color: #f5a623; border-top-width: 0; height: 8px; width: 8px; border-radius: 50%; background: #f5a623; }
     .bp-xaxis-label { text-align: center; font-size: 10.5px; color: #6b7280; margin-top: 4px; }
 
-    .pkg-alert-modal-backdrop {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(7, 10, 18, .45);
-      z-index: 260;
-    }
-    .pkg-alert-modal-backdrop.open { display: flex; }
-    .pkg-alert-modal {
-      width: 420px;
-      max-width: calc(100vw - 32px);
-      border: 1px solid #3d4150;
-      border-radius: 8px;
-      background: #10131d;
-      color: #f9fafb;
-      box-shadow: 0 18px 60px rgba(0,0,0,.38);
-      overflow: hidden;
-    }
-    .pkg-alert-modal-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid #262a36;
-    }
-    .pkg-alert-modal-title { font-size: 14px; font-weight: 700; }
-    .pkg-alert-modal-sub { margin-top: 3px; font-size: 11px; color: #9ca3af; }
-    .pkg-alert-modal-close {
-      border: 0;
-      background: transparent;
-      color: #9ca3af;
-      cursor: pointer;
-      padding: 2px;
-    }
-    .pkg-alert-modal-body { padding: 12px 16px 16px; }
-    .pkg-alert-modal-row {
-      display: grid;
-      grid-template-columns: 54px 1fr;
-      gap: 10px;
-      padding: 9px 0;
-      border-bottom: 1px solid #262a36;
-    }
-    .pkg-alert-modal-row:last-child { border-bottom: 0; }
-    .pkg-alert-modal-key {
-      align-self: start;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      height: 22px;
-      border-radius: 4px;
-      background: rgba(232,0,125,.16);
-      color: #f9a8d4;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: .03em;
-    }
-    .pkg-alert-modal-text { font-size: 12.5px; line-height: 1.35; color: #e5e7eb; }
 
     /* ── Package Rules drawer (separate from adv-drawer) ─────── */
     .pkg-rules-drawer {
@@ -802,8 +712,40 @@
     .re-toast.success .check { display: inline; }
     @keyframes reSpin { to { transform: rotate(360deg); } }
 
-    /* ── Action icons (reuse .pkg-action-icons from styles.css) ─ */
-    .pkg-action-icons button.locked { color: var(--accent); background: rgba(232, 0, 125, 0.10); }
+    /* ── Action cell + accept/reject buttons (Fizz / Adisseo styling) ── */
+    td.action-cell { white-space: nowrap; text-align: center; }
+    table.data-table.packages-table th:last-child,
+    table.data-table.packages-table td:last-child { padding-right: 20px !important; }
+    td.pkg-pace-cell { white-space: nowrap; overflow: hidden; }
+    .action-cell-inner { display: inline-flex; align-items: center; gap: 6px; }
+    .action-btn {
+      width: 24px; height: 24px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%; border: 1.5px solid;
+      background: var(--surface); cursor: pointer; padding: 0;
+      transition: background .12s, border-color .12s, color .12s;
+      flex-shrink: 0;
+    }
+    .action-btn svg { display: block; }
+    .action-btn:disabled { opacity: .35; cursor: default; }
+    .act-accept { color: #16a34a; border-color: #bbf7d0; }
+    .act-accept:hover:not(:disabled) { background: #dcfce7; border-color: #16a34a; }
+    .act-accept.solid { background: #16a34a; color: #fff; border-color: #16a34a; }
+    .act-reject { color: #dc2626; border-color: #fecaca; }
+    .act-reject:hover:not(:disabled) { background: #fee2e2; border-color: #dc2626; }
+    .act-reject.solid { background: #dc2626; color: #fff; border-color: #dc2626; }
+    .action-note {
+      background: none; border: none; cursor: pointer; padding: 2px; border-radius: 4px;
+      color: var(--text-muted); display: inline-flex; align-items: center; opacity: .55;
+      transition: color .12s, opacity .12s;
+    }
+    .action-note svg { width: 14px; height: 14px; }
+    .action-note:hover { color: var(--accent); opacity: 1; }
+    .action-note.has-note { color: var(--accent); opacity: 1; }
+    tr.pkg-room-row.row-accepted > td { background: #f1faf3 !important; }
+    tr.pkg-room-row.row-accepted:hover > td { background: #e7f4ec !important; }
+    tr.pkg-room-row.row-rejected > td { background: #fdf3f3 !important; }
+    tr.pkg-room-row.row-rejected:hover > td { background: #f7e6e6 !important; }
 
     /* ── Regular ("was") price under the editable price input ── */
     /* "$" adornment beside the editable price / margin inputs */
@@ -818,69 +760,10 @@
       font-size: 11px;
     }
     .cur-pink { color: var(--accent) !important; font-weight: 600; }
-    .pkg-change-cell { padding-left: 5px !important; padding-right: 5px !important; }
-    .pkg-change-pair {
-      display: inline-grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 5px;
-      width: 100%;
-      min-width: 118px;
-    }
-    .pkg-change-wrap {
-      height: 28px;
-      border: 1px solid var(--border-mid);
-      border-radius: 5px;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      overflow: hidden;
-    }
-    .pkg-change-wrap.disabled {
-      opacity: .48;
-      background: #f3f4f6;
-    }
-    .pkg-change-cell.has-adjustment .pkg-change-wrap {
-      border-color: rgba(232, 0, 125, 0.35);
-      background: rgba(232, 0, 125, 0.035);
-    }
-    .pkg-change-cell.adjust-down .pkg-change-wrap {
-      border-color: rgba(231, 76, 60, 0.32);
-      background: rgba(231, 76, 60, 0.035);
-    }
-    .pkg-change-input {
-      width: 100%;
-      min-width: 0;
-      height: 26px;
-      border: 0;
-      background: transparent;
-      font-family: var(--font-sans);
-      font-size: 12px;
-      font-weight: 400;
-      color: var(--text-primary);
-      text-align: right;
-      padding: 2px 5px;
-      outline: none;
-    }
-    .pkg-change-input:disabled { color: var(--text-muted); }
-    .pkg-change-prefix,
-    .pkg-change-suffix {
-      flex: 0 0 auto;
-      color: var(--text-muted);
-      font-size: 12px;
-      padding: 0 5px;
-    }
-    .pkg-actions-cell { text-align: center; }
-    .pkg-actions-cell .pkg-action-icons {
-      justify-content: center;
-      gap: 5px;
-      white-space: nowrap;
-    }
-    .pkg-action-icons button.accepted,
-    .pkg-action-icons button.rejected,
-    .pkg-action-icons button.has-note {
-      color: var(--accent);
-      background: rgba(232, 0, 125, 0.08);
-    }
+    .pkg-change-cell { padding-left: 6px !important; padding-right: 6px !important; }
+    .pkg-change-cell.has-adjustment .pkg-change-input { border-color: rgba(233, 30, 140, 0.45); color: var(--accent); font-weight: 600; }
+    .pkg-change-cell.adjust-down .pkg-change-input { border-color: rgba(231, 76, 60, 0.45); color: var(--danger); }
+    .pkg-change-cell .pkg-change-input:focus { color: var(--text-primary); font-weight: 400; }
     .pkg-status-cell {
       text-align: center;
       padding-left: 4px !important;
@@ -966,19 +849,115 @@
       border-color: var(--accent);
       color: var(--accent);
     }
+    /* ── Bulk price update modal (Fizz styling) ── */
+    .bulk-backdrop {
+      position: fixed; inset: 0; background: rgba(26,26,46,0.55); z-index: 1200;
+      display: none; align-items: center; justify-content: center; padding: 24px;
+    }
+    .bulk-backdrop.is-open { display: flex; }
+    .bulk-modal {
+      background: var(--surface); border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.28);
+      width: 460px; max-width: calc(100vw - 48px);
+      font-family: var(--font-sans);
+    }
+    .bulk-modal-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 16px 22px 12px; border-bottom: 1px solid var(--border);
+    }
+    .bulk-modal-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .bulk-modal-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .bulk-modal-close {
+      background: none; border: none; cursor: pointer; color: var(--text-muted);
+      padding: 4px; border-radius: 6px; display: inline-flex;
+    }
+    .bulk-modal-close:hover { background: #f3f4f8; color: var(--text-primary); }
+    .bulk-modal-body { padding: 16px 22px; display: flex; flex-direction: column; gap: 14px; }
+    .bulk-type-row { display: flex; gap: 10px; }
+    .bulk-type-opt {
+      flex: 1; display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid var(--border-mid); border-radius: var(--radius);
+      padding: 9px 12px; font-size: 12.5px; font-weight: 500;
+      color: var(--text-primary); cursor: pointer;
+      transition: border-color .12s, background .12s;
+    }
+    .bulk-type-opt:hover { border-color: var(--accent); }
+    .bulk-type-opt:has(input:checked) { border-color: var(--accent); background: rgba(233,30,140,0.05); }
+    .bulk-type-opt input { accent-color: var(--accent); }
+    .bulk-value-row { display: flex; align-items: center; gap: 10px; }
+    .bulk-value-row label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+    .bulk-value-row input {
+      flex: 1; height: 34px; padding: 0 12px;
+      border: 1px solid var(--border-mid); border-radius: var(--radius);
+      font-family: var(--font-sans); font-size: 13.5px; font-weight: 500;
+      color: var(--text-primary); font-variant-numeric: tabular-nums;
+    }
+    .bulk-value-row input:focus { outline: 1.5px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+    .bulk-unit { font-size: 13px; font-weight: 600; color: var(--text-secondary); width: 16px; }
+    .bulk-hint { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+    .bulk-hint b { color: var(--text-secondary); }
+    .bulk-preview { display: flex; flex-direction: column; gap: 4px; }
+    .bulk-preview-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 2px;
+    }
+    .bulk-preview-row {
+      display: flex; justify-content: space-between; gap: 12px;
+      font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums;
+    }
+    .bulk-preview-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .bulk-preview-row span:last-child { white-space: nowrap; flex-shrink: 0; }
+    .bulk-preview-row b { color: var(--text-primary); }
+    .bulk-preview-more { font-size: 11px; color: var(--text-muted); font-style: italic; }
+    .bulk-modal-footer {
+      padding: 14px 22px 18px; border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .bulk-btn-ghost, .bulk-btn-primary {
+      font-family: var(--font-sans); font-size: 12.5px; font-weight: 600;
+      padding: 8px 16px; border-radius: var(--radius); cursor: pointer;
+      transition: background .12s, opacity .12s;
+    }
+    .bulk-btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-mid); }
+    .bulk-btn-ghost:hover { background: #f3f4f8; color: var(--text-primary); }
+    .bulk-btn-primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+    .bulk-btn-primary:hover:not(:disabled) { background: var(--accent-dim); border-color: var(--accent-dim); }
+    .bulk-btn-primary:disabled { opacity: 0.45; cursor: default; }
+
     .pkg-toolbar {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       margin-right: 10px;
     }
-    .pkg-selection-count {
-      min-width: 74px;
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 500;
-      text-align: right;
+    .pkg-toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+    /* Fizz-style toolbar: pink ghost buttons for selection-driven actions, solid for Publish */
+    .accept-all-btn {
+      font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+      padding: 6px 14px; border-radius: var(--radius); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+      background: transparent; color: var(--accent); border: 1px solid var(--accent);
+      transition: background .12s, opacity .12s;
     }
+    .accept-all-btn:hover { background: rgba(233,30,140,0.08); }
+    .accept-all-btn:disabled { opacity: 0.45; cursor: default; background: transparent; }
+    .commit-btn {
+      font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+      padding: 6px 14px; border-radius: var(--radius); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+      background: var(--accent); color: #fff; border: 1px solid var(--accent);
+      transition: background .12s, opacity .12s;
+    }
+    .commit-btn:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
+    .commit-btn:disabled { opacity: 0.45; cursor: default; background: var(--accent); }
+    .commit-btn.is-loading { pointer-events: none; }
+    .commit-spinner {
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+      border-radius: 50%; animation: cmtSpin .7s linear infinite; display: none;
+    }
+    .commit-btn.is-loading .commit-spinner { display: inline-block; }
+    @keyframes cmtSpin { to { transform: rotate(360deg); } }
     .pkg-toolbar .btn:disabled,
     .modal-footer .btn:disabled {
       opacity: .45;
@@ -1169,7 +1148,7 @@
     table.data-table.packages-table {
       table-layout: fixed;
       width: 100%;
-      min-width: 1280px;
+      min-width: 1350px;
       font-family: var(--font-sans);
     }
     table.data-table.packages-table th,
@@ -1423,11 +1402,30 @@
     <a href="pricing.html" class="subtab active">Packages</a>
     <div class="subtab-spacer"></div>
     <div class="pkg-toolbar">
-      <span class="pkg-selection-count" id="pkgSelectionCount">0 selected</span>
-      <button class="btn btn-ghost" id="pkgClearSelectionBtn" onclick="clearPackageSelection()" disabled>Clear</button>
-      <button class="btn btn-ghost" id="pkgBulkChangeBtn" onclick="openBulkChangeModal()" disabled>
-        Bulk Change
+      <button class="accept-all-btn" id="pkgBulkChangeBtn" type="button" disabled onclick="openBulkChangeModal()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 4.5h10M2 7h10M2 9.5h6"/>
+          <path d="M10.2 8.6l1.1 1.1 2-2.2"/>
+        </svg>
+        <span class="bulk-btn-label">Bulk update (0)</span>
       </button>
+      <button class="accept-all-btn" id="pkgAcceptBtn" type="button" disabled onclick="acceptSelectedPackages()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="3,7 6,10 11,4"/>
+        </svg>
+        <span class="accept-all-label">Accept (0)</span>
+      </button>
+      <button class="accept-all-btn" id="pkgRejectBtn" type="button" disabled onclick="rejectSelectedPackages()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="3.5" y1="3.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="3.5" x2="3.5" y2="10.5"/>
+        </svg>
+        <span class="reject-all-label">Reject (0)</span>
+      </button>
+      <button class="commit-btn" id="pkgPublishBtn" type="button" disabled onclick="publishChanges()">
+        <span class="commit-spinner"></span>
+        <span class="commit-label">Publish (0)</span>
+      </button>
+      <span class="pkg-toolbar-sep"></span>
       <button class="btn btn-ghost" id="pkgAdvancedFiltersBtn" onclick="openPackageAdvancedFilters()">
         Advanced Filters
       </button>
@@ -1436,13 +1434,9 @@
       </button>
       <div class="columns-popover" id="pkgColumnsPopover" hidden></div>
     </div>
-    <button class="btn btn-primary" onclick="runEvaluation()" style="margin-right:8px;">
+    <button class="btn btn-ghost" onclick="runEvaluation()">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3,2 12,7 3,12" fill="currentColor" stroke="none"/></svg>
       Run Evaluation
-    </button>
-    <button class="btn btn-ghost" onclick="publishChanges()">
-      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h10M7 2l5 5-5 5"/></svg>
-      Publish Changes
     </button>
   </div>
 
@@ -1507,19 +1501,10 @@
   </div>
 </aside>
 
-<div class="pkg-alert-modal-backdrop" id="pkgAlertModalBackdrop" onclick="closePackageAlertModal()">
-  <div class="pkg-alert-modal" onclick="event.stopPropagation()">
-    <div class="pkg-alert-modal-head">
-      <div>
-        <div class="pkg-alert-modal-title" id="pkgAlertModalTitle">Package alerts</div>
-        <div class="pkg-alert-modal-sub" id="pkgAlertModalSub">-</div>
-      </div>
-      <button class="pkg-alert-modal-close" type="button" aria-label="Close" onclick="closePackageAlertModal()">
-        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
-      </button>
-    </div>
-    <div class="pkg-alert-modal-body" id="pkgAlertModalBody"></div>
-  </div>
+<!-- ── Alerts tooltip (Adisseo styling) ── -->
+<div class="tooltip-popup" id="alertsTooltip">
+  <div class="tooltip-title">Alerts in effect</div>
+  <div id="alertsTooltipBody"></div>
 </div>
 
 <!-- ── Notes Modal ── -->
@@ -1558,31 +1543,46 @@
 </div>
 
 <!-- Package Bulk Change Modal -->
-<div class="modal-backdrop" id="bulkChangeModalBackdrop">
-  <div class="modal">
-    <div class="modal-header">
+<!-- ── Bulk price update modal (Fizz styling) ── -->
+<div class="bulk-backdrop" id="bulkBackdrop" aria-hidden="true">
+  <div class="bulk-modal" role="dialog" aria-modal="true" aria-labelledby="bulkTitle">
+    <div class="bulk-modal-header">
       <div>
-        <div class="modal-title">Bulk price change</div>
-        <div class="modal-subtitle" id="bulkChangeSub">0 packages selected</div>
+        <div class="bulk-modal-title" id="bulkTitle">Bulk price update</div>
+        <div class="bulk-modal-sub" id="bulkSub">0 packages selected</div>
       </div>
-      <button class="modal-close" onclick="closeBulkChangeModal()">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+      <button class="bulk-modal-close" type="button" aria-label="Close" onclick="closeBulkChangeModal()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="3" x2="11" y2="11"/>
+          <line x1="11" y1="3" x2="3" y2="11"/>
+        </svg>
       </button>
     </div>
-    <div class="modal-body">
-      <div class="bulk-summary" id="bulkChangeSummary">Select dates, hotels, or room rows to apply a price change.</div>
-      <div class="bulk-mode" role="group" aria-label="Bulk price change type">
-        <label><input type="radio" name="bulkChangeMode" value="pct" checked onchange="syncBulkChangeMode()"> Percent</label>
-        <label><input type="radio" name="bulkChangeMode" value="abs" onchange="syncBulkChangeMode()"> Dollars</label>
+    <div class="bulk-modal-body">
+      <div class="bulk-type-row" role="radiogroup" aria-label="Adjustment type">
+        <label class="bulk-type-opt">
+          <input type="radio" name="bulkType" value="pct" checked onchange="refreshBulkPreview()">
+          <span>Percentage (%)</span>
+        </label>
+        <label class="bulk-type-opt">
+          <input type="radio" name="bulkType" value="amt" onchange="refreshBulkPreview()">
+          <span>Amount ($)</span>
+        </label>
       </div>
-      <div class="bulk-field">
-        <label id="bulkChangeAmountLabel" for="bulkChangeAmount">Percent change</label>
-        <input type="number" id="bulkChangeAmount" step="0.1" value="0" />
+      <div class="bulk-value-row">
+        <label for="bulkValue">Adjustment</label>
+        <input type="text" inputmode="decimal" id="bulkValue" placeholder="e.g. 5 or -3" oninput="priceInputSanitize(this);refreshBulkPreview()" onkeydown="if(event.key==='Enter'){applyBulkChange();}">
+        <span class="bulk-unit" id="bulkUnit">%</span>
       </div>
+      <div class="bulk-hint">
+        Applied to each package's <b>current price</b>. Positive raises, negative lowers.
+        Locked packages are skipped; updated packages are queued for <b>Publish</b>.
+      </div>
+      <div class="bulk-preview" id="bulkPreview"></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeBulkChangeModal()">Cancel</button>
-      <button class="btn btn-primary" id="bulkApplyBtn" onclick="applyBulkChange()">Apply</button>
+    <div class="bulk-modal-footer">
+      <button class="bulk-btn-ghost" type="button" onclick="closeBulkChangeModal()">Cancel</button>
+      <button class="bulk-btn-primary" type="button" id="bulkApplyBtn" disabled onclick="applyBulkChange()">Apply to 0 packages</button>
     </div>
   </div>
 </div>
@@ -1832,13 +1832,13 @@ const packageIndex = {
    ══════════════════════════════════════════════════════════════════ */
 function fmt$(n)  { return '$' + Math.round(n).toLocaleString(); }
 function fmtPct(f){ return Math.round(f * 100) + '%'; }
+// Forecast load factor / occupancy — plain coloured text, same treatment as
+// the Fizz demo's "Pace vs last yr" column (green strong, grey mid, red weak).
 function pkgLfPill(lf) {
   if (lf == null || isNaN(lf)) return '<span class="text-muted">-</span>';
   const pct = Math.round(Number(lf) * 100);
-  let cls = 'occ-mid';
-  if (pct >= 80) cls = 'occ-high';
-  else if (pct < 60) cls = 'occ-low';
-  return `<span class="occ-pill ${cls}">${pct}%</span>`;
+  const cls = pct >= 80 ? 'pace-pos' : pct < 60 ? 'pace-neg' : 'pace-flat';
+  return `<span class="${cls}">${pct}%</span>`;
 }
 function fmtPctN(n){ return (Math.round(n * 10) / 10) + '%'; }
 function avg(arr, key) {
@@ -2152,11 +2152,12 @@ function allLeaves() {
    carries no per-flight schedule data, so we never fabricate a value.
    ══════════════════════════════════════════════════════════════════ */
 const PACKAGE_SELECT_COLS = 1;
-const PACKAGE_GROUP_COLS = 3;
+const PACKAGE_GROUP_COLS = 2;
 const PACKAGE_METRIC_COLS = 20;
 const COLSPAN = PACKAGE_SELECT_COLS + PACKAGE_GROUP_COLS + PACKAGE_METRIC_COLS;
 const PACKAGE_SORTERS = {
   gateway: { type: 'text', groupType: 'itinerary', value: p => p.gatewayCity || p.gateway },
+  route: { type: 'text', groupType: 'itinerary', value: p => `${p.destination || ''} ${p.gatewayCity || p.gateway || ''}` },
   destination: { type: 'text', groupType: 'itinerary', value: p => p.destination },
   dates: { type: 'date', groupType: 'itinerary', value: p => packageDateValue(p.departureDate) },
   hotel: { type: 'text', groupType: 'hotel', value: p => p.hotel },
@@ -2227,9 +2228,8 @@ function renderPackagesHead() {
         <input class="pkg-select-box" id="pkgSelectAllVisible" type="checkbox"
                onclick="event.stopPropagation()" onchange="toggleVisiblePackageSelection(this.checked)" />
       </th>
-      ${packageHeaderCell('gateway', 'Gateway', { width: '84px' })}
-      ${packageHeaderCell('destination', 'Destination', { width: '110px' })}
-      ${packageHeaderCell('dates', 'Dates', { width: '206px', title: 'Dates / Hotel / Room Category' })}
+      ${packageHeaderCell('route', 'Gateway &rsaquo;<br>Destination', { width: '150px', title: 'Gateway › Destination (sorts by destination, then gateway)' })}
+      ${packageHeaderCell('dates', 'Dates', { width: '250px', title: 'Dates / Hotel / Room Category' })}
       ${packageHeaderCell('soldStly', 'Sold<br>STLY', { width: '50px', className: 'text-right', align: 'right', title: 'Room nights - target, same time last year' })}
       ${packageHeaderCell('sold', 'Sold', { width: '50px', className: 'text-right', align: 'right', title: 'Room nights' })}
       ${packageHeaderCell('outboundForecast', 'Out<br>Fcst', { width: '52px', className: 'text-right', align: 'right', title: 'Outbound flight forecast load factor' })}
@@ -2239,7 +2239,7 @@ function renderPackagesHead() {
       ${packageHeaderCell('pickup3d', 'Pick<br>3d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 3 days' })}
       ${packageHeaderCell('pickup7d', 'Pick<br>7d', { width: '52px', className: 'text-right', align: 'right', title: 'Hotel pickup pax, trailing 7 days' })}
       ${packageHeaderCell('price', 'Price<br>From', { width: '76px', className: 'text-right', align: 'right' })}
-      ${packageHeaderCell('priceChange', 'Price Change<br>(% / abs.)', { width: '132px', title: 'Price Change (% / abs.)' })}
+      ${packageHeaderCell('priceChange', 'Price Change<br>(abs. / %)', { width: '140px', title: 'Price Change (abs. / %)' })}
       ${packageHeaderCell('sup', 'Sup', { width: '58px', className: 'text-right', align: 'right', title: 'Supplementary price adjustment from base price' })}
       ${packageHeaderCell('recPrice', 'Rec.<br>Price', { width: '76px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('priceDelta', 'Delta<br>$', { width: '54px', className: 'text-right', align: 'right' })}
@@ -2248,8 +2248,8 @@ function renderPackagesHead() {
       ${packageHeaderCell('marginDelta', 'Margin<br>Delta', { width: '58px', className: 'text-right', align: 'right' })}
       ${packageHeaderCell('alerts', 'Alerts', { width: '70px' })}
       ${packageHeaderCell('status', 'Status', { width: '84px' })}
-      ${packageHeaderCell('pace', 'Pace', { width: '70px' })}
-      <th style="width:72px;text-align:center;">Actions</th>
+      ${packageHeaderCell('pace', 'Pace', { width: '96px' })}
+      <th style="width:112px;text-align:center;">Actions</th>
     </tr>
   `;
 }
@@ -2449,33 +2449,40 @@ function packageScopeAvg(leaves, fn) {
   return leaves.length ? leaves.reduce((total, pkg) => total + fn(pkg), 0) / leaves.length : 0;
 }
 
+// Manual price changes only — an accepted or published recommendation is shown
+// in Rec. Price / Status, not echoed back into the Price Change inputs.
+function manualPriceChange(pkg) {
+  if (acceptedRecs.has(pkg.id) || publishedPkgs.has(pkg.id)) return 0;
+  return getPackagePriceChange(pkg);
+}
+function manualPriceChangePct(pkg) {
+  return pkg.currentPrice > 0 ? (manualPriceChange(pkg) / pkg.currentPrice) * 100 : 0;
+}
+
 function packagePriceChangeCellForScope(scopeKey, leaves, editable = true) {
   const unlocked = leaves.filter(pkg => !lockedPkgs.has(pkg.id));
   const disabled = !editable || !unlocked.length;
-  const avgChange = packageScopeAvg(leaves, getPackagePriceChange);
-  const avgPct = packageScopeAvg(leaves, getPackagePriceChangePct);
-  const pctValue = Math.abs(avgPct) >= 0.05 ? trimInputNumber(avgPct, 1) : '';
-  const dollarValue = Math.abs(avgChange) >= 0.5 ? String(Math.round(avgChange)) : '0';
+  const avgChange = packageScopeAvg(leaves, manualPriceChange);
+  const avgPct = packageScopeAvg(leaves, manualPriceChangePct);
+  const hasChange = Math.abs(avgChange) >= 0.5;
+  // Fizz-style: blank until a change exists, then shown as "$-20" / "-2.5%".
+  const dollarValue = hasChange ? '$' + Math.round(avgChange) : '';
+  const pctValue = hasChange && Math.abs(avgPct) >= 0.05 ? trimInputNumber(avgPct, 1) + '%' : '';
   const safeKey = jsArg(scopeKey);
   const disabledAttr = disabled ? 'disabled' : '';
-  const disabledClass = disabled ? ' disabled' : '';
-  const changeClass = Math.abs(avgChange) >= 0.5
+  const changeClass = hasChange
     ? (avgChange < 0 ? ' has-adjustment adjust-down' : ' has-adjustment adjust-up')
     : '';
-  const title = disabled ? 'All descendant packages are locked' : 'Adjust package price by percentage or dollars';
+  const title = disabled ? 'All descendant packages are locked' : 'Adjust package price by dollars or percentage — type a value and press Enter';
   return `
     <td class="pkg-change-cell${changeClass}" title="${title}">
-      <div class="pkg-change-pair" onclick="event.stopPropagation()">
-        <span class="pkg-change-wrap${disabledClass}">
-          <input class="pkg-change-input" type="number" step="0.1" value="${pctValue}" placeholder=""
-                 onchange="updatePackagePriceChangePct('${safeKey}', this.value)" ${disabledAttr} />
-          <span class="pkg-change-suffix">%</span>
-        </span>
-        <span class="pkg-change-wrap${disabledClass}">
-          <span class="pkg-change-prefix">$</span>
-          <input class="pkg-change-input" type="number" step="1" value="${dollarValue}"
-                 onchange="updatePackagePriceChangeDollar('${safeKey}', this.value)" ${disabledAttr} />
-        </span>
+      <div class="price-change-pair" onclick="event.stopPropagation()">
+        <input class="price-input pkg-change-input abs" type="text" inputmode="decimal" value="${dollarValue}" placeholder="$" ${disabledAttr}
+               oninput="priceInputSanitize(this)" onkeydown="priceInputKeydown(event, this)"
+               onchange="updatePackagePriceChangeDollar('${safeKey}', this.value)" onblur="applyDollarFormat(this)" />
+        <input class="price-input pkg-change-input pct" type="text" inputmode="decimal" value="${pctValue}" placeholder="%" ${disabledAttr}
+               oninput="priceInputSanitize(this)" onkeydown="priceInputKeydown(event, this)"
+               onchange="updatePackagePriceChangePct('${safeKey}', this.value)" onblur="applyPctFormat(this)" />
       </div>
     </td>
   `;
@@ -2498,15 +2505,16 @@ function packageActionCellForScope(scopeKey, leaves) {
   const accepted = hasLeaves && leaves.every(pkg => acceptedRecs.has(pkg.id));
   const rejected = hasLeaves && leaves.every(pkg => rejectedRecs.has(pkg.id));
   const disabledAttr = hasLeaves ? '' : 'disabled';
-  const scopeWord = leaves.length > 1 ? 'bulk ' : '';
+  const scopeWord = leaves.length > 1 ? 'Accept all recommendations in this group' : 'Accept recommendation';
+  const scopeWordR = leaves.length > 1 ? 'Reject all recommendations in this group' : 'Reject recommendation';
   return `
-    <td class="pkg-actions-cell">
-      <span class="pkg-action-icons" onclick="event.stopPropagation()">
-        <button type="button" class="${accepted ? 'accepted' : ''}" title="${scopeWord}accept recommendation"
-                onclick="acceptRec('${safeKey}')" ${disabledAttr}>${actionSvg('accept')}</button>
-        <button type="button" class="${rejected ? 'rejected' : ''}" title="${scopeWord}reject recommendation"
-                onclick="rejectRec('${safeKey}')" ${disabledAttr}>${actionSvg('reject')}</button>
-        <button type="button" class="${notes[scopeKey] ? 'has-note' : ''}" title="Add note"
+    <td class="pkg-actions-cell action-cell">
+      <span class="action-cell-inner" onclick="event.stopPropagation()">
+        <button type="button" class="action-btn act-accept${accepted ? ' solid' : ''}" title="${scopeWord}"
+                onclick="acceptRec('${safeKey}')" ${disabledAttr}><svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5,7.5 5.5,10.5 11.5,3.5"/></svg></button>
+        <button type="button" class="action-btn act-reject${rejected ? ' solid' : ''}" title="${scopeWordR}"
+                onclick="rejectRec('${safeKey}')" ${disabledAttr}><svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3.5" y1="3.5" x2="10.5" y2="10.5"/><line x1="10.5" y1="3.5" x2="3.5" y2="10.5"/></svg></button>
+        <button type="button" class="action-note${notes[scopeKey] ? ' has-note' : ''}" title="${notes[scopeKey] ? 'Edit note' : 'Add note'}"
                 onclick="openNotesModal('${safeKey}')">${actionSvg('note')}</button>
       </span>
     </td>
@@ -2648,70 +2656,58 @@ function metricMoneyCell(value, opts = {}) {
 
 function metricPaceCell(value) {
   const pace = paceFromRank(value);
-  return pace ? `<td>${paceBadge(pace)}</td>` : BLANK_TEXT;
+  return pace ? `<td class="pkg-pace-cell">${paceBadge(pace)}</td>` : BLANK_TEXT;
 }
 
 function packageAlertCell(pkg, metrics) {
   const alerts = packageAlertsFor(pkg, metrics);
-  const cls = alerts.length ? 'has-alerts' : 'muted';
+  if (!alerts.length) return '<td class="pkg-alert-cell"></td>';
   const modalId = `pkg-alert-${++packageAlertModalSeq}`;
   const sub = pkg
     ? `${pkg.gatewayCity || pkg.gateway || '-'} (${pkg.gateway || '-'}) to ${pkg.destination || pkg.destId || '-'}`
     : 'Package group';
   packageAlertModalData.set(modalId, { pkg, alerts, sub });
-  if (!alerts.length) {
-    return `
-      <td class="pkg-alert-cell">
-        <button type="button" class="pkg-alert-bell ${cls}" aria-label="Open alerts" onclick="event.stopPropagation();openPackageAlertModal('${modalId}')">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
-            <path d="M8 2.5c-2 0-3.2 1.4-3.2 3.4v2.4L3.5 10v1h9v-1l-1.3-1.7V5.9c0-2-1.2-3.4-3.2-3.4Z"/>
-            <path d="M6.7 12.1c.2.8.6 1.2 1.3 1.2s1.1-.4 1.3-1.2"/>
-          </svg>
-          <span class="pkg-alert-count">0</span>
-        </button>
-      </td>
-    `;
-  }
+  const badge = alerts.length > 1
+    ? `<span class="alert-bell-badge">${alerts.length}</span>`
+    : '';
   return `
     <td class="pkg-alert-cell">
-      <button type="button" class="pkg-alert-bell ${cls}" aria-label="Open alerts" onclick="event.stopPropagation();openPackageAlertModal('${modalId}')">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
-          <path d="M8 2.5c-2 0-3.2 1.4-3.2 3.4v2.4L3.5 10v1h9v-1l-1.3-1.7V5.9c0-2-1.2-3.4-3.2-3.4Z"/>
-          <path d="M6.7 12.1c.2.8.6 1.2 1.3 1.2s1.1-.4 1.3-1.2"/>
-        </svg>
-        <span class="pkg-alert-count">${alerts.length}</span>
-      </button>
+      <div class="alert-bell-wrap"><button type="button" class="alert-bell" title="Alerts" aria-label="Show alerts"
+              onclick="showPackageAlerts(event, '${modalId}')">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#f5a623" stroke-width="1.5" stroke-linecap="round"><path d="M8 2a5 5 0 0 1 5 5c0 3.5 1.5 4.5 1.5 4.5h-13S3 10.5 3 7a5 5 0 0 1 5-5z"/><line x1="6.5" y1="14" x2="9.5" y2="14"/></svg>
+      </button>${badge}</div>
     </td>
   `;
 }
 
-function openPackageAlertModal(modalId) {
-  const data = packageAlertModalData.get(modalId);
-  if (!data) return;
-  const title = document.getElementById('pkgAlertModalTitle');
-  const sub = document.getElementById('pkgAlertModalSub');
-  const body = document.getElementById('pkgAlertModalBody');
-  const p = data.pkg || {};
-  title.textContent = data.alerts.length
-    ? `${data.alerts.length} active alert${data.alerts.length === 1 ? '' : 's'}`
-    : 'No active alerts';
-  sub.textContent = p.hotel
-    ? `${p.hotel} - ${data.sub}`
-    : data.sub;
-  body.innerHTML = data.alerts.length
-    ? data.alerts.map(alert => `
-      <div class="pkg-alert-modal-row">
-        <div class="pkg-alert-modal-key">${esc(alert.label || alert.key)}</div>
-        <div class="pkg-alert-modal-text">${esc(alert.title || alert.label || alert.key)}</div>
-      </div>
-    `).join('')
-    : '<div class="pkg-alert-modal-text">No configured alert thresholds are currently breached for this row.</div>';
-  document.getElementById('pkgAlertModalBackdrop').classList.add('open');
-}
+const packageAlertIcons = {
+  OUT:    '<path d="M2 9l10-5M5 7.5L4 11l2-1.5"/><path d="M12 4l-1 4"/>',
+  RET:    '<path d="M12 9L2 4M9 7.5l1 3.5-2-1.5"/><path d="M2 4l1 4"/>',
+  HOTEL:  '<rect x="2" y="6" width="10" height="5" rx="1"/><path d="M2 11v1M12 11v1M4 6V4h3v2"/>',
+  MARGIN: '<polyline points="2,10 5,7 8,8.5 12,4"/><polyline points="9,4 12,4 12,7"/>',
+  COST:   '<circle cx="7" cy="7" r="5"/><path d="M7 4.5v5M5.5 6h2.2a1 1 0 0 1 0 2H5.5"/>',
+  PACE:   '<polyline points="2,4 5,7 8,5.5 12,10"/><polyline points="9,10 12,10 12,7"/>',
+};
 
-function closePackageAlertModal() {
-  document.getElementById('pkgAlertModalBackdrop').classList.remove('open');
+function showPackageAlerts(e, modalId) {
+  e.stopPropagation();
+  const data = packageAlertModalData.get(modalId);
+  if (!data || !data.alerts.length) return;
+  const tt = document.getElementById('alertsTooltip');
+  const body = document.getElementById('alertsTooltipBody');
+  const wasOpen = tt.classList.contains('open') && tt.dataset.for === modalId;
+  body.innerHTML = data.alerts.map(a => {
+    const icon = packageAlertIcons[a.key] || '<circle cx="7" cy="7" r="5"/><path d="M7 4.5v3M7 9.5v.5"/>';
+    return `<div class="tooltip-item" title="${esc(a.title || a.label || a.key)}"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg> ${esc(a.title || a.label || a.key)}</div>`;
+  }).join('');
+  tt.dataset.for = modalId;
+  tt.style.left = Math.min(e.clientX - 10, window.innerWidth - 260) + 'px';
+  tt.style.top = (e.clientY + 16) + 'px';
+  tt.classList.toggle('open', !wasOpen);
 }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.alert-bell')) document.getElementById('alertsTooltip')?.classList.remove('open');
+});
 
 function packageGroupMetricCells(node) {
   const metrics = packageAggregatedMetrics(node);
@@ -2803,7 +2799,7 @@ function metricCells(p, opts) {
     <td class="text-right num ${deltaColor(deltaM)} ${packageMetricClass('marginDelta', deltaM, p)}">${deltaM>=0?'+':''}${fmt$(deltaM)}</td>
     ${packageAlertCell(p, packageLeafMetrics(p))}
     ${packageStatusCellForScope([p])}
-    <td>${paceBadge(p.bookingPace)}</td>
+    <td class="pkg-pace-cell">${paceBadge(p.bookingPace)}</td>
     ${packageActionCell(p, opts)}
   `;
 }
@@ -2821,20 +2817,24 @@ function packageHierarchyTextCell(title, sub) {
 
 function packageGroupCells(node, contentHtml) {
   if (node.type === 'itinerary') {
+    // Compact route: airport code → destination on one line, city · region beneath.
+    const code = node.gatewaySub || node.gatewayLabel || '-';
+    const sub = [node.gatewaySub ? node.gatewayLabel : '', node.destinationSub].filter(Boolean).map(esc).join(' &middot; ');
     return `
-      ${packageHierarchyTextCell(node.gatewayLabel || '-', node.gatewaySub || '')}
-      ${packageHierarchyTextCell(node.destinationLabel || '-', node.destinationSub || '')}
+      <td class="pkg-h-cell pkg-route-cell">
+        <div class="pkg-h-copy">
+          <div class="pkg-h-title">${esc(code)} <span class="pkg-route-arrow">&rarr;</span> ${esc(node.destinationLabel || '-')}</div>
+          ${sub ? `<div class="pkg-h-sub">${sub}</div>` : ''}
+        </div>
+      </td>
       <td class="pkg-h-cell pkg-level-cell pkg-level-cell-1">${contentHtml}</td>
     `;
   }
-  const p = node.rep || {};
-  const gatewayLabel = p.gatewayCity || p.gateway || '-';
-  const gatewaySub = p.gateway && p.gateway !== gatewayLabel ? p.gateway : '';
-  const destinationLabel = p.destination || '-';
-  const destinationSub = p.region || '';
+  // Hotel (child) and room (grandchild) rows inherit the route from the
+  // itinerary row above them, so that cell stays blank here rather than
+  // repeating the parent labels on every nested row.
   return `
-    ${packageHierarchyTextCell(gatewayLabel, gatewaySub)}
-    ${packageHierarchyTextCell(destinationLabel, destinationSub)}
+    <td class="pkg-h-cell pkg-h-inherited"></td>
     <td class="pkg-h-cell pkg-level-cell pkg-level-cell-${node.level}">${contentHtml}</td>
   `;
 }
@@ -2891,7 +2891,7 @@ function packageRoomRow(node) {
     </div>
   `;
   return `
-    <tr class="pkg-room-row" onclick="openBookingPanel('${jsArg(node.key)}')">
+    <tr class="pkg-room-row${acceptedRecs.has(room.id) ? ' row-accepted' : rejectedRecs.has(room.id) ? ' row-rejected' : ''}" onclick="openBookingPanel('${jsArg(node.key)}')">
       ${packageSelectionCell(room.id, [room])}
       ${packageGroupCells(node, content)}
       ${metricCells(room, { editable: true, sold: room.soldPackages, stly: room.soldStly, hotelFcst: room.hotelForecast })}
@@ -3401,12 +3401,73 @@ function syncPackageSelectionUi() {
     header.disabled = !visibleState.total;
   }
   const count = selectedPackageIds.size;
-  const label = document.getElementById('pkgSelectionCount');
-  if (label) label.textContent = `${count.toLocaleString()} selected`;
-  const bulkBtn = document.getElementById('pkgBulkChangeBtn');
-  const clearBtn = document.getElementById('pkgClearSelectionBtn');
-  if (bulkBtn) bulkBtn.disabled = count === 0;
-  if (clearBtn) clearBtn.disabled = count === 0;
+  const n = count.toLocaleString();
+  const setBtn = (id, labelCls, text) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.querySelector('.' + labelCls).textContent = text;
+    btn.disabled = count === 0;
+  };
+  setBtn('pkgBulkChangeBtn', 'bulk-btn-label',   `Bulk update (${n})`);
+  setBtn('pkgAcceptBtn',     'accept-all-label', `Accept (${n})`);
+  setBtn('pkgRejectBtn',     'reject-all-label', `Reject (${n})`);
+  syncPublishButton();
+}
+
+// Pending = price changes (manual or accepted recs) that are not yet published.
+function pendingPublishIds() {
+  return Object.keys(priceOverrides).filter(id => {
+    const pkg = packageIndex.byId.get(id);
+    return pkg && !publishedPkgs.has(id) && Math.abs(getPackagePriceChange(pkg)) >= 0.5;
+  });
+}
+function syncPublishButton() {
+  const btn = document.getElementById('pkgPublishBtn');
+  if (!btn || btn.classList.contains('is-loading')) return;
+  const n = pendingPublishIds().length;
+  btn.querySelector('.commit-label').textContent = `Publish (${n.toLocaleString()})`;
+  btn.disabled = n === 0;
+}
+
+function showToast(message) {
+  const toast = document.getElementById('reToast');
+  const text  = document.getElementById('reToastText');
+  if (!toast || !text) return;
+  toast.classList.add('success');
+  text.textContent = '\u2713 ' + message;
+  toast.classList.add('shown');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { toast.classList.remove('shown'); toast.classList.remove('success'); }, 2500);
+}
+
+// Selection-driven bulk accept / reject (Fizz mechanism, plus Reject)
+function acceptSelectedPackages() {
+  const leaves = selectedPackageLeaves().filter(pkg => !lockedPkgs.has(pkg.id));
+  if (!leaves.length) return;
+  leaves.forEach(pkg => {
+    priceOverrides[pkg.id] = pkg.recPrice;
+    acceptedRecs.add(pkg.id);
+    rejectedRecs.delete(pkg.id);
+    publishedPkgs.delete(pkg.id);
+  });
+  priceRevision++;
+  selectedPackageIds.clear();
+  renderPackagesTable();
+  showToast(`Accepted ${leaves.length.toLocaleString()} recommendation${leaves.length === 1 ? '' : 's'}`);
+}
+function rejectSelectedPackages() {
+  const leaves = selectedPackageLeaves().filter(pkg => !lockedPkgs.has(pkg.id));
+  if (!leaves.length) return;
+  leaves.forEach(pkg => {
+    delete priceOverrides[pkg.id];
+    acceptedRecs.delete(pkg.id);
+    rejectedRecs.add(pkg.id);
+    publishedPkgs.delete(pkg.id);
+  });
+  priceRevision++;
+  selectedPackageIds.clear();
+  renderPackagesTable();
+  showToast(`Rejected ${leaves.length.toLocaleString()} recommendation${leaves.length === 1 ? '' : 's'}`);
 }
 
 function togglePackageSelection(scopeKey, checked) {
@@ -3457,59 +3518,87 @@ function applyPackagePriceChange(scopeKey, changeOrFn) {
 }
 
 function updatePackagePriceChangeDollar(scopeKey, value) {
-  const change = value === '' ? 0 : Number(value);
+  const n = priceInputNumber(value);
+  const change = n == null ? 0 : n;
   if (!Number.isFinite(change)) return;
   applyPackagePriceChange(scopeKey, change);
 }
 
 function updatePackagePriceChangePct(scopeKey, value) {
-  const pct = value === '' ? 0 : Number(value);
+  const n = priceInputNumber(value);
+  const pct = n == null ? 0 : n;
   if (!Number.isFinite(pct)) return;
   applyPackagePriceChange(scopeKey, pkg => pkg.currentPrice * (pct / 100));
 }
 
-function syncBulkChangeMode() {
-  const mode = document.querySelector('input[name="bulkChangeMode"]:checked')?.value || 'pct';
-  const amount = document.getElementById('bulkChangeAmount');
-  const label = document.getElementById('bulkChangeAmountLabel');
-  if (!amount || !label) return;
-  if (mode === 'pct') {
-    amount.step = '0.1';
-    label.textContent = 'Percent change';
-  } else {
-    amount.step = '1';
-    label.textContent = 'Dollar change';
+function bulkChangeType() {
+  return document.querySelector('input[name="bulkType"]:checked')?.value || 'pct';
+}
+function bulkNewPrice(pkg, type, v) {
+  const raw = type === 'pct' ? pkg.currentPrice * (1 + v / 100) : pkg.currentPrice + v;
+  return Math.max(1, Math.round(raw));
+}
+function refreshBulkPreview() {
+  const type = bulkChangeType();
+  document.getElementById('bulkUnit').textContent = type === 'pct' ? '%' : '$';
+  const v = priceInputNumber(document.getElementById('bulkValue').value);
+  const leaves = selectedPackageLeaves().filter(pkg => !lockedPkgs.has(pkg.id));
+  const applyBtn = document.getElementById('bulkApplyBtn');
+  const preview = document.getElementById('bulkPreview');
+  applyBtn.textContent = `Apply to ${leaves.length.toLocaleString()} package${leaves.length === 1 ? '' : 's'}`;
+  if (v == null || v === 0 || !leaves.length) {
+    applyBtn.disabled = true;
+    preview.innerHTML = '';
+    return;
   }
+  applyBtn.disabled = false;
+  const sample = leaves.slice(0, 3).map(pkg => {
+    const label = [pkg.gateway, pkg.destination, pkg.hotel, pkg.roomCategory].filter(Boolean).map(esc).join(' · ');
+    return `<div class="bulk-preview-row"><span title="${label}">${label}</span><span>${fmt$(pkg.currentPrice)} → <b>${fmt$(bulkNewPrice(pkg, type, v))}</b></span></div>`;
+  }).join('');
+  const more = leaves.length > 3
+    ? `<div class="bulk-preview-more">… and ${(leaves.length - 3).toLocaleString()} more</div>` : '';
+  preview.innerHTML = '<div class="bulk-preview-title">Preview</div>' + sample + more;
 }
 
 function openBulkChangeModal() {
   const leaves = selectedPackageLeaves();
   if (!leaves.length) return;
   const unlocked = leaves.filter(pkg => !lockedPkgs.has(pkg.id)).length;
-  document.getElementById('bulkChangeSub').textContent =
-    `${leaves.length.toLocaleString()} package${leaves.length === 1 ? '' : 's'} selected`;
-  document.getElementById('bulkChangeSummary').textContent =
-    `${unlocked.toLocaleString()} unlocked package${unlocked === 1 ? '' : 's'} will receive this price change. Locked packages are skipped.`;
-  document.getElementById('bulkChangeAmount').value = '0';
-  document.getElementById('bulkApplyBtn').disabled = unlocked === 0;
-  syncBulkChangeMode();
-  document.getElementById('bulkChangeModalBackdrop').classList.add('open');
+  document.getElementById('bulkSub').textContent =
+    `${leaves.length.toLocaleString()} package${leaves.length === 1 ? '' : 's'} selected` +
+    (unlocked < leaves.length ? ` · ${(leaves.length - unlocked).toLocaleString()} locked (skipped)` : '');
+  const input = document.getElementById('bulkValue');
+  input.value = '';
+  refreshBulkPreview();
+  const bd = document.getElementById('bulkBackdrop');
+  bd.classList.add('is-open');
+  bd.setAttribute('aria-hidden', 'false');
+  setTimeout(() => input.focus(), 30);
 }
 
 function closeBulkChangeModal() {
-  document.getElementById('bulkChangeModalBackdrop').classList.remove('open');
+  const bd = document.getElementById('bulkBackdrop');
+  bd.classList.remove('is-open');
+  bd.setAttribute('aria-hidden', 'true');
 }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('bulkBackdrop')?.classList.contains('is-open')) closeBulkChangeModal();
+});
+document.getElementById('bulkBackdrop')?.addEventListener('click', e => { if (e.target.id === 'bulkBackdrop') closeBulkChangeModal(); });
 
 function applyBulkChange() {
-  const leaves = selectedPackageLeaves();
-  const raw = document.getElementById('bulkChangeAmount').value;
-  const amount = raw === '' ? 0 : Number(raw);
-  if (!leaves.length || !Number.isFinite(amount)) return;
-  const mode = document.querySelector('input[name="bulkChangeMode"]:checked')?.value || 'pct';
+  const v = priceInputNumber(document.getElementById('bulkValue').value);
+  const leaves = selectedPackageLeaves().filter(pkg => !lockedPkgs.has(pkg.id));
+  if (v == null || v === 0 || !leaves.length) return;
+  const type = bulkChangeType();
   closeBulkChangeModal();
-  applyPackagePriceChangeToLeaves(leaves, mode === 'pct'
-    ? (pkg => pkg.currentPrice * (amount / 100))
-    : amount);
+  applyPackagePriceChangeToLeaves(leaves, type === 'pct'
+    ? (pkg => pkg.currentPrice * (v / 100))
+    : v);
+  selectedPackageIds.clear();
+  syncPackageSelectionUi();
+  showToast(`${leaves.length.toLocaleString()} price${leaves.length === 1 ? '' : 's'} updated (${v > 0 ? '+' : ''}${type === 'pct' ? v + '%' : '$' + v})`);
 }
 
 function readAdvancedNumber(id) {
@@ -3828,47 +3917,46 @@ function bookVia(channel) {
 }
 
 function publishChanges() {
-  const publishIds = Object.keys(priceOverrides).filter(id => Math.abs(getPackagePriceChange(packageIndex.byId.get(id) || {})) >= 0.5);
-  publishIds.forEach(id => publishedPkgs.add(id));
+  const btn = document.getElementById('pkgPublishBtn');
+  if (btn && (btn.disabled || btn.classList.contains('is-loading'))) return;
+  const publishIds = pendingPublishIds();
   const n = publishIds.length;
-  const toast = document.getElementById('reToast');
-  const text  = document.getElementById('reToastText');
-  if (n === 0) {
-    toast.classList.add('success');
-    text.textContent = '✓ No pending changes to publish';
-  } else {
-    toast.classList.add('success');
-    text.textContent = `✓ Published ${n} price change${n===1?'':'s'}`;
+  if (!n) { showToast('No pending changes to publish'); return; }
+  if (btn) {
+    btn.classList.add('is-loading');
+    btn.querySelector('.commit-label').textContent = 'Publishing\u2026';
   }
-  toast.classList.add('shown');
-  renderPackagesTable();
-  setTimeout(() => { toast.classList.remove('shown'); toast.classList.remove('success'); }, 2500);
+  setTimeout(() => {
+    publishIds.forEach(id => publishedPkgs.add(id));
+    if (btn) btn.classList.remove('is-loading');
+    renderPackagesTable();
+    showToast(`Published ${n.toLocaleString()} price change${n === 1 ? '' : 's'}`);
+  }, 1000);
 }
 
 (function() {
   const PACKAGE_COLUMN_DEFS = [
-    { id: 'gateway', label: 'Gateway', col: 2, locked: true },
-    { id: 'destination', label: 'Destination', col: 3, locked: true },
-    { id: 'dates', label: 'Dates / Hotel', col: 4, locked: true },
-    { id: 'soldStly', label: 'Sold STLY', col: 5 },
-    { id: 'sold', label: 'Sold', col: 6 },
-    { id: 'outboundFcst', label: 'Out Fcst', col: 7 },
-    { id: 'returnFcst', label: 'Ret Fcst', col: 8 },
-    { id: 'hotelFcst', label: 'Hotel Fcst', col: 9 },
-    { id: 'pickup1d', label: 'Pick 1d', col: 10 },
-    { id: 'pickup3d', label: 'Pick 3d', col: 11 },
-    { id: 'pickup7d', label: 'Pick 7d', col: 12 },
-    { id: 'price', label: 'Price From', col: 13, locked: true },
-    { id: 'priceChange', label: 'Price Change', col: 14 },
-    { id: 'sup', label: 'Sup', col: 15 },
-    { id: 'recPrice', label: 'Rec Price', col: 16 },
-    { id: 'priceDelta', label: 'Delta $', col: 17 },
-    { id: 'currMargin', label: 'Curr Margin', col: 18 },
-    { id: 'recMargin', label: 'Rec Margin', col: 19 },
-    { id: 'marginDelta', label: 'Margin Delta', col: 20 },
-    { id: 'alerts', label: 'Alerts', col: 21 },
-    { id: 'status', label: 'Status', col: 22 },
-    { id: 'pace', label: 'Pace', col: 23 },
+    { id: 'route', label: 'Gateway / Destination', col: 2, locked: true },
+    { id: 'dates', label: 'Dates / Hotel', col: 3, locked: true },
+    { id: 'soldStly', label: 'Sold STLY', col: 4 },
+    { id: 'sold', label: 'Sold', col: 5 },
+    { id: 'outboundFcst', label: 'Out Fcst', col: 6 },
+    { id: 'returnFcst', label: 'Ret Fcst', col: 7 },
+    { id: 'hotelFcst', label: 'Hotel Fcst', col: 8 },
+    { id: 'pickup1d', label: 'Pick 1d', col: 9 },
+    { id: 'pickup3d', label: 'Pick 3d', col: 10 },
+    { id: 'pickup7d', label: 'Pick 7d', col: 11 },
+    { id: 'price', label: 'Price From', col: 12, locked: true },
+    { id: 'priceChange', label: 'Price Change', col: 13 },
+    { id: 'sup', label: 'Sup', col: 14 },
+    { id: 'recPrice', label: 'Rec Price', col: 15 },
+    { id: 'priceDelta', label: 'Delta $', col: 16 },
+    { id: 'currMargin', label: 'Curr Margin', col: 17 },
+    { id: 'recMargin', label: 'Rec Margin', col: 18 },
+    { id: 'marginDelta', label: 'Margin Delta', col: 19 },
+    { id: 'alerts', label: 'Alerts', col: 20 },
+    { id: 'status', label: 'Status', col: 21 },
+    { id: 'pace', label: 'Pace', col: 22 },
   ];
   const packageColumnVisibility = Object.fromEntries(PACKAGE_COLUMN_DEFS.map(d => [d.id, true]));
   let built = false;
@@ -3993,6 +4081,7 @@ function updatePackageDateLabel() {
   if (!packageDateRange.start && !packageDateRange.end) {
     label.textContent = 'Select dates';
     wrap.classList.remove('has-selection');
+    if (window.Filters && Filters.syncClear) Filters.syncClear();
     return;
   }
   const start = packageDateRange.start || packageDateRange.end;
@@ -4001,6 +4090,7 @@ function updatePackageDateLabel() {
     ? packageDateLabelFromIso(start)
     : `${packageDateLabelFromIso(start)} - ${packageDateLabelFromIso(end)}`;
   wrap.classList.add('has-selection');
+  if (window.Filters && Filters.syncClear) Filters.syncClear();
 }
 
 function clearPackageDateRange() {
@@ -4170,6 +4260,7 @@ function _initPricing() {
     Filters.setMultiSelectValues('fRegion', window.__filterRegions);
   }
   initPackageDateRangePicker();
+  if (Filters.onClearAll) Filters.onClearAll(clearPackageDateRange);
   _initPackageFilters();
   updateAdvancedFilterButton();
   renderPackagesHead();

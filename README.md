@@ -11,7 +11,7 @@ exports from the same origin as the HTML pages, and the Docker image bakes
 ## Runtime Shape
 
 - Static web root: `data/`
-- Local server script: `serve-demo.ps1`
+- Local server: Python HTTP server serving `data/`
 - Container server: nginx on port `8080`
 - Runtime data source: committed CSV files in `data/`
 - Browser network access: same-origin static assets and CSVs only
@@ -30,7 +30,8 @@ The active Packages workflow expects these committed files to exist in `data/`:
 
 The raw booking-curve CSV exports are local build inputs and are ignored because
 they are too large for the static repo/image. Regenerate the committed compact
-JSON after replacing those raw exports:
+JSON after replacing those raw exports. `.dockerignore` also excludes these
+raw files from the container build:
 
 ```powershell
 python .\scripts\build_booking_curves.py
@@ -52,7 +53,7 @@ Current demo interaction notes:
 From the repository root:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\serve-demo.ps1
+python -m http.server 8099 --bind 127.0.0.1 --directory data
 ```
 
 Then open:
@@ -64,11 +65,11 @@ http://localhost:8099/pricing.html
 http://localhost:8099/parameters.html
 ```
 
-If the PowerShell HTTP listener cannot bind on Windows, this equivalent Python
-server also serves the same `data/` web root:
+An optional local `serve-demo.ps1` helper is ignored by Git and is not included
+in a fresh checkout. When available, it can also serve the demo:
 
 ```powershell
-python -m http.server 8099 --bind 127.0.0.1 --directory data
+powershell -ExecutionPolicy Bypass -File .\serve-demo.ps1
 ```
 
 Opening the HTML files directly with `file://` will not work because the pages
@@ -85,6 +86,15 @@ python .\scripts\validate_csv_contract.py
 The validator checks that each required CSV exists, contains the required
 columns, has at least one row, and has parseable package dates.
 
+With Node.js available, run the focused flight and chart regression checks:
+
+```powershell
+node .\scripts\test_frontend_regressions.js
+```
+
+These check flight-date coverage, weekly totals, sparse weeks, daily lookups,
+and point-marker rendering without adding frontend dependencies.
+
 ## Package Parameters
 
 `data/parameters.html` currently supports package alert thresholds, package
@@ -98,11 +108,19 @@ parameter sections remain blank until they have backing configuration data.
 
 ## Flight Calendar
 
-`data/flight.html` is read-only and loads `data/v_flight_pricing_pg.csv` for
-both list and week/month calendar views. Calendar/list LF values use
+`data/flight.html` loads `data/v_flight_pricing_pg.csv` for both list and
+week/month calendar views and supports margin-only what-if adjustments.
+Calendar/list LF values use
 `curve_current_lf`, `curve_forecast_final_lf`, and
 `curve_target_same_time_last_year_lf`; booked seats use
 `curve_current_booked_seats`.
+
+Route/week rows retain every departure in a `days` collection, with summed
+capacity and booked seats. Expand the list to see individual flights. Calendar
+cells and detail panels aggregate only the departures in the selected week or
+month, including weeks that cross month boundaries. Full-range advanced-filter
+sliders do not hide data until the user narrows a bound, so forecasts above
+100% remain visible.
 
 ## Data Refresh Process
 
@@ -133,9 +151,21 @@ deployment step and no runtime DB/secrets setup for this app.
 
 ## Known Data Gaps
 
+The Hotels tab is intentionally empty in this demo: no
+`data/v_hotel_pricing_pg.csv` is supplied. Hotel occupancy on Flights is also
+blank; package hotel metrics and booking curves still use the package and
+hotel-curve exports.
+
+The October 2026 refresh has 29,095 package rows and 272 flight rows. The
+rebuilt hotel curves match every package row; the raw flight-curve exports
+omit matches for 210 outbound and 280 inbound package rows, which display the
+existing no-curve state. The booking-panel demo date remains `2026-05-27`.
+
 The UI intentionally shows only values present in the CSVs. Features without
 CSV backing render as empty states or explain the missing data in the RM
 Copilot. Examples include persistent notes, publish/audit history, detailed
 cost-change history, package autopilot rules, and persistence for in-browser
 package selections or price overrides before publish. The package price-history
-chart is mock demo data with margin-change dots, not a committed time series.
+chart is mock demo data, not a committed time series. Its orange markers show
+mock margin changes; the tooltip displays the price, lead time, and margin
+change for a marker.
